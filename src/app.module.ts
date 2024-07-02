@@ -1,18 +1,16 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PropertyModule } from './property/property.module';
-import { BookingModule } from './booking/booking.module';
-import { UserModule } from './user/user.module';
+import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
-import { RolesGuard } from './auth/guards/roles.guard';
-import { AuthGuard } from './auth/guards/auth.guard';
+import { AuthGuard } from './auth/guard/auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './user/entities/user.entity';
-import { ReportModule } from './report/report.module';
 import { SeedModule } from './seed/seed.module';
+import { CompanyModule } from './company/company.module';
+import { CommentModule } from './comment/comment.module';
+import { PublicationModule } from './publication/publication.module';
 
 @Module({
   imports: [
@@ -31,12 +29,12 @@ import { SeedModule } from './seed/seed.module';
       autoLoadEntities: true,
     }),
 
-    PropertyModule,
-    BookingModule,
-    UserModule,
+    CompanyModule,
     AuthModule,
-    ReportModule,
-    ReportModule,SeedModule
+    CommentModule,
+    UsersModule,
+    PublicationModule,
+    SeedModule
     ],
   controllers: [AppController],
   providers: [AppService, 
