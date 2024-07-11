@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { Company } from '../company/entities/company.entity';
+import { Comment } from '../comment/entities/comment.entity';
 
 @Module({
   controllers: [UsersController],

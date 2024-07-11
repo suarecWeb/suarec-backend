@@ -1,34 +1,42 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
-import { Role } from "../entities/roles.enum";
-import { UserStatus } from "../entities/user-status.enum";
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import { Role } from '../entities/roles.enum';
+import { UserStatus } from '../entities/user-status.enum';
 
 export class CreateUserDto {
+  @IsString()
+  name: string;
 
-    @IsString()
-    name:string;
+  @IsString()
+  @Matches(
+    /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/,
+    { message: 'La contraseña debe contener al menos una letra mayúscula, una letra minúscula y un número' }
+  )
+  password: string;
 
-    @IsString()
-    @IsOptional()
-    @MinLength(6)
-    @MaxLength(50)
-    @Matches(
-        /(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-        message: 'The password must have a Uppercase, lowercase letter and a number'
-    })
-    password:string;
+  @IsString()
+  cv_url: string;
 
-    @IsString()
-    @IsEmail()
-    email:string
+  @IsString()
+  @IsOptional()
+  @IsEnum(Role)
+  role: Role;
 
-    @IsString()
-    @IsOptional()
-    photo_url:string;
+  @IsString()
+  @IsEmail()
+  email: string;
 
-    @IsString()
-    @IsOptional()
-    role:Role;
+  @IsString()
+  cellphone: string;
 
-    @IsOptional()
-    status?: UserStatus;
+  @IsDateString()
+  born_at: Date;
+
+  @IsNumber()
+  age: number;
+
+  @IsString()
+  genre: string;
+
+  @IsOptional()
+  status?: UserStatus;
 }

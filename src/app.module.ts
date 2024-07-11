@@ -7,7 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { SeedModule } from './seed/seed.module';
+//import { SeedModule } from './seed/seed.module';
 import { CompanyModule } from './company/company.module';
 import { CommentModule } from './comment/comment.module';
 import { PublicationModule } from './publication/publication.module';
@@ -27,6 +27,8 @@ import { PublicationModule } from './publication/publication.module';
       database: process.env.DB_NAME,
       synchronize: true, 
       autoLoadEntities: true,
+      logging: true, // Puedes habilitar el logging para ver las consultas SQL
+
     }),
 
     CompanyModule,
@@ -34,7 +36,7 @@ import { PublicationModule } from './publication/publication.module';
     CommentModule,
     UsersModule,
     PublicationModule,
-    SeedModule
+    //SeedModule
     ],
   controllers: [AppController],
   providers: [AppService, 

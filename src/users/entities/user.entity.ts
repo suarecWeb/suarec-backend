@@ -48,7 +48,7 @@ export class User {
 
     @Column('date',{
         nullable:false,
-        default: Date.now()
+        default: () => 'CURRENT_TIMESTAMP'
     })
     created_at:Date;
 

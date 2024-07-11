@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { CompanyController } from './controllers/company.controller';
 import { CompanyService } from './services/company.service';
 import { Company } from './entities/company.entity';
+import { Comment } from '../comment/entities/comment.entity';
 
 
 @Module({

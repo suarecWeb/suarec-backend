@@ -11,11 +11,9 @@ export class CreateCompanyDto {
   @IsNotEmpty()
   name: string;
 
-  @IsDate()
   @IsNotEmpty()
   born_at: Date;
 
-  @IsDate()
   @IsNotEmpty()
   created_at: Date;
 
@@ -30,5 +28,5 @@ export class CreateCompanyDto {
 
   @IsString()
   @IsNotEmpty()
-  userId: string; // Asumiendo que necesitas un ID de usuario para asociarlo
+  userId: string; 
 }
