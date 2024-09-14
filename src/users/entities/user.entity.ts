@@ -1,6 +1,5 @@
 import { BeforeInsert, Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, Or, PrimaryGeneratedColumn } from "typeorm";
-import { Role } from "./roles.enum";
-import { UserStatus } from "./user-status.enum";
+import { Role } from "../../role/entities/role.entity";
 import { Company } from "../../company/entities/company.entity";
 import { Publication } from "../../publication/entities/publication.entity";
 import { Comment } from "../../comment/entities/comment.entity";
@@ -52,16 +51,8 @@ export class User {
     })
     created_at:Date;
 
-    @Column('text',{
-        
-        nullable:false
-    })
+    @ManyToOne(() => Role, (role) => role.users)
     role:Role;
-
-    @Column('text', {nullable: false
-        , default: UserStatus.ACTIVE
-    })
-    status: UserStatus;
 
     @OneToOne(() => Company, (company) => company.user)
     company: Company;
