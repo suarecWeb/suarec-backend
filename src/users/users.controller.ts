@@ -8,7 +8,6 @@ import { User } from './entities/user.entity';
 //import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 //import { ApiPaginatedResponse } from '../decorators/api-paginated-response.decorator';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { Role } from './entities/roles.enum';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/decorators/role.decorator';
 
@@ -28,7 +27,7 @@ export class UsersController {
   @Get()
   //@ApiBearerAuth()
   //@ApiPaginatedResponse(User)
-  @Roles(Role.ADMIN)
+  @Roles("Admin")
   @UseGuards(AuthGuard, RolesGuard)
   //@ApiOperation({ summary: 'Get users (Admin only)' })
   //@ApiResponse({ status: 200, description: 'Users retrieved successfully.' })
@@ -40,7 +39,7 @@ export class UsersController {
   
   @Get(':id')
   //@ApiBearerAuth()
-  //@Roles(Role.ADMIN, Role.USER)
+  //@Roles(RoleEnum.ADMIN, RoleEnum.USER)
   @UseGuards(AuthGuard, RolesGuard)
   findOne(@Param('id') id:string){
     return this.usersService.findOne(id);
@@ -48,7 +47,7 @@ export class UsersController {
 
   
   @Patch(':id')
-  @Roles(Role.ADMIN)
+  @Roles("Admin")
   //@ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
   //@ApiOperation({ summary: 'Get users (Admin only)' })
@@ -62,7 +61,7 @@ export class UsersController {
   
   @Delete(':id')
   //@ApiBearerAuth()
-  @Roles(Role.ADMIN)
+  @Roles("Admin")
   @UseGuards(AuthGuard, RolesGuard)
   //@ApiOperation({ summary: 'Delete users (Admin only)' })
   //@ApiResponse({ status: 200, description: 'Users deleted successfully.' })

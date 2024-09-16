@@ -1,6 +1,6 @@
 import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
-import { Role } from '../entities/roles.enum';
-import { UserStatus } from '../entities/user-status.enum';
+import { Role } from '../../role/entities/role.entity';
+import { UserStatusEnum } from '../enums/user-status.enum';
 
 export class CreateUserDto {
   @IsString()
@@ -18,7 +18,6 @@ export class CreateUserDto {
 
   @IsString()
   @IsOptional()
-  @IsEnum(Role)
   role: Role;
 
   @IsString()
@@ -38,5 +37,5 @@ export class CreateUserDto {
   genre: string;
 
   @IsOptional()
-  status?: UserStatus;
+  status?: UserStatusEnum;
 }
