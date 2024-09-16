@@ -11,6 +11,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompanyModule } from './company/company.module';
 import { CommentModule } from './comment/comment.module';
 import { PublicationModule } from './publication/publication.module';
+import { RoleModule } from './role/role.module';
+import { PermissionModule } from './permission/permission.module';
+import { RolePermissionModule } from './role_permission/role_permission.module';
 
 @Module({
   imports: [
@@ -36,7 +39,9 @@ import { PublicationModule } from './publication/publication.module';
     CommentModule,
     UsersModule,
     PublicationModule,
-    //SeedModule
+    RoleModule,
+    PermissionModule,
+    RolePermissionModule,
     ],
   controllers: [AppController],
   providers: [AppService, 
