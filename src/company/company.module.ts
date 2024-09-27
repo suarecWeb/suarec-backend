@@ -9,6 +9,7 @@ import { CompanyController } from './controllers/company.controller';
 import { CompanyService } from './services/company.service';
 import { Company } from './entities/company.entity';
 import { Comment } from '../comment/entities/comment.entity';
+import { Role } from '../role/entities/role.entity';
 
 
 @Module({
@@ -16,7 +17,7 @@ import { Comment } from '../comment/entities/comment.entity';
   providers: [UsersService, CompanyService, Repository],
   exports: [TypeOrmModule, Repository],
   imports: [
-    TypeOrmModule.forFeature([Company, User, Comment]), 
+    TypeOrmModule.forFeature([Company, User, Comment, Role]), 
     ConfigModule, 
     Repository
   ]

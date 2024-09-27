@@ -9,13 +9,14 @@ import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { Company } from '../company/entities/company.entity';
 import { Comment } from '../comment/entities/comment.entity';
+import { Role } from '../role/entities/role.entity';
 
 @Module({
   controllers: [UsersController],
   providers: [UsersService, JwtService, Repository],
   exports: [UsersService, UsersModule, TypeOrmModule],
   imports: [forwardRef(() => AuthModule),
-    TypeOrmModule.forFeature([Comment, User, Company]), 
+    TypeOrmModule.forFeature([Comment, User, Company, Role]), 
     ConfigModule
   ]
 })
