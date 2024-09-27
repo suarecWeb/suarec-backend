@@ -18,7 +18,7 @@ export class CreateUserDto {
 
   @IsString()
   @IsOptional()
-  role: Role;
+  role: string;
 
   @IsString()
   @IsEmail()
@@ -35,7 +35,4 @@ export class CreateUserDto {
 
   @IsString()
   genre: string;
-
-  @IsOptional()
-  status?: UserStatusEnum;
 }

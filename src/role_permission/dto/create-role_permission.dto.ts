@@ -3,9 +3,9 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class CreateRolePermissionDto {
   @IsNotEmpty()
   @IsString()
-  readonly roleId: string;
+  readonly roleName: string;
 
   @IsNotEmpty()
   @IsString()
-  readonly permissionId: string;
+  readonly permissionName: string;
 }

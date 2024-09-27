@@ -21,16 +21,16 @@ export class RolePermissionService {
   ) {}
 
   async create(createRolePermissionDto: CreateRolePermissionDto) {
-    const { roleId, permissionId } = createRolePermissionDto;
+    const { roleName, permissionName } = createRolePermissionDto;
 
-    const role = await this.roleRepository.findOne({ where: { id: roleId } });
+    const role = await this.roleRepository.findOne({ where: { name: roleName } });
     if (!role) {
-      throw new NotFoundException(`Role with ID ${roleId} not found`);
+      throw new NotFoundException(`Role with name ${roleName} not found`);
     }
 
-    const permission = await this.permissionRepository.findOne({ where: { id: permissionId } });
+    const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
     if (!permission) {
-      throw new NotFoundException(`Permission with ID ${permissionId} not found`);
+      throw new NotFoundException(`Permission with name ${permissionName} not found`);
     }
 
     const rolePermission = this.rolePermissionRepository.create({
@@ -57,7 +57,7 @@ export class RolePermissionService {
   }
 
   async update(id: string, updateRolePermissionDto: UpdateRolePermissionDto) {
-    const { roleId, permissionId } = updateRolePermissionDto;
+    const { roleName, permissionName } = updateRolePermissionDto;
 
     const rolePermission = await this.rolePermissionRepository.findOne({
       where: { id },
@@ -66,18 +66,18 @@ export class RolePermissionService {
       throw new NotFoundException(`RolePermission with ID ${id} not found`);
     }
 
-    if (roleId) {
-      const role = await this.roleRepository.findOne({ where: { id: roleId } });
+    if (roleName) {
+      const role = await this.roleRepository.findOne({ where: { name: roleName } });
       if (!role) {
-        throw new NotFoundException(`Role with ID ${roleId} not found`);
+        throw new NotFoundException(`Role with name ${roleName} not found`);
       }
       rolePermission.role = role;
     }
 
-    if (permissionId) {
-      const permission = await this.permissionRepository.findOne({ where: { id: permissionId } });
+    if (permissionName) {
+      const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
       if (!permission) {
-        throw new NotFoundException(`Permission with ID ${permissionId} not found`);
+        throw new NotFoundException(`Permission with name ${permissionName} not found`);
       }
       rolePermission.permission = permission;
     }

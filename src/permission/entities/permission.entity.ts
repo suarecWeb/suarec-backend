@@ -6,7 +6,7 @@ export class Permission {
     @PrimaryGeneratedColumn('uuid')
     id:string;
 
-    @Column('text', {nullable: false})
+    @Column('text', {nullable: false, unique: true })
     name:string;
 
     @OneToMany(() => RolePermission, (role_permission) => role_permission.permission)

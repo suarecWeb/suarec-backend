@@ -31,7 +31,7 @@ export class CompanyController {
   findOne(@Param('id') id: string): Promise<Company> {
     return this.companyService.findOne(id);
   }
-
+  
   @Patch(':id')
   @Roles("Admin")
   @UseGuards(AuthGuard, RolesGuard)
