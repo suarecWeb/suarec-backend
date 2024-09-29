@@ -23,9 +23,6 @@ export class User {
     @Column('text')
     cv_url: string;
 
-    @Column('numeric')
-    age: number;
-
     @Column('text',{
         nullable:false
     })

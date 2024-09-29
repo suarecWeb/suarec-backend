@@ -30,9 +30,6 @@ export class CreateUserDto {
   @IsDateString()
   born_at: Date;
 
-  @IsNumber()
-  age: number;
-
   @IsString()
   genre: string;
 }
