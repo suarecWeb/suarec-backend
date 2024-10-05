@@ -8,6 +8,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { stringify } from 'querystring';
 
 
 @Injectable()
@@ -29,9 +30,14 @@ export class AuthService {
         throw new UnauthorizedException('Invalid email or password.');
       }
 
-      //console.log(user)
+      console.log('USER' + user);
+      console.log('User ' + user.role);
 
-      const payload = {id: user.id, email: user.email, name: user.name, role: user.role};
+
+      const payload = {id: user.id, email: user.email, name: user.name, 
+        role: user.role ? user.role.name : null // 
+      };
+
       return {
         ...payload,
         token: await this.jwtService.signAsync(payload)

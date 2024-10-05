@@ -7,6 +7,7 @@ import {
   import { JwtService } from '@nestjs/jwt';
   import { Request } from 'express';
   import { ConfigService } from '@nestjs/config';
+  import jwt from 'jsonwebtoken';
   
   @Injectable()
   export class AuthGuard implements CanActivate {
@@ -14,7 +15,13 @@ import {
     
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const request = context.switchToHttp().getRequest();
+
+      console.log('Request: ' + request);
+
       const token = this.extractTokenFromHeader(request);
+
+      console.log('Token from request: ' + token);
+
       if (!token) {
         throw new UnauthorizedException();
       }

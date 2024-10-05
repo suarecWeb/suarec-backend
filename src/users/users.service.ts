@@ -31,7 +31,7 @@ export class UsersService {
       if (existingUser) {
         throw new BadRequestException('Email already in use');
       }
-
+      
       const role = roleName ? await this.roleRepository.findOne({ where: { name: roleName } }) : null;
       if (roleName && !role) {
         throw new BadRequestException('Role not found');

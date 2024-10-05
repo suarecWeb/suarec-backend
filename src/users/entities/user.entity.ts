@@ -1,4 +1,4 @@
-import { BeforeInsert, Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, Or, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, Or, PrimaryGeneratedColumn } from "typeorm";
 import { Role } from "../../role/entities/role.entity";
 import { Company } from "../../company/entities/company.entity";
 import { Publication } from "../../publication/entities/publication.entity";
@@ -48,10 +48,12 @@ export class User {
     })
     created_at:Date;
 
-    @ManyToOne(() => Role, (role) => role.users)
+    // eager relaciones se cargan automaticamente
+    @ManyToOne(() => Role, (role) => role.users, { eager: true })
     role:Role;
-
+    
     @OneToOne(() => Company, (company) => company.user)
+    @JoinColumn() // Esto indica que User tendrá la columna que se usa para la relación
     company: Company;
 
     @OneToMany(() => Publication, (publication) => publication.user)

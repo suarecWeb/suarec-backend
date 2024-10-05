@@ -21,6 +21,4 @@ export class AuthController {
   changePassword(@Param('id') id:string, @Body() passwordDto:passwordDto){
     return this.authService.changePassword(id, passwordDto.password)
   }
-
-  
 }
