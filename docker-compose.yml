@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    container_name: staynest_db
+    container_name: suarec_db
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
 
@@ -20,7 +20,7 @@ services:
     ports:
       - "5050:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: juan@juan.com
-      PGADMIN_DEFAULT_PASSWORD: hola1234
+      PGADMIN_DEFAULT_EMAIL: dylan@dylan.com
+      PGADMIN_DEFAULT_PASSWORD: password
     volumes:
       - ./pgadmin-data:/var/lib/pgadmin

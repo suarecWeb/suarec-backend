@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AuthGuard } from './auth/guard/auth.guard';
+import * as bcrypt from 'bcrypt';
 import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
@@ -18,7 +19,7 @@ async function bootstrap() {
     );
 
     const corsOptions: CorsOptions = {
-      origin: 'http://localhost:3000', // Permite solicitudes desde este origen
+      origin: '*', // Permite solicitudes desde este origen
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Métodos permitidos
       credentials: true, // Permitir el uso de cookies
       allowedHeaders: 'Content-Type, Accept, Authorization', // Encabezados permitidos
