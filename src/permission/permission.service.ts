@@ -18,39 +18,27 @@ export class PermissionService {
   }
 
   findAll() {
-    return this.permissionRepository.find({ relations: ['role_permissions'] });
+    return this.permissionRepository.find();
   }
 
-  async findOne(id: string) {
-    const permission = await this.permissionRepository.findOne({
-      where: { id },
-      relations: ['role_permissions'],
-    });
+  async findOne(id: number) {
+    const permission = await this.permissionRepository.findOne({ where: { id } });
     if (!permission) {
       throw new NotFoundException(`Permission with ID ${id} not found`);
     }
     return permission;
   }
 
-  async update(id: string, updatePermissionDto: UpdatePermissionDto) {
-    const permission = await this.permissionRepository.findOne({
-      where: { id },
-    });
+  async update(id: number, updatePermissionDto: UpdatePermissionDto) {
+    const permission = await this.permissionRepository.preload({ id, ...updatePermissionDto });
     if (!permission) {
       throw new NotFoundException(`Permission with ID ${id} not found`);
     }
-
-    Object.assign(permission, updatePermissionDto);
     return this.permissionRepository.save(permission);
   }
 
-  async remove(id: string) {
-    const permission = await this.permissionRepository.findOne({
-      where: { id },
-    });
-    if (!permission) {
-      throw new NotFoundException(`Permission with ID ${id} not found`);
-    }
+  async remove(id: number) {
+    const permission = await this.findOne(id);
     return this.permissionRepository.remove(permission);
   }
 }

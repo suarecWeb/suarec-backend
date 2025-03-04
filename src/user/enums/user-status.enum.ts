@@ -3,4 +3,3 @@ export enum UserStatusEnum {
     INACTIVE = 'Inactive',
     BANNED = 'Banned'
   }
-  

@@ -1,7 +1,14 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, IsEmail, Min } from 'class-validator';
 
 export class CreateRoleDto {
-  @IsNotEmpty()
-  @IsString()
-  readonly name: string;
-}
+    @IsString()
+    @IsNotEmpty()
+    name: string;
+  
+    @IsString()
+    @IsOptional()
+    description?: string;
+  
+    @IsOptional()
+    permissionsIds?: number[];
+  }

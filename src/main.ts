@@ -24,7 +24,7 @@ async function bootstrap() {
       credentials: true, // Permitir el uso de cookies
       allowedHeaders: 'Content-Type, Accept, Authorization', // Encabezados permitidos
     };
-  
+    app.setGlobalPrefix('suarec');
     app.enableCors(corsOptions); // Habilitar CORS
 
   await app.listen(3001);

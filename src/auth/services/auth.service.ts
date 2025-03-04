@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../../users/users.service';
+import { UserService } from '../../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import nodemailer from 'nodemailer'
+//import nodemailer from 'nodemailer'
 import { from } from 'rxjs';
-import { MailerService } from '@nestjs-modules/mailer';
+//import { MailerService } from '@nestjs-modules/mailer';
 import { Repository } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { User } from '../../user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { stringify } from 'querystring';
 
@@ -15,34 +15,36 @@ import { stringify } from 'querystring';
 export class AuthService {
 
   constructor(
-    private usersService: UsersService,
+    private usersService: UserService,
     private jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>  
   ) {}
 
-  
-
   async signIn(email: string, password: string) {
-      const user = await this.usersService.findByEmail(email);
-      
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        throw new UnauthorizedException('Invalid email or password.');
-      }
+    // Usamos leftJoinAndSelect para cargar los roles
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role') // Esto asegura que los roles sean cargados
+      .where('user.email = :email', { email })
+      .getOne();
 
-      console.log('USER' + user);
-      console.log('User ' + user.role);
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
 
+    const payload = {
+      id: user.id,
+      email: user.email,
+      roles: user.roles,  // Los roles deberían estar ahora cargados
+    };
 
-      const payload = {id: user.id, email: user.email, name: user.name, 
-        role: user.role ? user.role.name : null // 
-      };
-
-      return {
-        ...payload,
-        token: await this.jwtService.signAsync(payload)
-      }
+    return {
+      ...payload,
+      token: await this.jwtService.signAsync(payload),
+    };
   }
+  
 
   async sendMail(email:string){
     const user = await this.usersService.findByEmail(email);
@@ -64,7 +66,7 @@ export class AuthService {
             <body>
             <div style="font-family: Arial, sans-serif; color: #fff;">
             <div style="text-align: center; padding: 20px; background-color: #b4b4e2;">
-                <h1 >¡Hola, ${user.name}!</h1>
+                <h1 >¡Hola, ${user.email}!</h1>
                 <h3 font-weight: bold;">¡Entra al siguiente enlace para recuperar tu contraseña!</h3>
                 
             </div>
@@ -84,9 +86,9 @@ export class AuthService {
 
     sendSmtpEmail.sender = { "name": "Suarec", "email": "noreply@suarec.com"};
     sendSmtpEmail.to = [
-      { "email": user.email , "name": user.name } 
+      { "email": user.email } 
     ];
-    sendSmtpEmail.replyTo = { "email":  user.email, "name":  user.name };
+    sendSmtpEmail.replyTo = { "email":  user.email };
     sendSmtpEmail.headers = { "Some-Custom-Name": "unique-id-1234" };
     sendSmtpEmail.params = { "parameter": "My param value", "subject": "¡Perdiste tu contraseña, no te preocupes!" };
     
@@ -98,7 +100,7 @@ export class AuthService {
     });
   }
 
-  async changePassword(id:string, password:string){
+  async changePassword(id:number, password:string){
     let user = await this.userRepository.findOne({
       where: {id:id},
       

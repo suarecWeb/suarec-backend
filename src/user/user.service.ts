@@ -10,7 +10,7 @@ import { Role } from '../role/entities/role.entity';
 import { UserStatusEnum } from './enums/user-status.enum';
 
 @Injectable()
-export class UsersService {
+export class UserService {
   private readonly logger = new Logger('UserService');
 
   constructor(
@@ -25,16 +25,23 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) {
     try {
-      const { password, email, role: roleName, ...userData } = createUserDto;
+      const { password, email, roles: roleNames, ...userData } = createUserDto;
 
       const existingUser = await this.usersRepository.findOne({ where: { email } });
       if (existingUser) {
         throw new BadRequestException('Email already in use');
       }
-      
-      const role = roleName ? await this.roleRepository.findOne({ where: { name: roleName } }) : null;
-      if (roleName && !role) {
-        throw new BadRequestException('Role not found');
+
+      // Buscar los roles en la base de datos
+      const roles = [];
+      if (roleNames && roleNames.length > 0) {
+        for (const roleName of roleNames) {
+          const role = await this.roleRepository.findOne({ where: { name: roleName } });
+          if (!role) {
+            throw new BadRequestException(`Role ${roleName} not found`);
+          }
+          roles.push(role);
+        }
       }
 
       const user = this.usersRepository.create({
@@ -42,8 +49,7 @@ export class UsersService {
         email,
         password: bcrypt.hashSync(password, 10),
         created_at: new Date(),
-        role,
-        // status: status ? UserStatusEnum[status] : null, // Convertir el string a UserStatusEnum
+        roles, // Asignar la lista de roles
       });
 
       await this.usersRepository.save(user);
@@ -55,7 +61,7 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    const user: User = await this.usersRepository.findOne({ where: { email } });
+    const user: User = await this.usersRepository.findOne({ where: { email }, relations: ['roles'] });
     if (!user) {
       throw new NotFoundException('Email not found, please register or try again.');
     }
@@ -63,13 +69,13 @@ export class UsersService {
   }
 
   async findAll(): Promise<User[]> {
-    return this.usersRepository.find({ relations: ['role', 'company'] });
+    return this.usersRepository.find({ relations: ['roles', 'company'] });
   }
 
-  async findOne(id: string) {
+  async findOne(id: number) {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['role', 'company', 'publications', 'comments']
+      relations: ['roles', 'company', 'publications', 'comments']
     });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -77,26 +83,29 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, updateDto: UpdateUserDto) {
-    const { role: roleName, ...updateData } = updateDto;
-  
-    // Buscar el rol si está en los datos de actualización
-    let role: Role | null = null;
-    if (roleName) {
-      role = await this.roleRepository.findOne({ where: { name: roleName } });
-      if (!role) {
-        throw new BadRequestException('Role not found');
+  async update(id: number, updateDto: UpdateUserDto) {
+    const { roles: roleNames, ...updateData } = updateDto;
+
+    // Buscar los roles si están en los datos de actualización
+    let roles: Role[] = [];
+    if (roleNames && roleNames.length > 0) {
+      for (const roleName of roleNames) {
+        const role = await this.roleRepository.findOne({ where: { name: roleName } });
+        if (!role) {
+          throw new BadRequestException(`Role ${roleName} not found`);
+        }
+        roles.push(role);
       }
     }
-  
+
     const user = await this.usersRepository.preload({
       id,
       ...updateData,
-      role, // Asignar el objeto Role
+      roles, // Asignar la lista de roles
     });
-  
+
     if (!user) throw new NotFoundException(`User with ID ${id} not found`);
-  
+
     try {
       await this.usersRepository.save(user);
       return user;
@@ -105,7 +114,7 @@ export class UsersService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: number) {
     const user = await this.findOne(id);
     await this.usersRepository.remove(user);
   }

@@ -1,18 +1,28 @@
-import { RolePermission } from "../../role_permission/entities/role_permission.entity";
-import { User } from "../../users/entities/user.entity";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToOne, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Permission } from '../../permission/entities/permission.entity';
+import { User } from '../../user/entities/user.entity';
 
-@Entity()
+@Entity('roles')
 export class Role {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column('text', {nullable: false, unique: true })
+  @Column()
   name: string;
 
-  @OneToMany(() => RolePermission, (role_permission) => role_permission.role)
-  role_permissions: RolePermission[];
+  @Column({ nullable: true })
+  description?: string;
 
-  @OneToMany(() => User, (user) => user.role)
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
+
+  @ManyToMany(() => Permission, (permission) => permission.roles)
+  @JoinTable({name: 'role_permission'})
+  permissions: Permission[];
+
+  @ManyToMany(() => User, (user) => user.roles)
   users: User[];
 }
