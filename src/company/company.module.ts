@@ -10,6 +10,7 @@ import { CompanyService } from './services/company.service';
 import { Company } from './entities/company.entity';
 import { Comment } from '../comment/entities/comment.entity';
 import { Role } from '../role/entities/role.entity';
+import { Permission } from '../permission/entities/permission.entity';
 
 
 @Module({
@@ -17,7 +18,7 @@ import { Role } from '../role/entities/role.entity';
   providers: [UserService, CompanyService, Repository],
   exports: [TypeOrmModule, Repository],
   imports: [
-    TypeOrmModule.forFeature([Company, User, Comment, Role]), 
+    TypeOrmModule.forFeature([Company, User, Comment, Role, Permission]), 
     ConfigModule, 
     Repository
   ]

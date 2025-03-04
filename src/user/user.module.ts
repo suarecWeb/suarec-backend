@@ -8,11 +8,14 @@ import { Role } from '../role/entities/role.entity';
 import { Company } from '../company/entities/company.entity';
 import { Publication } from '../publication/entities/publication.entity';
 import { Comment } from '../comment/entities/comment.entity';
+import { Permission } from '../permission/entities/permission.entity';
+import { PermissionModule } from '../permission/permission.module';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([User, Role, Company, Publication, Comment]),
+    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment]),
+    PermissionModule,
     
     // Importar JwtModule para el servicio JwtService
     JwtModule.register({

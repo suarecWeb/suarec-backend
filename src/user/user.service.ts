@@ -7,7 +7,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../role/entities/role.entity';
-import { UserStatusEnum } from './enums/user-status.enum';
+import { Permission } from '../permission/entities/permission.entity';
 
 @Injectable()
 export class UserService {
@@ -20,8 +20,91 @@ export class UserService {
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
 
-    private readonly jwtService: JwtService,
+    @InjectRepository(Permission)
+    private readonly permissionRepository: Repository<Permission>,
+
   ) {}
+
+  async onModuleInit() {
+    await this.createPermissionsAndRoles();
+    await this.createAdminUser();
+  }
+
+  private async createPermissionsAndRoles() {
+    try {
+      const permissions = ['WRITE', 'READ', 'UPDATE', 'DELETE'];
+      const rolesData = {
+        PERSON: ['WRITE', 'READ', 'UPDATE'],
+        BUSINESS: ['WRITE', 'READ', 'UPDATE'],
+        ADMIN: ['WRITE', 'READ', 'UPDATE', 'DELETE'],
+      };
+
+      // 1. Crear permisos si no existen
+      for (const permissionName of permissions) {
+        const existingPermission = await this.permissionRepository.findOne({ where: { name: permissionName } });
+        if (!existingPermission) {
+          const newPermission = this.permissionRepository.create({ name: permissionName });
+          await this.permissionRepository.save(newPermission);
+        }
+      }
+
+      // 2. Crear roles con los permisos adecuados
+      for (const [roleName, permissionNames] of Object.entries(rolesData)) {
+        let role = await this.roleRepository.findOne({ where: { name: roleName }, relations: ['permissions'] });
+
+        if (!role) {
+          role = this.roleRepository.create({ name: roleName });
+        }
+
+        // Asignar permisos al rol
+        const rolePermissions = await this.permissionRepository.find({
+          where: permissionNames.map(name => ({ name })),
+        });
+
+        role.permissions = rolePermissions;
+        await this.roleRepository.save(role);
+      }
+
+      this.logger.log('Roles and permissions created successfully.');
+    } catch (error) {
+      this.logger.error('Error creating roles and permissions:', error);
+    }
+  }
+
+  private async createAdminUser() {
+    try {
+      const adminEmail = 'admin@example.com';
+
+      const existingUser = await this.usersRepository.findOne({ where: { email: adminEmail } });
+      if (existingUser) {
+        this.logger.log('Admin user already exists.');
+        return;
+      }
+
+      const adminRole = await this.roleRepository.findOne({ where: { name: 'ADMIN' }, relations: ['permissions'] });
+      if (!adminRole) {
+        this.logger.error('Admin role not found! Make sure roles are seeded.');
+        return;
+      }
+      
+      const adminUser = this.usersRepository.create({
+        genre: 'Male',
+        cellphone: '123456789',
+        email: adminEmail,
+        password: bcrypt.hashSync('juanvalencia', 10),
+        name: 'Admin',
+        created_at: new Date(),
+        roles: [adminRole],
+        born_at: new Date('1990-01-01'),
+        cv_url: 'https://example.com/default-cv.pdf',
+      });
+
+      await this.usersRepository.save(adminUser);
+      this.logger.log('Admin user created successfully.');
+    } catch (error) {
+      this.logger.error('Error creating admin user:', error);
+    }
+  }
 
   async create(createUserDto: CreateUserDto) {
     try {

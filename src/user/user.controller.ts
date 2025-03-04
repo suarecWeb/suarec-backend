@@ -17,7 +17,7 @@ async create(@Body() createUserDto: CreateUserDto) {
   return this.userService.create(createUserDto);
 }
 
-@Roles('ADMIN')
+  @Roles('ADMIN')
   @Get()
   findAll() {
     return this.userService.findAll();

@@ -12,35 +12,35 @@ export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Post()
-  @Roles("Admin", "User")
+  @Roles('ADMIN', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   create(@Body() createCommentDto: CreateCommentDto): Promise<Comment> {
     return this.commentService.create(createCommentDto);
   }
 
   @Get()
-  @Roles("Admin", "User")
+  @Roles('ADMIN', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   findAll(): Promise<Comment[]> {
     return this.commentService.findAll();
   }
 
   @Get(':id')
-  @Roles("Admin", "User")
+  @Roles('ADMIN', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   findOne(@Param('id') id: string): Promise<Comment> {
     return this.commentService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles("Admin", "User")
+  @Roles('ADMIN', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   update(@Param('id') id: string, @Body() updateCommentDto: UpdateCommentDto): Promise<Comment> {
     return this.commentService.update(id, updateCommentDto);
   }
 
   @Delete(':id')
-  @Roles("Admin")
+  @Roles('ADMIN')
   @UseGuards(AuthGuard, RolesGuard)
   remove(@Param('id') id: string): Promise<void> {
     return this.commentService.remove(id);
