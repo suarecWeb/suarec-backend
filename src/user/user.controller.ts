@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, NotFoundException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express'; // Importar ExpressRequest
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -9,25 +10,27 @@ import { Roles } from '../auth/decorators/role.decorator';
 @Controller('users')
 @UseGuards(RolesGuard)
 export class UserController {
-  constructor(private readonly userService: UserService  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Public()
-@Post()
-async create(@Body() createUserDto: CreateUserDto) {
-  return this.userService.create(createUserDto);
-}
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
 
   @Roles('ADMIN')
   @Get()
-  findAll() {
+  findAll(@Req() req: ExpressRequest) { // Aquí agregamos el req
+    console.log("Cookies en la solicitud:", req.cookies);
+    console.log("Headers en la solicitud:", req.headers);
     return this.userService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @Req() req: ExpressRequest) { // Lo mismo aquí si se necesita el token
+    console.log("Usuario autenticado:", req.user);
     return this.userService.findOne(+id);
   }
-
 
   @Get('email/:email')
   findByEmail(@Param('email') email: string) {
@@ -35,12 +38,14 @@ async create(@Body() createUserDto: CreateUserDto) {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Req() req: ExpressRequest) {
+    console.log("Usuario autenticado:", req.user);
     return this.userService.update(+id, updateUserDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Req() req: ExpressRequest) {
+    console.log("Usuario autenticado:", req.user);
     return this.userService.remove(+id);
   }
 }
