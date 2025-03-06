@@ -4,6 +4,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/decorators/role.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('roles')
 @UseGuards(RolesGuard)
@@ -16,8 +17,8 @@ export class RoleController {
     return this.roleService.create(createRoleDto);
   }
 
+  @Public()
   @Get()
-  @Roles('ADMIN')
   findAll() {
     return this.roleService.findAll();
   }

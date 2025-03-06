@@ -6,14 +6,14 @@ import { AuthGuard } from '../../auth/guard/auth.guard';
 import { RolesGuard } from '../../auth/guard/roles.guard';
 import { Roles } from '../../auth/decorators/role.decorator';
 import { Company } from '../entities/company.entity';
+import { Public } from '../../auth/decorators/public.decorator';
 
 @Controller('companies')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Post()
-  @Roles('ADMIN')
-  @UseGuards(AuthGuard, RolesGuard)
+  @Public()
   create(@Body() createCompanyDto: CreateCompanyDto): Promise<Company> {
     return this.companyService.create(createCompanyDto);
   }
