@@ -1,7 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
@@ -13,7 +12,8 @@ import { CommentModule } from './comment/comment.module';
 import { PublicationModule } from './publication/publication.module';
 import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
-import { RolePermissionModule } from './role_permission/role_permission.module';
+//import { RolePermissionModule } from './role_permission/role_permission.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -37,15 +37,20 @@ import { RolePermissionModule } from './role_permission/role_permission.module';
     CompanyModule,
     AuthModule,
     CommentModule,
-    UsersModule,
+    UserModule,
     PublicationModule,
     RoleModule,
     PermissionModule,
-    RolePermissionModule,
+    //RolePermissionModule,
     ],
   controllers: [AppController],
-  providers: [AppService, 
-    AuthGuard],
+  providers: [
+    AppService, AuthGuard
+    ,{
+      provide: APP_GUARD,
+      useClass: AuthGuard,  // Guard global para proteger las rutas
+    },
+  ],
   exports: [TypeOrmModule]
 })
 

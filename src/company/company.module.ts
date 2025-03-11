@@ -2,22 +2,23 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { UsersService } from '../users/users.service';
-import { User } from '../users/entities/user.entity';
+import { UserService } from '../user/user.service';
+import { User } from '../user/entities/user.entity';
 import { Repository } from 'typeorm';
 import { CompanyController } from './controllers/company.controller';
 import { CompanyService } from './services/company.service';
 import { Company } from './entities/company.entity';
 import { Comment } from '../comment/entities/comment.entity';
 import { Role } from '../role/entities/role.entity';
+import { Permission } from '../permission/entities/permission.entity';
 
 
 @Module({
   controllers: [CompanyController],
-  providers: [UsersService, CompanyService, Repository],
+  providers: [UserService, CompanyService, Repository],
   exports: [TypeOrmModule, Repository],
   imports: [
-    TypeOrmModule.forFeature([Company, User, Comment, Role]), 
+    TypeOrmModule.forFeature([Company, User, Comment, Role, Permission]), 
     ConfigModule, 
     Repository
   ]

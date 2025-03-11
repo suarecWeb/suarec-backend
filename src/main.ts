@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AuthGuard } from './auth/guard/auth.guard';
 import * as bcrypt from 'bcrypt';
+import * as cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
@@ -18,13 +19,16 @@ async function bootstrap() {
     })
     );
 
+    app.use(cookieParser()); // Permitir leer cookies
+
     const corsOptions: CorsOptions = {
-      origin: '*', // Permite solicitudes desde este origen
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Métodos permitidos
-      credentials: true, // Permitir el uso de cookies
-      allowedHeaders: 'Content-Type, Accept, Authorization', // Encabezados permitidos
+      origin: 'https://suarec-frontend-production.up.railway.app', // ✅ Especifica el origen permitido
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+      allowedHeaders: 'Content-Type, Accept, Authorization',
     };
-  
+    
+    app.setGlobalPrefix('suarec');
     app.enableCors(corsOptions); // Habilitar CORS
 
   await app.listen(3001);

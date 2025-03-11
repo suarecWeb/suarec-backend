@@ -12,35 +12,35 @@ export class PublicationController {
   constructor(private readonly publicationService: PublicationService) {}
 
   @Post()
-  @Roles("Admin")
+  @Roles('ADMIN')
   @UseGuards(AuthGuard, RolesGuard)
   create(@Body() createPublicationDto: CreatePublicationDto): Promise<Publication> {
     return this.publicationService.create(createPublicationDto);
   }
 
   @Get()
-  @Roles("Admin")
+  @Roles('ADMIN', 'BUSINESS', 'USER')
   @UseGuards(AuthGuard, RolesGuard)
   findAll(): Promise<Publication[]> {
     return this.publicationService.findAll();
   }
 
   @Get(':id')
-  @Roles("Admin", "User")
+  @Roles('ADMIN', 'BUSINESS', 'USER')
   @UseGuards(AuthGuard, RolesGuard)
   findOne(@Param('id') id: string): Promise<Publication> {
     return this.publicationService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles("Admin")
+  @Roles('ADMIN', 'BUSINESS', 'USER')
   @UseGuards(AuthGuard, RolesGuard)
   update(@Param('id') id: string, @Body() updatePublicationDto: UpdatePublicationDto): Promise<Publication> {
     return this.publicationService.update(id, updatePublicationDto);
   }
 
   @Delete(':id')
-  @Roles("Admin")
+  @Roles('ADMIN')
   @UseGuards(AuthGuard, RolesGuard)
   remove(@Param('id') id: string): Promise<void> {
     return this.publicationService.remove(id);
