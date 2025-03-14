@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Comment } from '../entities/comment.entity';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
+import { User } from '../../user/entities/user.entity';
+import { Publication } from '../../publication/entities/publication.entity';
 
 @Injectable()
 export class CommentService {
@@ -12,11 +14,30 @@ export class CommentService {
   constructor(
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Publication)
+    private readonly publicationRepository: Repository<Publication>,
   ) {}
 
   async create(createCommentDto: CreateCommentDto): Promise<Comment> {
     try {
       const comment = this.commentRepository.create(createCommentDto);
+
+      const user = await this.userRepository.findOne({ where: {id: createCommentDto.userId}})
+      const publication = await this.publicationRepository.findOne({ where: {id: createCommentDto.publicationId} })
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      if (!publication) {
+        throw new BadRequestException('Publication not found');
+      }
+
+      comment.user = user;
+      comment.publication = publication;
+
       await this.commentRepository.save(comment);
       return comment;
     } catch (error) {

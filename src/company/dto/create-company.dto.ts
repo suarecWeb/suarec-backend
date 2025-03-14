@@ -1,4 +1,4 @@
-import { IsDate, IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class CreateCompanyDto {
   @IsString()
@@ -26,7 +26,7 @@ export class CreateCompanyDto {
   @Matches(/^\+\d{1,3}\s?\d{1,14}$/, { message: 'Cellphone number is not valid' })
   cellphone: string;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string; 
+  userId: number; 
 }

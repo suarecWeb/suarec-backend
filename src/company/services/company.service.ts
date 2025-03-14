@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Company } from '../entities/company.entity';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
+import { User } from '../../user/entities/user.entity';
 
 @Injectable()
 export class CompanyService {
@@ -13,6 +14,8 @@ export class CompanyService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
@@ -23,6 +26,14 @@ export class CompanyService {
       }
 
       const company = this.companyRepository.create(createCompanyDto);
+      const user = await this.userRepository.findOne({ where: {id: createCompanyDto.userId}})
+
+      if (!user) {
+        throw new BadRequestException('User not found')
+      }
+
+      company.user = user
+
       await this.companyRepository.save(company);
       return company;
     } catch (error) {
