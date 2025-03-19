@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Publication } from '../entities/publication.entity';
 import { CreatePublicationDto } from '../dto/create-publication.dto';
 import { UpdatePublicationDto } from '../dto/update-publication.dto';
+import { User } from '../../user/entities/user.entity';
 
 @Injectable()
 export class PublicationService {
@@ -13,12 +14,22 @@ export class PublicationService {
   constructor(
     @InjectRepository(Publication)
     private readonly publicationRepository: Repository<Publication>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(createPublicationDto: CreatePublicationDto): Promise<Publication> {
     try {
       const publication = this.publicationRepository.create(createPublicationDto);
+      const user = await this.userRepository.findOne({ where: {id: createPublicationDto.userId}})
+
+      if (!user) {
+        throw new BadRequestException('User not found')
+      }
+
+      publication.user = user
       await this.publicationRepository.save(publication);
+
       return publication;
     } catch (error) {
       this.handleDBErrors(error);

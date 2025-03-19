@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateCommentDto {
   @IsString()
@@ -13,7 +13,7 @@ export class CreateCommentDto {
   @IsNotEmpty()
   publicationId: string;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 }

@@ -32,7 +32,7 @@ export class CreatePublicationDto {
   @IsOptional()
   visitors?: number;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 }
