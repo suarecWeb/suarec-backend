@@ -1,11 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PublicationService } from '../services/publication.service';
 import { CreatePublicationDto } from '../dto/create-publication.dto';
 import { UpdatePublicationDto } from '../dto/update-publication.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { AuthGuard } from '../../auth/guard/auth.guard'
 import { RolesGuard } from '../../auth/guard/roles.guard';
 import { Roles } from '../../auth/decorators/role.decorator';
 import { Publication } from '../entities/publication.entity';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+
 
 @Controller('publications')
 export class PublicationController {
@@ -21,8 +24,8 @@ export class PublicationController {
   @Get()
   @Roles('ADMIN', 'BUSINESS', 'USER')
   @UseGuards(AuthGuard, RolesGuard)
-  findAll(): Promise<Publication[]> {
-    return this.publicationService.findAll();
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.publicationService.findAll(paginationDto);
   }
 
   @Get(':id')
