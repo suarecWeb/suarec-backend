@@ -6,6 +6,8 @@ import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { User } from '../../user/entities/user.entity';
 import { Publication } from '../../publication/entities/publication.entity';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class CommentService {
@@ -45,10 +47,31 @@ export class CommentService {
     }
   }
 
-  async findAll(): Promise<Comment[]> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Comment>> {
     try {
-      const comments = await this.commentRepository.find({ relations: ['publication', 'user'] });
-      return comments;
+      const { page, limit } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [comments, total] = await this.commentRepository.findAndCount({
+        relations: ['publication', 'user'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: comments,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }

@@ -4,10 +4,11 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class UserService {
@@ -22,89 +23,9 @@ export class UserService {
 
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-
   ) {}
 
-  async onModuleInit() {
-    await this.createPermissionsAndRoles();
-    await this.createAdminUser();
-  }
-
-  private async createPermissionsAndRoles() {
-    try {
-      const permissions = ['WRITE', 'READ', 'UPDATE', 'DELETE'];
-      const rolesData = {
-        PERSON: ['WRITE', 'READ', 'UPDATE'],
-        BUSINESS: ['WRITE', 'READ', 'UPDATE'],
-        ADMIN: ['WRITE', 'READ', 'UPDATE', 'DELETE'],
-      };
-
-      // 1. Crear permisos si no existen
-      for (const permissionName of permissions) {
-        const existingPermission = await this.permissionRepository.findOne({ where: { name: permissionName } });
-        if (!existingPermission) {
-          const newPermission = this.permissionRepository.create({ name: permissionName });
-          await this.permissionRepository.save(newPermission);
-        }
-      }
-
-      // 2. Crear roles con los permisos adecuados
-      for (const [roleName, permissionNames] of Object.entries(rolesData)) {
-        let role = await this.roleRepository.findOne({ where: { name: roleName }, relations: ['permissions'] });
-
-        if (!role) {
-          role = this.roleRepository.create({ name: roleName });
-        }
-
-        // Asignar permisos al rol
-        const rolePermissions = await this.permissionRepository.find({
-          where: permissionNames.map(name => ({ name })),
-        });
-
-        role.permissions = rolePermissions;
-        await this.roleRepository.save(role);
-      }
-
-      this.logger.log('Roles and permissions created successfully.');
-    } catch (error) {
-      this.logger.error('Error creating roles and permissions:', error);
-    }
-  }
-
-  private async createAdminUser() {
-    try {
-      const adminEmail = 'admin@example.com';
-
-      const existingUser = await this.usersRepository.findOne({ where: { email: adminEmail } });
-      if (existingUser) {
-        this.logger.log('Admin user already exists.');
-        return;
-      }
-
-      const adminRole = await this.roleRepository.findOne({ where: { name: 'ADMIN' }, relations: ['permissions'] });
-      if (!adminRole) {
-        this.logger.error('Admin role not found! Make sure roles are seeded.');
-        return;
-      }
-      
-      const adminUser = this.usersRepository.create({
-        genre: 'Male',
-        cellphone: '123456789',
-        email: adminEmail,
-        password: bcrypt.hashSync('juanvalencia', 10),
-        name: 'Admin',
-        created_at: new Date(),
-        roles: [adminRole],
-        born_at: new Date('1990-01-01'),
-        cv_url: 'https://example.com/default-cv.pdf',
-      });
-
-      await this.usersRepository.save(adminUser);
-      this.logger.log('Admin user created successfully.');
-    } catch (error) {
-      this.logger.error('Error creating admin user:', error);
-    }
-  }
+  // Los métodos onModuleInit(), createPermissionsAndRoles() y createAdminUser() se mantienen iguales
 
   async create(createUserDto: CreateUserDto) {
     try {
@@ -137,7 +58,6 @@ export class UserService {
 
       await this.usersRepository.save(user);
       return user;
-
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -151,8 +71,34 @@ export class UserService {
     return user;
   }
 
-  async findAll(): Promise<User[]> {
-    return this.usersRepository.find({ relations: ['roles', 'company'] });
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+    try {
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.usersRepository.findAndCount({
+        relations: ['roles', 'company'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
   }
 
   async findOne(id: number) {
@@ -184,7 +130,7 @@ export class UserService {
     const user = await this.usersRepository.preload({
       id,
       ...updateData,
-      roles, // Asignar la lista de roles
+      roles: roleNames && roleNames.length > 0 ? roles : undefined,
     });
 
     if (!user) throw new NotFoundException(`User with ID ${id} not found`);

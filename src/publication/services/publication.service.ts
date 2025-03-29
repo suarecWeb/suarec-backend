@@ -38,26 +38,19 @@ export class PublicationService {
     }
   }
 
-  async findAll(paginationDto?: PaginationDto): Promise<Publication[] | PaginationResponse<Publication>> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Publication>> {
     try {
-      // Si no se proporciona paginationDto, devuelve todas las publicaciones como antes
-      if (!paginationDto) {
-        const publications = await this.publicationRepository.find({ relations: ['user'] });
-        return publications;
-      }
-
-      // Si se proporciona paginationDto, implementa la paginación
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
-
+  
       const [data, total] = await this.publicationRepository.findAndCount({
         skip,
         take: limit,
         relations: ['user']
       });
-
+  
       const totalPages = Math.ceil(total / limit);
-
+  
       return {
         data,
         meta: {
