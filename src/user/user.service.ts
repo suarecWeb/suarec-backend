@@ -25,7 +25,137 @@ export class UserService {
     private readonly permissionRepository: Repository<Permission>,
   ) {}
 
-  // Los métodos onModuleInit(), createPermissionsAndRoles() y createAdminUser() se mantienen iguales
+  async onModuleInit() {
+    await this.createPermissionsAndRoles();
+    await this.createInitialUsers();
+  }
+
+  private async createPermissionsAndRoles() {
+    try {
+      const permissions = ['WRITE', 'READ', 'UPDATE', 'DELETE'];
+      const rolesData = {
+        PERSON: ['WRITE', 'READ', 'UPDATE'],
+        BUSINESS: ['WRITE', 'READ', 'UPDATE'],
+        ADMIN: ['WRITE', 'READ', 'UPDATE', 'DELETE'],
+      };
+
+      // 1. Crear permisos si no existen
+      for (const permissionName of permissions) {
+        const existingPermission = await this.permissionRepository.findOne({ where: { name: permissionName } });
+        if (!existingPermission) {
+          const newPermission = this.permissionRepository.create({ name: permissionName });
+          await this.permissionRepository.save(newPermission);
+        }
+      }
+
+      // 2. Crear roles con los permisos adecuados
+      for (const [roleName, permissionNames] of Object.entries(rolesData)) {
+        let role = await this.roleRepository.findOne({ where: { name: roleName }, relations: ['permissions'] });
+
+        if (!role) {
+          role = this.roleRepository.create({ name: roleName });
+        }
+
+        // Asignar permisos al rol
+        const rolePermissions = await this.permissionRepository.find({
+          where: permissionNames.map(name => ({ name })),
+        });
+
+        role.permissions = rolePermissions;
+        await this.roleRepository.save(role);
+      }
+
+      this.logger.log('Roles and permissions created successfully.');
+    } catch (error) {
+      this.logger.error('Error creating roles and permissions:', error);
+    }
+  }
+
+  private async createInitialUsers() {
+    try {
+      // Definir los datos de los usuarios iniciales
+      const initialUsers = [
+        {
+          name: 'Admin User',
+          email: 'admin@example.com',
+          password: 'admin123',
+          genre: 'Male',
+          cellphone: '1234567890',
+          cv_url: 'https://example.com/admin-cv.pdf',
+          born_at: new Date('1990-01-01'),
+          roleName: 'ADMIN'
+        },
+        {
+          name: 'Business User',
+          email: 'business@example.com',
+          password: 'business123',
+          genre: 'Female',
+          cellphone: '2345678901',
+          cv_url: 'https://example.com/business-cv.pdf',
+          born_at: new Date('1985-05-15'),
+          roleName: 'BUSINESS'
+        },
+        {
+          name: 'Regular Person',
+          email: 'person@example.com',
+          password: 'person123',
+          genre: 'Male',
+          cellphone: '3456789012',
+          cv_url: 'https://example.com/person-cv.pdf',
+          born_at: new Date('1995-10-20'),
+          roleName: 'PERSON'
+        },
+      ];
+
+      // Crear cada usuario si no existe ya
+      for (const userData of initialUsers) {
+        const { roleName, ...userInfo } = userData;
+        
+        // Verificar si el usuario ya existe por email
+        const existingUser = await this.usersRepository.findOne({ 
+          where: { email: userInfo.email },
+          relations: ['roles']
+        });
+        
+        if (!existingUser) {
+          // Buscar el rol correspondiente
+          const role = await this.roleRepository.findOne({ where: { name: roleName } });
+          if (!role) {
+            this.logger.warn(`Role ${roleName} not found for user ${userInfo.name}`);
+            continue;
+          }
+          
+          // Crear el usuario
+          const user = this.usersRepository.create({
+            ...userInfo,
+            password: bcrypt.hashSync(userInfo.password, 10),
+            created_at: new Date(),
+            roles: [role], // Asignar el rol al usuario
+          });
+          
+          await this.usersRepository.save(user);
+          this.logger.log(`User ${userInfo.name} with role ${roleName} created successfully.`);
+        } else {
+          this.logger.log(`User ${userInfo.email} already exists.`);
+          
+          // Opcionalmente, asegurarse de que el usuario tenga el rol correcto
+          const hasRole = existingUser.roles.some(r => r.name === roleName);
+          if (!hasRole) {
+            const role = await this.roleRepository.findOne({ where: { name: roleName } });
+            if (role) {
+              existingUser.roles.push(role);
+              await this.usersRepository.save(existingUser);
+              this.logger.log(`Added role ${roleName} to existing user ${userInfo.email}`);
+            }
+          }
+        }
+      }
+
+      this.logger.log('Initial users created successfully.');
+    } catch (error) {
+      this.logger.error('Error creating initial users:', error);
+    }
+  }
 
   async create(createUserDto: CreateUserDto) {
     try {
