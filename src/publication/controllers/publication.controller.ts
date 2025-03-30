@@ -25,7 +25,7 @@ export class PublicationController {
   }
 
   @Get()
-  @Roles('ADMIN', 'BUSINESS', 'USER')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get all publications with pagination' })
   @ApiQuery({ type: PaginationDto })
@@ -34,7 +34,7 @@ export class PublicationController {
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'BUSINESS', 'USER')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get a publication by id' })
   findOne(@Param('id') id: string): Promise<Publication> {
@@ -42,7 +42,7 @@ export class PublicationController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'BUSINESS', 'USER')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update a publication' })
   update(@Param('id') id: string, @Body() updatePublicationDto: UpdatePublicationDto): Promise<Publication> {
