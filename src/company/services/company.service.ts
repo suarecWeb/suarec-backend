@@ -5,10 +5,12 @@ import { Company } from '../entities/company.entity';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
 import { User } from '../../user/entities/user.entity';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class CompanyService {
-
+ 
   private readonly logger = new Logger('CompanyService');
 
   constructor(
@@ -41,10 +43,31 @@ export class CompanyService {
     }
   }
 
-  async findAll(): Promise<Company[]> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Company>> {
     try {
-      const companies = await this.companyRepository.find({ relations: ['user'] });
-      return companies;
+      const { page, limit } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [companies, total] = await this.companyRepository.findAndCount({
+        relations: ['user'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: companies,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }
