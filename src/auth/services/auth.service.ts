@@ -28,6 +28,7 @@ export class AuthService {
       .leftJoinAndSelect('user.roles', 'role') // Esto asegura que los roles sean cargados
       .where('user.email = :email', { email })
       .getOne();
+  
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password.');
