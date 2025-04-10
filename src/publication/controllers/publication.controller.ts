@@ -16,7 +16,7 @@ export class PublicationController {
   constructor(private readonly publicationService: PublicationService) {}
 
   @Post()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Create a new publication' })
   @ApiResponse({ status: 201, description: 'Publication created successfully' })

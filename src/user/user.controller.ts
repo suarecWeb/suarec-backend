@@ -37,7 +37,7 @@ export class UserController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id' })
-  findOne(@Param('id') id: string, @Req() req: ExpressRequest) {
+  findOne(@Param('id') id: number, @Req() req: ExpressRequest) {
     console.log("Usuario autenticado:", req.user);
     return this.userService.findOne(+id);
   }

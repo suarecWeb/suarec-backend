@@ -77,6 +77,45 @@ export class CommentService {
     }
   }
 
+  async findByPublicationId(paginationDto: PaginationDto, publicationId: string): Promise<PaginationResponse<Comment>> {
+    try {
+      const { page, limit } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const publication = await this.publicationRepository.findOne({
+        where: { id: publicationId }
+      })
+
+      const [comments, total] = await this.commentRepository.findAndCount({
+        where: { publication: publication },
+        relations: ['publication', 'user'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      if (!publication) {
+        throw new NotFoundException(`Publication with ID ${publicationId} not found`);
+      }
+
+      return {
+        data: comments,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
   async findOne(id: string): Promise<Comment> {
     try {
       const comment = await this.commentRepository.findOne({
