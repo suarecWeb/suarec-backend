@@ -25,7 +25,7 @@ export class CompanyController {
   }
 
   @Get()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get all companies with pagination' })
   @ApiQuery({ type: PaginationDto })
@@ -34,7 +34,7 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'PERSON')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get a company by id' })
   findOne(@Param('id') id: string): Promise<Company> {
