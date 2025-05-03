@@ -37,7 +37,7 @@ export class UserController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id' })
-  findOne(@Param('id') id: string, @Req() req: ExpressRequest) {
+  findOne(@Param('id') id: number, @Req() req: ExpressRequest) {
     console.log("Usuario autenticado:", req.user);
     return this.userService.findOne(+id);
   }
@@ -60,5 +60,15 @@ export class UserController {
   remove(@Param('id') id: string, @Req() req: ExpressRequest) {
     console.log("Usuario autenticado:", req.user);
     return this.userService.remove(+id);
+  }
+
+  @Roles('ADMIN')
+  @Get('companies')
+  @ApiOperation({ summary: 'Get all company users with pagination' })
+  @ApiQuery({ type: PaginationDto })
+  findAllCompanies(@Query() paginationDto: PaginationDto, @Req() req: ExpressRequest): Promise<PaginationResponse<User>> {
+    console.log("Cookies en la solicitud:", req.cookies);
+    console.log("Headers en la solicitud:", req.headers);
+    return this.userService.findAllCompanies(paginationDto);
   }
 }

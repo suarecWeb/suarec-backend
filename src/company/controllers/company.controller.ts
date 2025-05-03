@@ -21,11 +21,12 @@ export class CompanyController {
   @ApiOperation({ summary: 'Create a new company' })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
   create(@Body() createCompanyDto: CreateCompanyDto): Promise<Company> {
+    console.log('Creating company...' + createCompanyDto.email + createCompanyDto.nit + createCompanyDto.userId)
     return this.companyService.create(createCompanyDto);
   }
 
   @Get()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get all companies with pagination' })
   @ApiQuery({ type: PaginationDto })
@@ -34,7 +35,7 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'PERSON')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get a company by id' })
   findOne(@Param('id') id: string): Promise<Company> {

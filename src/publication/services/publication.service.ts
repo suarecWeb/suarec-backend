@@ -71,7 +71,7 @@ export class PublicationService {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user'],
+        relations: ['user', 'comments', 'comments.user'],
       });
 
       if (!publication) {

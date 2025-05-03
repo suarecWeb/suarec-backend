@@ -22,7 +22,12 @@ export class CompanyService {
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     try {
+      console.log('Creating company...' + createCompanyDto.email + createCompanyDto.nit + createCompanyDto.userId)
+
       const existingCompany = await this.companyRepository.findOne({ where: { nit: createCompanyDto.nit } });
+
+      console.log('Existing company ?...' + existingCompany)
+
       if (existingCompany) {
         throw new BadRequestException('NIT already in use');
       }

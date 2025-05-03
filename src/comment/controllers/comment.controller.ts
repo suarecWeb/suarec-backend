@@ -25,6 +25,15 @@ export class CommentController {
   }
 
   @Get()
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Get comments by publication id' })
+  @ApiQuery({ type: PaginationDto })
+  findByPublicationId(@Query() paginationDto: PaginationDto, @Param('id') publicationId: string): Promise<PaginationResponse<Comment>> {
+    return this.commentService.findByPublicationId(paginationDto, publicationId);
+  }
+
+  @Get()
   @Roles('ADMIN', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get all comments with pagination' })
