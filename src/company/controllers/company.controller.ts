@@ -21,6 +21,7 @@ export class CompanyController {
   @ApiOperation({ summary: 'Create a new company' })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
   create(@Body() createCompanyDto: CreateCompanyDto): Promise<Company> {
+    console.log('Creating company...' + createCompanyDto.email + createCompanyDto.nit + createCompanyDto.userId)
     return this.companyService.create(createCompanyDto);
   }
 
