@@ -22,7 +22,7 @@ async function bootstrap() {
     app.use(cookieParser()); // Permitir leer cookies
 
     const corsOptions: CorsOptions = {
-      origin: ['http://localhost:3000', process.env.PUBLIC_FRONT_URL], // ✅ Especifica el origen permitido
+      origin: ['http://localhost:3000', process.env.PUBLIC_FRONT_URL, 'https://suarec-frontend-production.up.railway.app', 'https://suarec.com'], // ✅ Especifica el origen permitido
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
       allowedHeaders: 'Content-Type, Accept, Authorization',
