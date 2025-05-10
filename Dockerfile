@@ -1,16 +1,19 @@
-FROM node:20-alpine AS build
-
+# Etapa 1: Build
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json .
-RUN npm install
-COPY . .
 
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
 RUN npm run build
 
-FROM node:20-alpine
+# Etapa 2: Producción
+FROM node:20-alpine AS production
 WORKDIR /app
-COPY package.json .
-RUN npm install --only=production
-COPY --from=build /app/dist ./dist
-EXPOSE 3001
-CMD npm run start:prod
+
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+RUN npm install --omit=dev --legacy-peer-deps
+
+EXPOSE 3000
+CMD ["node", "dist/main"]

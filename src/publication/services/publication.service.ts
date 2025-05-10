@@ -5,6 +5,8 @@ import { Publication } from '../entities/publication.entity';
 import { CreatePublicationDto } from '../dto/create-publication.dto';
 import { UpdatePublicationDto } from '../dto/update-publication.dto';
 import { User } from '../../user/entities/user.entity';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class PublicationService {
@@ -36,10 +38,30 @@ export class PublicationService {
     }
   }
 
-  async findAll(): Promise<Publication[]> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Publication>> {
     try {
-      const publications = await this.publicationRepository.find({ relations: ['user'] });
-      return publications;
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
+  
+      const [data, total] = await this.publicationRepository.findAndCount({
+        skip,
+        take: limit,
+        relations: ['user']
+      });
+  
+      const totalPages = Math.ceil(total / limit);
+  
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -49,7 +71,7 @@ export class PublicationService {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user'],
+        relations: ['user', 'comments', 'comments.user'],
       });
 
       if (!publication) {

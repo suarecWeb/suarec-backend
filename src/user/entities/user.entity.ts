@@ -19,7 +19,7 @@ export class User {
   })
   password:string;
 
-  @Column('text')
+  @Column('text', {nullable: true})
   cv_url: string;
 
   @Column('text',{

@@ -4,10 +4,11 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class UserService {
@@ -22,12 +23,11 @@ export class UserService {
 
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-
   ) {}
 
   async onModuleInit() {
     await this.createPermissionsAndRoles();
-    await this.createAdminUser();
+    await this.createInitialUsers();
   }
 
   private async createPermissionsAndRoles() {
@@ -71,38 +71,89 @@ export class UserService {
     }
   }
 
-  private async createAdminUser() {
+  private async createInitialUsers() {
     try {
-      const adminEmail = 'admin@example.com';
+      // Definir los datos de los usuarios iniciales
+      const initialUsers = [
+        {
+          name: 'Admin User',
+          email: 'admin@example.com',
+          password: 'admin123',
+          genre: 'Male',
+          cellphone: '1234567890',
+          cv_url: 'https://example.com/admin-cv.pdf',
+          born_at: new Date('1990-01-01'),
+          roleName: 'ADMIN'
+        },
+        {
+          name: 'Business User',
+          email: 'business@example.com',
+          password: 'business123',
+          genre: 'Female',
+          cellphone: '2345678901',
+          cv_url: 'https://example.com/business-cv.pdf',
+          born_at: new Date('1985-05-15'),
+          roleName: 'BUSINESS'
+        },
+        {
+          name: 'Regular Person',
+          email: 'person@example.com',
+          password: 'person123',
+          genre: 'Male',
+          cellphone: '3456789012',
+          cv_url: 'https://example.com/person-cv.pdf',
+          born_at: new Date('1995-10-20'),
+          roleName: 'PERSON'
+        },
+      ];
 
-      const existingUser = await this.usersRepository.findOne({ where: { email: adminEmail } });
-      if (existingUser) {
-        this.logger.log('Admin user already exists.');
-        return;
+      // Crear cada usuario si no existe ya
+      for (const userData of initialUsers) {
+        const { roleName, ...userInfo } = userData;
+        
+        // Verificar si el usuario ya existe por email
+        const existingUser = await this.usersRepository.findOne({ 
+          where: { email: userInfo.email },
+          relations: ['roles']
+        });
+        
+        if (!existingUser) {
+          // Buscar el rol correspondiente
+          const role = await this.roleRepository.findOne({ where: { name: roleName } });
+          if (!role) {
+            this.logger.warn(`Role ${roleName} not found for user ${userInfo.name}`);
+            continue;
+          }
+          
+          // Crear el usuario
+          const user = this.usersRepository.create({
+            ...userInfo,
+            password: bcrypt.hashSync(userInfo.password, 10),
+            created_at: new Date(),
+            roles: [role], // Asignar el rol al usuario
+          });
+          
+          await this.usersRepository.save(user);
+          this.logger.log(`User ${userInfo.name} with role ${roleName} created successfully.`);
+        } else {
+          this.logger.log(`User ${userInfo.email} already exists.`);
+          
+          // Opcionalmente, asegurarse de que el usuario tenga el rol correcto
+          const hasRole = existingUser.roles.some(r => r.name === roleName);
+          if (!hasRole) {
+            const role = await this.roleRepository.findOne({ where: { name: roleName } });
+            if (role) {
+              existingUser.roles.push(role);
+              await this.usersRepository.save(existingUser);
+              this.logger.log(`Added role ${roleName} to existing user ${userInfo.email}`);
+            }
+          }
+        }
       }
 
-      const adminRole = await this.roleRepository.findOne({ where: { name: 'ADMIN' }, relations: ['permissions'] });
-      if (!adminRole) {
-        this.logger.error('Admin role not found! Make sure roles are seeded.');
-        return;
-      }
-      
-      const adminUser = this.usersRepository.create({
-        genre: 'Male',
-        cellphone: '123456789',
-        email: adminEmail,
-        password: bcrypt.hashSync('juanvalencia', 10),
-        name: 'Admin',
-        created_at: new Date(),
-        roles: [adminRole],
-        born_at: new Date('1990-01-01'),
-        cv_url: 'https://example.com/default-cv.pdf',
-      });
-
-      await this.usersRepository.save(adminUser);
-      this.logger.log('Admin user created successfully.');
+      this.logger.log('Initial users created successfully.');
     } catch (error) {
-      this.logger.error('Error creating admin user:', error);
+      this.logger.error('Error creating initial users:', error);
     }
   }
 
@@ -137,7 +188,6 @@ export class UserService {
 
       await this.usersRepository.save(user);
       return user;
-
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -151,8 +201,64 @@ export class UserService {
     return user;
   }
 
-  async findAll(): Promise<User[]> {
-    return this.usersRepository.find({ relations: ['roles', 'company'] });
+  async findAllCompanies(paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+    try {
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.usersRepository.findAndCount({
+        relations: ['roles', 'company'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+    try {
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.usersRepository.findAndCount({
+        relations: ['roles', 'company'],
+        skip,
+        take: limit,
+      });
+
+      // Calcular metadata para la paginación
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
   }
 
   async findOne(id: number) {
@@ -184,7 +290,7 @@ export class UserService {
     const user = await this.usersRepository.preload({
       id,
       ...updateData,
-      roles, // Asignar la lista de roles
+      roles: roleNames && roleNames.length > 0 ? roles : undefined,
     });
 
     if (!user) throw new NotFoundException(`User with ID ${id} not found`);
