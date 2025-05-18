@@ -50,4 +50,13 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   companyId?: string;
+
+  @IsString()
+  @IsOptional()
+  profession?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  skills?: string[];
 }
