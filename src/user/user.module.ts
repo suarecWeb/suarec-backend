@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { UserService } from './user.service';
@@ -10,12 +10,16 @@ import { Publication } from '../publication/entities/publication.entity';
 import { Comment } from '../comment/entities/comment.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { PermissionModule } from '../permission/permission.module';
+import { CompanyModule } from '../company/company.module';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
     TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment]),
     PermissionModule,
+    
+    // Importar CompanyModule con referencia circular
+    forwardRef(() => CompanyModule),
     
     // Importar JwtModule para el servicio JwtService
     JwtModule.register({

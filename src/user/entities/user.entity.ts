@@ -3,6 +3,7 @@ import { Role } from '../../role/entities/role.entity';
 import { Company } from 'src/company/entities/company.entity';
 import { Publication } from 'src/publication/entities/publication.entity';
 import { Comment } from 'src/comment/entities/comment.entity';
+import { Message } from 'src/message/entities/message.entity';
 
 @Entity('users')
 export class User {
@@ -59,9 +60,20 @@ export class User {
   @JoinColumn() // Esto indica que User tendrá la columna que se usa para la relación
   company: Company;
 
+  // Relación con la empresa donde trabaja como empleado
+  @ManyToOne(() => Company, (company) => company.employees)
+  employer: Company;
+
   @OneToMany(() => Publication, (publication) => publication.user)
   publications: Publication[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];
+
+  // Relaciones para mensajes
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages: Message[];
+
+  @OneToMany(() => Message, (message) => message.recipient)
+  receivedMessages: Message[];
 }

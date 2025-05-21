@@ -11,15 +11,16 @@ import { Company } from './entities/company.entity';
 import { Comment } from '../comment/entities/comment.entity';
 import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
-
+import { UserModule } from '../user/user.module';
 
 @Module({
   controllers: [CompanyController],
-  providers: [UserService, CompanyService, Repository],
-  exports: [TypeOrmModule, Repository],
+  providers: [CompanyService, Repository],
+  exports: [TypeOrmModule, CompanyService, Repository],
   imports: [
     TypeOrmModule.forFeature([Company, User, Comment, Role, Permission]), 
-    ConfigModule, 
+    ConfigModule,
+    forwardRef(() => UserModule), // Referencia circular para evitar problemas de dependencia
     Repository
   ]
 })

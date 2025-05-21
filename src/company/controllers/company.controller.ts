@@ -9,7 +9,8 @@ import { Company } from '../entities/company.entity';
 import { Public } from '../../auth/decorators/public.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { User } from '../../user/entities/user.entity';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -56,5 +57,46 @@ export class CompanyController {
   @ApiOperation({ summary: 'Delete a company' })
   remove(@Param('id') id: string): Promise<void> {
     return this.companyService.remove(id);
+  }
+
+  // Nuevos endpoints para gestionar empleados
+  
+  @Get(':id/employees')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Get all employees of a company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiQuery({ type: PaginationDto })
+  getEmployees(
+    @Param('id') id: string,
+    @Query() paginationDto: PaginationDto
+  ): Promise<PaginationResponse<User>> {
+    return this.companyService.getEmployees(id, paginationDto);
+  }
+
+  @Post(':id/employees/:userId')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Add an employee to a company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiParam({ name: 'userId', description: 'User ID to add as employee' })
+  addEmployee(
+    @Param('id') id: string,
+    @Param('userId') userId: string
+  ): Promise<Company> {
+    return this.companyService.addEmployee(id, +userId);
+  }
+
+  @Delete(':id/employees/:userId')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Remove an employee from a company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiParam({ name: 'userId', description: 'User ID to remove as employee' })
+  removeEmployee(
+    @Param('id') id: string,
+    @Param('userId') userId: string
+  ): Promise<Company> {
+    return this.companyService.removeEmployee(id, +userId);
   }
 }
