@@ -54,7 +54,7 @@ export class CompanyService {
       const skip = (page - 1) * limit;
 
       const [companies, total] = await this.companyRepository.findAndCount({
-        relations: ['user'],
+        relations: ['user', 'employees'],
         skip,
         take: limit,
       });
@@ -82,7 +82,7 @@ export class CompanyService {
     try {
       const company = await this.companyRepository.findOne({
         where: { id },
-        relations: ['user'],
+        relations: ['user', 'employees'],
       });
 
       if (!company) {
@@ -117,6 +117,84 @@ export class CompanyService {
     try {
       const company = await this.findOne(id);
       await this.companyRepository.remove(company);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async addEmployee(companyId: string, userId: number): Promise<Company> {
+    try {
+      const company = await this.findOne(companyId);
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      // Asignar la empresa al usuario como su empleador
+      user.employer = company;
+      await this.userRepository.save(user);
+
+      // Devolver la empresa actualizada con sus empleados
+      return this.findOne(companyId);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async removeEmployee(companyId: string, userId: number): Promise<Company> {
+    try {
+      const company = await this.findOne(companyId);
+      const user = await this.userRepository.findOne({ 
+        where: { id: userId },
+        relations: ['employer'] 
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      if (!user.employer || user.employer.id !== company.id) {
+        throw new BadRequestException(`User with ID ${userId} is not an employee of company with ID ${companyId}`);
+      }
+
+      // Eliminar la relación de empleado
+      user.employer = null;
+      await this.userRepository.save(user);
+
+      // Devolver la empresa actualizada
+      return this.findOne(companyId);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async getEmployees(companyId: string, paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+    try {
+      const company = await this.findOne(companyId);
+      const { page, limit } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [employees, total] = await this.userRepository.findAndCount({
+        where: { employer: { id: company.id } },
+        relations: ['roles'],
+        skip,
+        take: limit,
+      });
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: employees,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }
