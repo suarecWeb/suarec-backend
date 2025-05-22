@@ -10,7 +10,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 import { User } from './entities/user.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
+import { AuthGuard } from '../auth/guard/auth.guard'; // Cambié esta importación
 
 @ApiTags('Users')
 @Controller('users')
