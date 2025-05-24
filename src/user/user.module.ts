@@ -11,11 +11,12 @@ import { Comment } from '../comment/entities/comment.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { PermissionModule } from '../permission/permission.module';
 import { CompanyModule } from '../company/company.module';
+import { Application } from '../application/entities/application.entity';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment]),
+    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application]),
     PermissionModule,
     
     // Importar CompanyModule con referencia circular
