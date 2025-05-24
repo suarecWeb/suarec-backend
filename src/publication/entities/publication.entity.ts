@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Comment } from '../../comment/entities/comment.entity';
+import { Application } from '../../application/entities/application.entity';
 
 @Entity()
 export class Publication {
@@ -33,4 +34,8 @@ export class Publication {
 
   @OneToMany(() => Comment, (comment) => comment.publication)
   comments: Comment[];
+
+  // Nueva relación para aplicaciones
+  @OneToMany(() => Application, (application) => application.publication)
+  applications: Application[];
 }
