@@ -15,6 +15,7 @@ import { PermissionModule } from './permission/permission.module';
 //import { RolePermissionModule } from './role_permission/role_permission.module';
 import { UserModule } from './user/user.module';
 import { MessageModule } from './message/message.module';
+import { ApplicationModule } from './application/application.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MessageModule } from './message/message.module';
     RoleModule,
     PermissionModule,
     MessageModule,
+    ApplicationModule
     //RolePermissionModule,
     ],
   controllers: [AppController],

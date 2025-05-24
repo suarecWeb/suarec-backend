@@ -4,6 +4,7 @@ import { Company } from '../../company/entities/company.entity';
 import { Publication } from '../../publication/entities/publication.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { Message } from '../../message/entities/message.entity';
+import { Application } from '../../application/entities/application.entity';
 
 @Entity('users')
 export class User {
@@ -48,6 +49,13 @@ export class User {
   })
   created_at:Date;
 
+  // Campos adicionales para personas
+  @Column('text', { nullable: true })
+  profession: string;
+
+  @Column('simple-array', { nullable: true })
+  skills: string[];
+
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({ 
     name: 'roles_users_users', 
@@ -76,4 +84,8 @@ export class User {
 
   @OneToMany(() => Message, (message) => message.recipient)
   receivedMessages: Message[];
+
+  // Nueva relación para aplicaciones
+  @OneToMany(() => Application, (application) => application.user)
+  applications: Application[];
 }
