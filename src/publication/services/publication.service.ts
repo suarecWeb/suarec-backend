@@ -23,7 +23,10 @@ export class PublicationService {
   async create(createPublicationDto: CreatePublicationDto): Promise<Publication> {
     try {
       const publication = this.publicationRepository.create(createPublicationDto);
-      const user = await this.userRepository.findOne({ where: {id: createPublicationDto.userId}})
+      const user = await this.userRepository.findOne({
+        where: { id: createPublicationDto.userId },
+        relations: ['company', 'employer'],
+      });
 
       if (!user) {
         throw new BadRequestException('User not found')
@@ -46,7 +49,7 @@ export class PublicationService {
       const [data, total] = await this.publicationRepository.findAndCount({
         skip,
         take: limit,
-        relations: ['user']
+        relations: ['user', 'user.company', 'user.employer']
       });
   
       const totalPages = Math.ceil(total / limit);
@@ -71,7 +74,7 @@ export class PublicationService {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user', 'comments', 'comments.user'],
+        relations: ['user', 'comments', 'comments.user', 'user.company', 'user.employer'],
       });
 
       if (!publication) {

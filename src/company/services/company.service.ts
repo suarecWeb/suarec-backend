@@ -95,6 +95,23 @@ export class CompanyService {
     }
   }
 
+  async findOneEmail(email: string): Promise<Company> {
+    try {
+      const company = await this.companyRepository.findOne({
+        where: { email },
+        relations: ['user', 'employees'],
+      });
+
+      if (!company) {
+        throw new NotFoundException(`Company with email ${email} not found`);
+      }
+
+      return company;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
   async update(id: string, updateCompanyDto: UpdateCompanyDto): Promise<Company> {
     try {
       const company = await this.companyRepository.preload({
@@ -121,6 +138,26 @@ export class CompanyService {
       this.handleDBErrors(error);
     }
   }
+
+  async addEmployeeEmail(companyEmail: string, userId: number): Promise<Company> {
+    try {
+      const company = await this.findOneEmail(companyEmail);
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      // Asignar la empresa al usuario como su empleador
+      user.employer = company;
+      await this.userRepository.save(user);
+
+      // Devolver la empresa actualizada con sus empleados
+      return this.findOneEmail(companyEmail);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }  
 
   async addEmployee(companyId: string, userId: number): Promise<Company> {
     try {

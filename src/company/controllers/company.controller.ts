@@ -87,6 +87,19 @@ export class CompanyController {
     return this.companyService.addEmployee(id, +userId);
   }
 
+  @Post(':id/employees-email/:userId')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Add an employee to a company' })
+  @ApiParam({ name: 'email', description: 'Company Email' })
+  @ApiParam({ name: 'userId', description: 'User ID to add as employee' })
+  addEmployeeEmail(
+    @Param('email') email: string,
+    @Param('userId') userId: string
+  ): Promise<Company> {
+    return this.companyService.addEmployeeEmail(email, +userId);
+  }
+
   @Delete(':id/employees/:userId')
   @Roles('ADMIN', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)

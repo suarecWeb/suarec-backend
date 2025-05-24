@@ -35,7 +35,7 @@ export class ApplicationService {
       // Verificar que la publicación existe
       const publication = await this.publicationRepository.findOne({ 
         where: { id: publicationId },
-        relations: ['user']
+        relations: ['user', 'user.company', 'user.employer']
       });
       if (!publication) {
         throw new BadRequestException(`Publication with ID ${publicationId} not found`);
@@ -82,7 +82,7 @@ export class ApplicationService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.applicationRepository.findAndCount({
-        relations: ['user', 'publication', 'publication.user'],
+        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -147,7 +147,7 @@ export class ApplicationService {
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { user: { id: userId } },
-        relations: ['user', 'publication', 'publication.user'],
+        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -178,7 +178,7 @@ export class ApplicationService {
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { publication: { id: publicationId } },
-        relations: ['user', 'publication', 'publication.user'],
+        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -209,7 +209,7 @@ export class ApplicationService {
           user: { id: userId },
           publication: { id: publicationId }
         },
-        relations: ['user', 'publication']
+        relations: ['user', 'publication', 'user.company', 'user.employer']
       });
 
       return {
@@ -225,7 +225,7 @@ export class ApplicationService {
     try {
       const application = await this.applicationRepository.findOne({
         where: { id },
-        relations: ['user', 'publication', 'publication.user'],
+        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
       });
 
       if (!application) {
