@@ -41,6 +41,8 @@ export class ApplicationService {
         throw new BadRequestException(`Publication with ID ${publicationId} not found`);
       }
 
+      console.log("!!!!!!!!!!!!! \n publicacion: " + publication + " con user y company : " + publication.user + " _ " + publication.user.company + " \n !!!!!!!!!!!!!!!!")
+
       // Verificar que el usuario no esté aplicando a su propia publicación
       if (publication.user.id === userId) {
         throw new BadRequestException('Cannot apply to your own publication');
@@ -67,6 +69,9 @@ export class ApplicationService {
         publication,
       });
 
+      console.log("!!!!!!!!!!!!! \n aplicacion: " + application + " con user y company : " + application.user + " _ " + application.publication.user.company + " \n !!!!!!!!!!!!!!!!")
+
+
       await this.applicationRepository.save(application);
       
       // Retornar con las relaciones cargadas
@@ -82,7 +87,7 @@ export class ApplicationService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.applicationRepository.findAndCount({
-        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
+        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -147,7 +152,7 @@ export class ApplicationService {
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { user: { id: userId } },
-        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
+        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -178,7 +183,7 @@ export class ApplicationService {
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { publication: { id: publicationId } },
-        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
+        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
         skip,
         take: limit,
         order: { created_at: 'DESC' },
@@ -209,7 +214,7 @@ export class ApplicationService {
           user: { id: userId },
           publication: { id: publicationId }
         },
-        relations: ['user', 'publication', 'user.company', 'user.employer']
+        relations: ['user', 'publication', 'publication.user.company', 'publication.user.employer']
       });
 
       return {
@@ -225,7 +230,7 @@ export class ApplicationService {
     try {
       const application = await this.applicationRepository.findOne({
         where: { id },
-        relations: ['user', 'publication', 'publication.user', 'user.company', 'user.employer'],
+        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
       });
 
       if (!application) {
