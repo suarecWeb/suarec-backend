@@ -30,6 +30,21 @@ export class Company {
     @Column('text')
     cellphone: string;
 
+    @Column('decimal', { precision: 10, scale: 8, nullable: true })
+    latitude: number;
+
+    @Column('decimal', { precision: 11, scale: 8, nullable: true })
+    longitude: number;
+
+    @Column('text', { nullable: true })
+    address: string;
+
+    @Column('text', { nullable: true })
+    city: string;
+
+    @Column('text', { nullable: true })
+    country: string;
+
     @OneToOne(() => User, (user) => user.company)
     user: User;
 }

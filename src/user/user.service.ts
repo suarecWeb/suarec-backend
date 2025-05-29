@@ -9,6 +9,7 @@ import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
+import { Company } from '../company/entities/company.entity';
 
 @Injectable()
 export class UserService {
@@ -23,6 +24,9 @@ export class UserService {
 
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
+
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
 
   async onModuleInit() {
@@ -32,11 +36,18 @@ export class UserService {
 
   private async createPermissionsAndRoles() {
     try {
-      const permissions = ['WRITE', 'READ', 'UPDATE', 'DELETE'];
+      const permissions = [
+        'WRITE', 
+        'READ', 
+        'UPDATE', 
+        'DELETE',
+        'MANAGE_LOCATION' // Nuevo permiso para gestionar ubicación
+      ];
+      
       const rolesData = {
         PERSON: ['WRITE', 'READ', 'UPDATE'],
-        BUSINESS: ['WRITE', 'READ', 'UPDATE'],
-        ADMIN: ['WRITE', 'READ', 'UPDATE', 'DELETE'],
+        BUSINESS: ['WRITE', 'READ', 'UPDATE', 'MANAGE_LOCATION'], // BUSINESS puede gestionar su ubicación
+        ADMIN: ['WRITE', 'READ', 'UPDATE', 'DELETE', 'MANAGE_LOCATION'], // ADMIN puede gestionar todas las ubicaciones
       };
 
       // 1. Crear permisos si no existen
@@ -93,7 +104,20 @@ export class UserService {
           cellphone: '2345678901',
           cv_url: 'https://example.com/business-cv.pdf',
           born_at: new Date('1985-05-15'),
-          roleName: 'BUSINESS'
+          roleName: 'BUSINESS',
+          company: {
+            nit: '900123456-7',
+            name: 'Empresa de Prueba',
+            born_at: new Date('2020-01-01'),
+            email: 'empresa@example.com',
+            cellphone: '+573001234567',
+            // Ubicación de la Universidad Icesi en Cali
+            latitude: 3.3417,
+            longitude: -76.5306,
+            address: 'Calle 18 #122-135',
+            city: 'Cali',
+            country: 'Colombia'
+          }
         },
         {
           name: 'Regular Person',
@@ -109,12 +133,12 @@ export class UserService {
 
       // Crear cada usuario si no existe ya
       for (const userData of initialUsers) {
-        const { roleName, ...userInfo } = userData;
+        const { roleName, company, ...userInfo } = userData;
         
         // Verificar si el usuario ya existe por email
         const existingUser = await this.usersRepository.findOne({ 
           where: { email: userInfo.email },
-          relations: ['roles']
+          relations: ['roles', 'company']
         });
         
         if (!existingUser) {
@@ -124,13 +148,24 @@ export class UserService {
             this.logger.warn(`Role ${roleName} not found for user ${userInfo.name}`);
             continue;
           }
+
+          let companyEntity = null;
+          // Si el usuario es BUSINESS y tiene datos de empresa, crear la empresa primero
+          if (roleName === 'BUSINESS' && company) {
+            companyEntity = this.companyRepository.create({
+              ...company,
+              created_at: new Date()
+            });
+            await this.companyRepository.save(companyEntity);
+          }
           
           // Crear el usuario
           const user = this.usersRepository.create({
             ...userInfo,
             password: bcrypt.hashSync(userInfo.password, 10),
             created_at: new Date(),
-            roles: [role], // Asignar el rol al usuario
+            roles: [role],
+            company: companyEntity
           });
           
           await this.usersRepository.save(user);
@@ -138,15 +173,28 @@ export class UserService {
         } else {
           this.logger.log(`User ${userInfo.email} already exists.`);
           
-          // Opcionalmente, asegurarse de que el usuario tenga el rol correcto
+          // Verificar y actualizar roles si es necesario
           const hasRole = existingUser.roles.some(r => r.name === roleName);
           if (!hasRole) {
             const role = await this.roleRepository.findOne({ where: { name: roleName } });
             if (role) {
-              existingUser.roles.push(role);
+              existingUser.roles = [role]; // Asignar solo el rol necesario
               await this.usersRepository.save(existingUser);
-              this.logger.log(`Added role ${roleName} to existing user ${userInfo.email}`);
+              this.logger.log(`Updated role for user ${userInfo.email}`);
             }
+          }
+
+          // Si es BUSINESS y no tiene empresa, crear la empresa
+          if (roleName === 'BUSINESS' && company && !existingUser.company) {
+            const companyEntity = this.companyRepository.create({
+              ...company,
+              created_at: new Date()
+            });
+            await this.companyRepository.save(companyEntity);
+            
+            existingUser.company = companyEntity;
+            await this.usersRepository.save(existingUser);
+            this.logger.log(`Added company to existing user ${userInfo.email}`);
           }
         }
       }
@@ -154,6 +202,7 @@ export class UserService {
       this.logger.log('Initial users created successfully.');
     } catch (error) {
       this.logger.error('Error creating initial users:', error);
+      throw error; // Propagar el error para ver el stack trace completo
     }
   }
 
