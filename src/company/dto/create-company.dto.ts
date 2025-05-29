@@ -1,4 +1,4 @@
-import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, MinLength, IsOptional, IsLatitude, IsLongitude } from 'class-validator';
 
 export class CreateCompanyDto {
   @IsString()
@@ -28,5 +28,27 @@ export class CreateCompanyDto {
 
   @IsNumber()
   @IsNotEmpty()
-  userId: number; 
+  userId: number;
+
+  @IsNumber()
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  country?: string;
 }

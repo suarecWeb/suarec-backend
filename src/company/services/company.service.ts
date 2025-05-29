@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Company } from '../entities/company.entity';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
+import { UpdateCompanyLocationDto } from '../dto/update-company-location.dto';
 import { User } from '../../user/entities/user.entity';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
@@ -237,6 +238,30 @@ export class CompanyService {
     }
   }
 
+  async updateLocation(id: string, updateLocationDto: UpdateCompanyLocationDto): Promise<Company> {
+    const company = await this.findOne(id);
+    
+    try {
+      // Actualizar solo los campos de ubicación
+      Object.assign(company, updateLocationDto);
+      return await this.companyRepository.save(company);
+    } catch (error) {
+      this.handleDBExceptions(error);
+    }
+  }
+
+  async getLocation(id: string): Promise<{ latitude: number; longitude: number; address: string; city: string; country: string }> {
+    const company = await this.findOne(id);
+    
+    return {
+      latitude: company.latitude,
+      longitude: company.longitude,
+      address: company.address,
+      city: company.city,
+      country: company.country
+    };
+  }
+
   private handleDBErrors(error: any) {
     if (error.status === 400) {
       throw new BadRequestException(error.response.message);
@@ -249,6 +274,14 @@ export class CompanyService {
     if (error.code === '23505') {
       throw new BadRequestException(error.detail);
     }
+
+    this.logger.error(error);
+    throw new InternalServerErrorException('Unexpected error, check server logs');
+  }
+
+  private handleDBExceptions(error: any) {
+    if (error.code === '23505')
+      throw new BadRequestException(error.detail);
 
     this.logger.error(error);
     throw new InternalServerErrorException('Unexpected error, check server logs');
