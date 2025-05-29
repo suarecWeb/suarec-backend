@@ -1,8 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToOne, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Role } from '../../role/entities/role.entity';
-import { Company } from 'src/company/entities/company.entity';
-import { Publication } from 'src/publication/entities/publication.entity';
-import { Comment } from 'src/comment/entities/comment.entity';
+import { Company } from '../../company/entities/company.entity';
+import { Publication } from '../../publication/entities/publication.entity';
+import { Comment } from '../../comment/entities/comment.entity';
+import { Message } from '../../message/entities/message.entity';
+import { Application } from '../../application/entities/application.entity';
 
 @Entity('users')
 export class User {
@@ -47,6 +49,13 @@ export class User {
   })
   created_at:Date;
 
+  // Campos adicionales para personas
+  @Column('text', { nullable: true })
+  profession: string;
+
+  @Column('simple-array', { nullable: true })
+  skills: string[];
+
   @Column('text', { nullable: true })
   profession: string;
 
@@ -65,9 +74,24 @@ export class User {
   @JoinColumn() // Esto indica que User tendrá la columna que se usa para la relación
   company: Company;
 
+  // Relación con la empresa donde trabaja como empleado
+  @ManyToOne(() => Company, (company) => company.employees)
+  employer: Company;
+
   @OneToMany(() => Publication, (publication) => publication.user)
   publications: Publication[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];
+
+  // Relaciones para mensajes
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages: Message[];
+
+  @OneToMany(() => Message, (message) => message.recipient)
+  receivedMessages: Message[];
+
+  // Nueva relación para aplicaciones
+  @OneToMany(() => Application, (application) => application.user)
+  applications: Application[];
 }

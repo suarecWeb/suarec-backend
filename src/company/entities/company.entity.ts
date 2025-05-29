@@ -45,6 +45,11 @@ export class Company {
     @Column('text', { nullable: true })
     country: string;
 
+    // Relación con el usuario administrador (para login)
     @OneToOne(() => User, (user) => user.company)
     user: User;
+
+    // Relación con los empleados de la empresa
+    @OneToMany(() => User, (user) => user.employer)
+    employees: User[];
 }
