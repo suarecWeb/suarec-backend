@@ -56,12 +56,6 @@ export class User {
   @Column('simple-array', { nullable: true })
   skills: string[];
 
-  @Column('text', { nullable: true })
-  profession: string;
-
-  @Column('simple-array', { nullable: true })
-  skills: string[];
-
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({ 
     name: 'roles_users_users', 
