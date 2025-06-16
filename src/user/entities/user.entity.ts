@@ -1,3 +1,4 @@
+// src/user/entities/user.entity.ts (ACTUALIZADO)
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToOne, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Role } from '../../role/entities/role.entity';
 import { Company } from '../../company/entities/company.entity';
@@ -6,49 +7,46 @@ import { Comment } from '../../comment/entities/comment.entity';
 import { Message } from '../../message/entities/message.entity';
 import { Application } from '../../application/entities/application.entity';
 import { Attendance } from '../../attendance/entities/attendance.entity';
+import { Rating } from '../../rating/entities/rating.entity';
+import { WorkContract } from '../../work-contract/entities/work-contract.entity';
+import { Notification } from '../../notification/entities/notification.entity';
+import { EmailVerification } from '../../email-verification/entities/email-verification.entity';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id:number;
+  id: number;
 
-  @Column('text',{
-      nullable:false
-  })
-  name:string;
+  @Column('text', { nullable: false })
+  name: string;
 
-  @Column('text',{
-      nullable:false
-  })
-  password:string;
+  @Column('text', { nullable: false })
+  password: string;
 
-  @Column('text', {nullable: true})
+  @Column('text', { nullable: true })
   cv_url: string;
 
-  @Column('text',{
-      nullable:false
-  })
-  genre:string;
+  @Column('text', { nullable: false })
+  genre: string;
 
-  @Column('text',{
-      nullable:false
-  })
-  cellphone:string;
+  @Column('text', { nullable: false })
+  cellphone: string;
 
-  @Column('text',{
-      nullable:false
-  })
-  email:string;
+  @Column('text', { nullable: false })
+  email: string;
 
-  @Column('date',{
-      nullable:false})
-  born_at:Date;
+  @Column('date', { nullable: false })
+  born_at: Date;
 
-  @Column('date',{
-      nullable:false,
-      default: () => 'CURRENT_TIMESTAMP'
-  })
-  created_at:Date;
+  @Column('date', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
+  created_at: Date;
+
+  // Nuevos campos para verificación de email
+  @Column('boolean', { default: false })
+  email_verified: boolean;
+
+  @Column('timestamp', { nullable: true })
+  email_verified_at: Date;
 
   // Campos adicionales para personas
   @Column('text', { nullable: true })
@@ -56,6 +54,59 @@ export class User {
 
   @Column('simple-array', { nullable: true })
   skills: string[];
+
+  // Ubicación del usuario
+  @Column('text', { nullable: true })
+  location: string;
+
+  @Column('decimal', { precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column('decimal', { precision: 11, scale: 8, nullable: true })
+  longitude: number;
+
+  // Información de perfil adicional
+  @Column('text', { nullable: true })
+  bio: string;
+
+  @Column('text', { nullable: true })
+  profile_image: string;
+
+  @Column('simple-array', { nullable: true })
+  portfolio_images: string[];
+
+  // Configuraciones de disponibilidad
+  @Column('simple-array', { nullable: true })
+  available_days: string[]; // ['monday', 'tuesday', etc.]
+
+  @Column('text', { nullable: true })
+  available_hours: string; // '09:00-18:00'
+
+  @Column('boolean', { default: true })
+  is_available: boolean;
+
+  // Tarifas por hora (para servicios)
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  hourly_rate: number;
+
+  @Column('text', { nullable: true })
+  currency: string;
+
+  // Estadísticas calculadas
+  @Column('decimal', { precision: 3, scale: 2, default: 0 })
+  average_rating: number;
+
+  @Column('int', { default: 0 })
+  total_ratings: number;
+
+  @Column('int', { default: 0 })
+  completed_jobs: number;
+
+  @Column('boolean', { default: true })
+  is_active: boolean;
+
+  @Column('timestamp', { nullable: true })
+  last_seen: Date;
 
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({ 
@@ -66,10 +117,9 @@ export class User {
   roles: Role[];
 
   @OneToOne(() => Company, (company) => company.user)
-  @JoinColumn() // Esto indica que User tendrá la columna que se usa para la relación
+  @JoinColumn()
   company: Company;
 
-  // Relación con la empresa donde trabaja como empleado
   @ManyToOne(() => Company, (company) => company.employees)
   employer: Company;
 
@@ -79,14 +129,12 @@ export class User {
   @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];
 
-  // Relaciones para mensajes
   @OneToMany(() => Message, (message) => message.sender)
   sentMessages: Message[];
 
   @OneToMany(() => Message, (message) => message.recipient)
   receivedMessages: Message[];
 
-  // Nueva relación para aplicaciones
   @OneToMany(() => Application, (application) => application.user)
   applications: Application[];
 
@@ -95,4 +143,26 @@ export class User {
 
   @OneToMany(() => Attendance, (attendance) => attendance.employee)
   attendances: Attendance[];
+
+  // Nuevas relaciones para el sistema de calificaciones
+  @OneToMany(() => Rating, (rating) => rating.reviewer)
+  givenRatings: Rating[];
+
+  @OneToMany(() => Rating, (rating) => rating.reviewee)
+  receivedRatings: Rating[];
+
+  // Relaciones para contratos de trabajo
+  @OneToMany(() => WorkContract, (contract) => contract.client)
+  contractsAsClient: WorkContract[];
+
+  @OneToMany(() => WorkContract, (contract) => contract.provider)
+  contractsAsProvider: WorkContract[];
+
+  // Notificaciones
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+
+  // Verificaciones de email
+  @OneToMany(() => EmailVerification, (verification) => verification.user)
+  emailVerifications: EmailVerification[];
 }
