@@ -2,9 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { UserService } from '../../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-//import nodemailer from 'nodemailer'
 import { from } from 'rxjs';
-//import { MailerService } from '@nestjs-modules/mailer';
 import { Repository } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';

@@ -5,6 +5,7 @@ import { Publication } from '../../publication/entities/publication.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { Message } from '../../message/entities/message.entity';
 import { Application } from '../../application/entities/application.entity';
+import { Attendance } from '../../attendance/entities/attendance.entity';
 
 @Entity('users')
 export class User {
@@ -88,4 +89,10 @@ export class User {
   // Nueva relación para aplicaciones
   @OneToMany(() => Application, (application) => application.user)
   applications: Application[];
+
+  @Column('date', { nullable: true })
+  employmentStartDate: Date;
+
+  @OneToMany(() => Attendance, (attendance) => attendance.employee)
+  attendances: Attendance[];
 }

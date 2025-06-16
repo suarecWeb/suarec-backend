@@ -16,6 +16,7 @@ import { PermissionModule } from './permission/permission.module';
 import { UserModule } from './user/user.module';
 import { MessageModule } from './message/message.module';
 import { ApplicationModule } from './application/application.module';
+import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
   imports: [
@@ -44,7 +45,8 @@ import { ApplicationModule } from './application/application.module';
     RoleModule,
     PermissionModule,
     MessageModule,
-    ApplicationModule
+    ApplicationModule,
+    AttendanceModule
     //RolePermissionModule,
     ],
   controllers: [AppController],
