@@ -11,6 +11,7 @@ import { Rating } from '../../rating/entities/rating.entity';
 import { WorkContract } from '../../work-contract/entities/work-contract.entity';
 import { Notification } from '../../notification/entities/notification.entity';
 import { EmailVerification } from '../../email-verification/entities/email-verification.entity';
+import { Experience } from './experience.entity';
 
 @Entity('users')
 export class User {
@@ -157,6 +158,9 @@ export class User {
 
   @OneToMany(() => WorkContract, (contract) => contract.provider)
   contractsAsProvider: WorkContract[];
+
+  @OneToMany(() => Experience, (experience) => experience.user)
+  experiences: Experience[];
 
   // Notificaciones
   @OneToMany(() => Notification, (notification) => notification.user)

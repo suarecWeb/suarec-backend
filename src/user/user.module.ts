@@ -12,11 +12,19 @@ import { Permission } from '../permission/entities/permission.entity';
 import { PermissionModule } from '../permission/permission.module';
 import { CompanyModule } from '../company/company.module';
 import { Application } from '../application/entities/application.entity';
+import { Experience } from './entities/experience.entity';
+import { ExperienceService } from './services/experience.service';
+import { ExperienceController } from './controllers/experience.controller';
+import { EmailVerification } from '../email-verification/entities/email-verification.entity';
+import { Notification } from '../notification/entities/notification.entity';
+import { Attendance } from '../attendance/entities/attendance.entity';
+import { Rating } from '../rating/entities/rating.entity';
+import { WorkContract } from '../work-contract/entities/work-contract.entity';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application]),
+    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application, Experience, EmailVerification, Notification, Attendance, Rating, WorkContract]),
     PermissionModule,
     
     // Importar CompanyModule con referencia circular
@@ -28,8 +36,18 @@ import { Application } from '../application/entities/application.entity';
       signOptions: { expiresIn: '1h' }, // Opciones de firma (por ejemplo, expiración del token)
     }),
   ],
-  controllers: [UserController], // Registrar el controlador
-  providers: [UserService], // Registrar el servicio
-  exports: [UserService, TypeOrmModule], // Exportar el servicio y TypeOrmModule para su uso en otros módulos
+  controllers: [
+    UserController,
+    ExperienceController,
+  ],
+  providers: [
+    UserService,
+    ExperienceService,
+  ],
+  exports: [
+    UserService,
+    ExperienceService,
+    TypeOrmModule,
+  ],
 })
 export class UserModule {}

@@ -385,7 +385,7 @@ async update(id: number, updateDto: UpdateUserDto) {
   async findOne(id: number) {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['roles', 'company', 'publications', 'comments']
+      relations: ['roles', 'company', 'publications', 'comments', 'experiences']
     });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
