@@ -158,10 +158,6 @@ export class User {
   @OneToMany(() => WorkContract, (contract) => contract.provider)
   contractsAsProvider: WorkContract[];
 
-  // Notificaciones
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications: Notification[];
-
   // Verificaciones de email
   @OneToMany(() => EmailVerification, (verification) => verification.user)
   emailVerifications: EmailVerification[];

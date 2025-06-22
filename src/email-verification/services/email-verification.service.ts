@@ -174,9 +174,10 @@ export class EmailVerificationService {
         </html>
       `;
 
-      sendSmtpEmail.sender = { "name": "SUAREC", "email": "noreply@suarec.com" };
+      // contactosuarec -> publicidad, etc
+      sendSmtpEmail.sender = { "name": "SUAREC", "email": "contactosuarec@gmail.com" };
       sendSmtpEmail.to = [{ "email": email, "name": userName }];
-      sendSmtpEmail.replyTo = { "email": "support@suarec.com" };
+      sendSmtpEmail.replyTo = { "email": "soportesuarec@gmail.com" };
 
       await apiInstance.sendTransacEmail(sendSmtpEmail);
       this.logger.log(`Verification email sent to ${email}`);
