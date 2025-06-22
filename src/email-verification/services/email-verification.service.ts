@@ -102,8 +102,26 @@ export class EmailVerificationService {
     }
   }
 
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      return await this.userRepository.findOne({ where: { email } });
+    } catch (error) {
+      this.logger.error('Error getting user by email:', error);
+      return null;
+    }
+  }
+
   private async sendEmailWithBrevo(email: string, token: string, userName: string): Promise<void> {
     try {
+      // Validar que la API key esté configurada
+      if (!process.env.BREVO_API) {
+        this.logger.error('BREVO_API environment variable is not set');
+        throw new InternalServerErrorException('Configuración de email no válida');
+      }
+
+      this.logger.log(`Attempting to send email to ${email} with Brevo API`);
+      this.logger.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      
       const brevo = require('@getbrevo/brevo');
       let apiInstance = new brevo.TransactionalEmailsApi();
       
@@ -174,15 +192,48 @@ export class EmailVerificationService {
         </html>
       `;
 
-      // contactosuarec -> publicidad, etc
-      sendSmtpEmail.sender = { "name": "SUAREC", "email": "contactosuarec@gmail.com" };
-      sendSmtpEmail.to = [{ "email": email, "name": userName }];
-      sendSmtpEmail.replyTo = { "email": "soportesuarec@gmail.com" };
+      // Verificar que el email del remitente esté verificado en Brevo
+      // IMPORTANTE: Este email debe estar verificado en tu cuenta de Brevo
+      // Solo tienes verificado: dyez1110@gmail.com
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || "dyez1110@gmail.com";
+      const replyToEmail = process.env.BREVO_REPLY_TO_EMAIL || "dyez1110@gmail.com";
+      
+      this.logger.log(`Sender email: ${senderEmail}`);
+      this.logger.log(`Reply to email: ${replyToEmail}`);
+      this.logger.log(`Recipient email: ${email}`);
+      this.logger.log(`Recipient name: ${userName}`);
 
-      await apiInstance.sendTransacEmail(sendSmtpEmail);
+      sendSmtpEmail.sender = { "name": "SUAREC", "email": senderEmail };
+      sendSmtpEmail.to = [{ "email": email, "name": userName }];
+      sendSmtpEmail.replyTo = { "email": replyToEmail };
+
+      this.logger.log(`Sending email with Brevo API to ${email}`);
+      const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      
+      this.logger.log(`Brevo API response: ${JSON.stringify(response)}`);
+      this.logger.log(`Message ID: ${response.messageId || response.body?.messageId}`);
       this.logger.log(`Verification email sent to ${email}`);
     } catch (error) {
       this.logger.error('Error sending verification email:', error);
+      
+      // Log more detailed error information
+      if (error.response) {
+        this.logger.error('Brevo API Error Response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
+      
+      if (error.message) {
+        this.logger.error('Error message:', error.message);
+      }
+      
+      if (error.code) {
+        this.logger.error('Error code:', error.code);
+      }
+      
       throw new InternalServerErrorException('Error al enviar email de verificación');
     }
   }

@@ -85,4 +85,25 @@ export class EmailVerificationController {
     // Por ahora retornamos un placeholder
     return { verified: false };
   }
+
+  @Public()
+  @Get('status/:email')
+  @ApiOperation({ summary: 'Get email verification status for a user by email' })
+  @ApiParam({ name: 'email', description: 'Email address' })
+  @ApiResponse({ status: 200, description: 'Email verification status retrieved successfully' })
+  async getEmailVerificationStatus(
+    @Param('email') email: string
+  ): Promise<{ verified: boolean; email: string; message: string }> {
+    const user = await this.emailVerificationService.getUserByEmail(email);
+    
+    if (!user) {
+      return { verified: false, email, message: 'User not found' };
+    }
+    
+    return { 
+      verified: user.email_verified, 
+      email, 
+      message: user.email_verified ? 'Email is verified' : 'Email is not verified' 
+    };
+  }
 }
