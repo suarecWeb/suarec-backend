@@ -11,6 +11,7 @@ import { Rating } from '../../rating/entities/rating.entity';
 import { WorkContract } from '../../work-contract/entities/work-contract.entity';
 import { Notification } from '../../notification/entities/notification.entity';
 import { EmailVerification } from '../../email-verification/entities/email-verification.entity';
+import { Contract, ContractBid } from '../../contract/entities/contract.entity';
 
 @Entity('users')
 export class User {
@@ -161,4 +162,14 @@ export class User {
   // Verificaciones de email
   @OneToMany(() => EmailVerification, (verification) => verification.user)
   emailVerifications: EmailVerification[];
+
+  // Relaciones para contrataciones y subastas
+  @OneToMany(() => Contract, (contract) => contract.client)
+  serviceContractsAsClient: Contract[];
+
+  @OneToMany(() => Contract, (contract) => contract.provider)
+  serviceContractsAsProvider: Contract[];
+
+  @OneToMany(() => ContractBid, (bid) => bid.bidder)
+  bids: ContractBid[];
 }

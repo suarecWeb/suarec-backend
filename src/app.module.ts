@@ -23,6 +23,7 @@ import { WorkContract } from './work-contract/entities/work-contract.entity';
 import { Notification } from './notification/entities/notification.entity';
 import { WorkContractModule } from './work-contract/work-contract.module';
 import { EmailVerificationModule } from './email-verification/email-verification.module';
+import { ContractModule } from './contract/contract.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { EmailVerificationModule } from './email-verification/email-verification
     RatingModule,
     EmailVerificationModule,
     WorkContractModule,
+    ContractModule,
     //RolePermissionModule,
     ],
   controllers: [AppController],
