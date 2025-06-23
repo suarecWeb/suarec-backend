@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, IsDecimal } from 'class-validator';
 
 export class CreatePublicationDto {
   @IsString()
@@ -31,6 +31,14 @@ export class CreatePublicationDto {
   @IsNumber()
   @IsOptional()
   visitors?: number;
+
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+
+  @IsString()
+  @IsOptional()
+  priceUnit?: string;
 
   @IsNumber()
   @IsNotEmpty()

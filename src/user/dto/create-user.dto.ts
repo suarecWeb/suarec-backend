@@ -46,4 +46,13 @@ export class CreateUserDto {
   @IsOptional()
   @IsUUID('all', { message: 'Employer ID must be a valid UUID' })
   employerId?: string;
+
+  @IsString()
+  @IsOptional()
+  profession?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  skills?: string[];
 }

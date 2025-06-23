@@ -2,9 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { UserService } from '../../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-//import nodemailer from 'nodemailer'
 import { from } from 'rxjs';
-//import { MailerService } from '@nestjs-modules/mailer';
 import { Repository } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -32,6 +30,11 @@ export class AuthService {
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    // Verificar que el email esté verificado
+    if (!user.email_verified) {
+      throw new UnauthorizedException('Please verify your email address before logging in. Check your inbox for the verification email.');
     }
 
     const payload = {
@@ -85,11 +88,11 @@ export class AuthService {
     
     
 
-    sendSmtpEmail.sender = { "name": "Suarec", "email": "noreply@suarec.com"};
+    sendSmtpEmail.sender = { "name": "Suarec", "email": "dyez1110@gmail.com"};
     sendSmtpEmail.to = [
       { "email": user.email } 
     ];
-    sendSmtpEmail.replyTo = { "email":  user.email };
+    sendSmtpEmail.replyTo = { "email":  "dyez1110@gmail.com" };
     sendSmtpEmail.headers = { "Some-Custom-Name": "unique-id-1234" };
     sendSmtpEmail.params = { "parameter": "My param value", "subject": "¡Perdiste tu contraseña, no te preocupes!" };
     
