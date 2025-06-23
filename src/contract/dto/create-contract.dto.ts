@@ -66,7 +66,7 @@ export class ProviderResponseDto {
 
   @IsEnum(ContractStatus)
   @IsNotEmpty()
-  action: 'accept' | 'reject' | 'negotiate';
+  action: ContractStatus.ACCEPTED | ContractStatus.REJECTED | ContractStatus.NEGOTIATING;
 
   @IsString()
   @IsOptional()
