@@ -225,7 +225,7 @@ export class ContractService {
     return { contracts, totalBids };
   }
 
-  async providerResponse(contractId: string, providerId: number, action: 'accept' | 'reject' | 'negotiate', data: any): Promise<Contract> {
+  async providerResponse(contractId: string, providerId: number, action: ContractStatus.ACCEPTED | ContractStatus.REJECTED | ContractStatus.NEGOTIATING, data: any): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId },
       relations: ['client', 'provider', 'publication']
@@ -244,7 +244,7 @@ export class ContractService {
     }
 
     switch (action) {
-      case 'accept':
+      case ContractStatus.ACCEPTED:
         contract.status = ContractStatus.ACCEPTED;
         contract.providerMessage = data.providerMessage;
         contract.agreedDate = data.proposedDate || contract.requestedDate;
@@ -258,7 +258,7 @@ export class ContractService {
         );
         break;
 
-      case 'reject':
+      case ContractStatus.REJECTED:
         contract.status = ContractStatus.REJECTED;
         contract.providerMessage = data.providerMessage;
         
@@ -270,7 +270,7 @@ export class ContractService {
         );
         break;
 
-      case 'negotiate':
+      case ContractStatus.NEGOTIATING:
         contract.status = ContractStatus.NEGOTIATING;
         contract.providerMessage = data.providerMessage;
         contract.currentPrice = data.counterOffer || contract.initialPrice;
