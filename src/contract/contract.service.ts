@@ -224,4 +224,75 @@ export class ContractService {
 
     return { contracts, totalBids };
   }
+
+  async providerResponse(contractId: string, providerId: number, action: 'accept' | 'reject' | 'negotiate', data: any): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId },
+      relations: ['client', 'provider', 'publication']
+    });
+
+    if (!contract) {
+      throw new NotFoundException('Contrato no encontrado');
+    }
+
+    if (contract.provider.id !== providerId) {
+      throw new BadRequestException('No tienes permisos para responder a este contrato');
+    }
+
+    if (contract.status !== ContractStatus.PENDING && contract.status !== ContractStatus.NEGOTIATING) {
+      throw new BadRequestException('El contrato no está disponible para respuesta');
+    }
+
+    switch (action) {
+      case 'accept':
+        contract.status = ContractStatus.ACCEPTED;
+        contract.providerMessage = data.providerMessage;
+        contract.agreedDate = data.proposedDate || contract.requestedDate;
+        contract.agreedTime = data.proposedTime || contract.requestedTime;
+        
+        // Enviar notificación al cliente
+        await this.emailService.sendContractNotification(
+          contract.client.email,
+          'Tu solicitud de contratación fue aceptada',
+          `Tu solicitud para "${contract.publication.title}" ha sido aceptada por el proveedor.`
+        );
+        break;
+
+      case 'reject':
+        contract.status = ContractStatus.REJECTED;
+        contract.providerMessage = data.providerMessage;
+        
+        // Enviar notificación al cliente
+        await this.emailService.sendContractNotification(
+          contract.client.email,
+          'Tu solicitud de contratación fue rechazada',
+          `Tu solicitud para "${contract.publication.title}" ha sido rechazada por el proveedor.`
+        );
+        break;
+
+      case 'negotiate':
+        contract.status = ContractStatus.NEGOTIATING;
+        contract.providerMessage = data.providerMessage;
+        contract.currentPrice = data.counterOffer || contract.initialPrice;
+        
+        // Crear una oferta automática del proveedor
+        const providerBid = this.bidRepository.create({
+          contract,
+          bidder: contract.provider,
+          amount: data.counterOffer || contract.initialPrice,
+          message: data.providerMessage
+        });
+        await this.bidRepository.save(providerBid);
+        
+        // Enviar notificación al cliente
+        await this.emailService.sendContractNotification(
+          contract.client.email,
+          'Nueva propuesta en tu contratación',
+          `El proveedor ha enviado una nueva propuesta para "${contract.publication.title}".`
+        );
+        break;
+    }
+
+    return await this.contractRepository.save(contract);
+  }
 } 

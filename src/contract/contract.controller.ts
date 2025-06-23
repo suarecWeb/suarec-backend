@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, UseGuards, Request, Delete } from '@nestjs/common';
 import { ContractService } from './contract.service';
-import { CreateContractDto, CreateBidDto, AcceptBidDto } from './dto/create-contract.dto';
+import { CreateContractDto, CreateBidDto, AcceptBidDto, ProviderResponseDto } from './dto/create-contract.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/decorators/role.decorator';
@@ -16,6 +16,23 @@ export class ContractController {
     // El cliente será el usuario autenticado
     createContractDto.clientId = req.user.id;
     return await this.contractService.createContract(createContractDto);
+  }
+
+  @Post('provider-response')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
+  async providerResponse(@Body() providerResponseDto: ProviderResponseDto, @Request() req) {
+    // El proveedor será el usuario autenticado
+    return await this.contractService.providerResponse(
+      providerResponseDto.contractId,
+      req.user.id,
+      providerResponseDto.action,
+      {
+        providerMessage: providerResponseDto.providerMessage,
+        counterOffer: providerResponseDto.counterOffer,
+        proposedDate: providerResponseDto.proposedDate,
+        proposedTime: providerResponseDto.proposedTime
+      }
+    );
   }
 
   @Post('bid')

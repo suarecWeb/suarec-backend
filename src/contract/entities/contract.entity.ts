@@ -44,6 +44,21 @@ export class Contract {
   @Column('text', { nullable: true })
   clientMessage?: string; // Mensaje inicial del cliente
 
+  @Column('text', { nullable: true })
+  providerMessage?: string; // Mensaje del proveedor (aceptar/rechazar/responder)
+
+  @Column('timestamp', { nullable: true })
+  requestedDate?: Date; // Fecha solicitada por el cliente
+
+  @Column('varchar', { length: 10, nullable: true })
+  requestedTime?: string; // Hora solicitada por el cliente
+
+  @Column('timestamp', { nullable: true })
+  agreedDate?: Date; // Fecha acordada final
+
+  @Column('varchar', { length: 10, nullable: true })
+  agreedTime?: string; // Hora acordada final
+
   @CreateDateColumn()
   createdAt: Date;
 
