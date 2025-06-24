@@ -55,4 +55,65 @@ export class CreateUserDto {
   @IsString({ each: true })
   @IsOptional()
   skills?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEducationDto)
+  @IsOptional()
+  education?: CreateEducationDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateReferenceDto)
+  @IsOptional()
+  references?: CreateReferenceDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateSocialLinkDto)
+  @IsOptional()
+  socialLinks?: CreateSocialLinkDto[];
+
+  @IsString()
+  @IsOptional()
+  bio?: string;
+}
+
+export class CreateEducationDto {
+  @IsString()
+  institution: string;
+  @IsString()
+  degree: string;
+  @IsString()
+  @IsOptional()
+  fieldOfStudy?: string;
+  @IsDate()
+  @Type(() => Date)
+  startDate: Date;
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  endDate?: Date;
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class CreateReferenceDto {
+  @IsString()
+  name: string;
+  @IsString()
+  relationship: string;
+  @IsString()
+  contact: string;
+  @IsString()
+  @IsOptional()
+  comment?: string;
+}
+
+export class CreateSocialLinkDto {
+  @IsString()
+  type: string;
+  @IsString()
+  url: string;
 }

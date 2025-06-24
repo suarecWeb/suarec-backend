@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateUserDto } from './create-user.dto';
-import { IsString, IsOptional, IsArray } from 'class-validator';
+import { CreateUserDto, CreateEducationDto, CreateReferenceDto, CreateSocialLinkDto } from './create-user.dto';
+import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsString()
@@ -11,4 +12,26 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsString({ each: true })
   @IsOptional()
   skills?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEducationDto)
+  @IsOptional()
+  education?: CreateEducationDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateReferenceDto)
+  @IsOptional()
+  references?: CreateReferenceDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateSocialLinkDto)
+  @IsOptional()
+  socialLinks?: CreateSocialLinkDto[];
+
+  @IsString()
+  @IsOptional()
+  bio?: string;
 }

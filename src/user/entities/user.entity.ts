@@ -12,6 +12,9 @@ import { WorkContract } from '../../work-contract/entities/work-contract.entity'
 import { Notification } from '../../notification/entities/notification.entity';
 import { EmailVerification } from '../../email-verification/entities/email-verification.entity';
 import { Experience } from './experience.entity';
+import { Education } from './education.entity';
+import { Reference } from './reference.entity';
+import { SocialLink } from './social-link.entity';
 
 @Entity('users')
 export class User {
@@ -169,4 +172,13 @@ export class User {
   // Verificaciones de email
   @OneToMany(() => EmailVerification, (verification) => verification.user)
   emailVerifications: EmailVerification[];
+
+  @OneToMany(() => Education, (education) => education.user, { cascade: true })
+  education: Education[];
+
+  @OneToMany(() => Reference, (reference) => reference.user, { cascade: true })
+  references: Reference[];
+
+  @OneToMany(() => SocialLink, (socialLink) => socialLink.user, { cascade: true })
+  socialLinks: SocialLink[];
 }

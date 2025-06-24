@@ -20,11 +20,14 @@ import { Notification } from '../notification/entities/notification.entity';
 import { Attendance } from '../attendance/entities/attendance.entity';
 import { Rating } from '../rating/entities/rating.entity';
 import { WorkContract } from '../work-contract/entities/work-contract.entity';
+import { Education } from './entities/education.entity';
+import { Reference } from './entities/reference.entity';
+import { SocialLink } from './entities/social-link.entity';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application, Experience, EmailVerification, Notification, Attendance, Rating, WorkContract]),
+    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application, Experience, EmailVerification, Notification, Attendance, Rating, WorkContract, Education, Reference, SocialLink]),
     PermissionModule,
     
     // Importar CompanyModule con referencia circular
