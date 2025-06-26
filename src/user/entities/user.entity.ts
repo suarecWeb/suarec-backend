@@ -39,10 +39,23 @@ export class User {
   @Column('text', { nullable: false })
   email: string;
 
-  @Column('date', { nullable: false })
+  @Column('date', { 
+    nullable: false,
+    transformer: {
+      to: (value: Date) => value,
+      from: (value: string | Date) => value instanceof Date ? value : new Date(value)
+    }
+  })
   born_at: Date;
 
-  @Column('date', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
+  @Column('date', { 
+    nullable: false, 
+    default: () => 'CURRENT_TIMESTAMP',
+    transformer: {
+      to: (value: Date) => value,
+      from: (value: string | Date) => value instanceof Date ? value : new Date(value)
+    }
+  })
   created_at: Date;
 
   // Nuevos campos para verificación de email

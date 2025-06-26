@@ -1,9 +1,115 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateUserDto, CreateEducationDto, CreateReferenceDto, CreateSocialLinkDto } from './create-user.dto';
-import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, IsEmail, IsDate, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class UpdateUserDto extends PartialType(CreateUserDto) {
+// DTOs específicos para actualización que permiten el campo id
+export class UpdateEducationDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsOptional()
+  institution?: string;
+  
+  @IsString()
+  @IsOptional()
+  degree?: string;
+  
+  @IsString()
+  @IsOptional()
+  fieldOfStudy?: string;
+  
+  @IsString()
+  @IsOptional()
+  startDate?: string;
+  
+  @IsString()
+  @IsOptional()
+  endDate?: string;
+  
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class UpdateReferenceDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  relationship?: string;
+
+  @IsString()
+  @IsOptional()
+  contact?: string;
+
+  @IsString()
+  @IsOptional()
+  comment?: string;
+}
+
+export class UpdateSocialLinkDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsString()
+  @IsOptional()
+  url?: string;
+}
+
+export class UpdateUserDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  cv_url?: string;
+
+  @IsString()
+  @IsOptional()
+  genre?: string;
+
+  @IsString()
+  @IsOptional()
+  cellphone?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  born_at?: Date;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  roles?: string[];
+
+  // Relación con la empresa como administrador (oneToOne)
+  @IsString()
+  @IsOptional()
+  companyId?: string;
+
+  // Relación con la empresa como empleado (manyToOne)
+  @IsString()
+  @IsOptional()
+  @IsUUID('all', { message: 'Employer ID must be a valid UUID' })
+  employerId?: string;
+
   @IsString()
   @IsOptional()
   profession?: string;
@@ -15,21 +121,21 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateEducationDto)
+  @Type(() => UpdateEducationDto)
   @IsOptional()
-  education?: CreateEducationDto[];
+  education?: UpdateEducationDto[];
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateReferenceDto)
+  @Type(() => UpdateReferenceDto)
   @IsOptional()
-  references?: CreateReferenceDto[];
+  references?: UpdateReferenceDto[];
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateSocialLinkDto)
+  @Type(() => UpdateSocialLinkDto)
   @IsOptional()
-  socialLinks?: CreateSocialLinkDto[];
+  socialLinks?: UpdateSocialLinkDto[];
 
   @IsString()
   @IsOptional()

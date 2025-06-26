@@ -266,28 +266,11 @@ export class UserService {
         user.employer = employer;
       }
 
+      // Antes de guardar el usuario, elimina las relaciones anidadas para evitar updates a null
+      delete (user as any).socialLinks;
+      delete (user as any).education;
+      delete (user as any).references;
       await this.usersRepository.save(user);
-
-      // Guardar relaciones anidadas
-      if (education && Array.isArray(education)) {
-        for (const edu of education) {
-          const eduEntity = this.educationRepository.create({ ...edu, user });
-          await this.educationRepository.save(eduEntity);
-        }
-      }
-      if (references && Array.isArray(references)) {
-        for (const ref of references) {
-          const refEntity = this.referenceRepository.create({ ...ref, user });
-          await this.referenceRepository.save(refEntity);
-        }
-      }
-      if (socialLinks && Array.isArray(socialLinks)) {
-        for (const link of socialLinks) {
-          const linkEntity = this.socialLinkRepository.create({ ...link, user });
-          await this.socialLinkRepository.save(linkEntity);
-        }
-      }
-
       return user;
     } catch (error) {
       this.handleDBErrors(error);
@@ -298,6 +281,9 @@ export class UserService {
   async update(id: number, updateDto: UpdateUserDto) {
     this.logger.log('UpdateUserDto recibido (raw):', JSON.stringify(updateDto));
     const { roles: roleNames, employerId, companyId, education, references, socialLinks, ...updateData } = updateDto;
+    this.logger.log('education recibido:', JSON.stringify(education));
+    this.logger.log('references recibido:', JSON.stringify(references));
+    this.logger.log('socialLinks recibido:', JSON.stringify(socialLinks));
 
     // Buscar el usuario a actualizar
     const user = await this.findOne(id);
@@ -305,85 +291,97 @@ export class UserService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // Actualizar los campos básicos
-    Object.assign(user, updateData);
+    // 1. Actualizar campos simples
+    await this.usersRepository.update(id, updateData);
 
-    // Actualizar los roles si se proporcionan
-    if (roleNames && roleNames.length > 0) {
-      user.roles = [];
+    // 2. Actualizar roles si vienen en el DTO
+    if (roleNames && Array.isArray(roleNames) && roleNames.length > 0) {
+      const roles = [];
       for (const roleName of roleNames) {
         const role = await this.roleRepository.findOne({ where: { name: roleName } });
-        if (!role) {
-          throw new BadRequestException(`Role ${roleName} not found`);
-        }
-        user.roles.push(role);
+        if (!role) throw new BadRequestException(`Role ${roleName} not found`);
+        roles.push(role);
       }
+      user.roles = roles;
+      await this.usersRepository.save(user); // Solo para roles, no para relaciones anidadas
     }
 
-    // Actualizar la empresa administrada si se proporciona
-    if (companyId) {
-      const company = await this.companyRepository.findOne({ where: { id: companyId } });
-      if (!company) {
-        throw new BadRequestException(`Company with ID ${companyId} not found`);
+    // 3. Actualizar employer si viene en el DTO
+    if (typeof employerId !== 'undefined') {
+      if (employerId === null) {
+        user.employer = null;
+      } else {
+        const employer = await this.companyRepository.findOne({ where: { id: employerId } });
+        if (!employer) throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+        user.employer = employer;
       }
-      user.company = company;
+      await this.usersRepository.save(user); // Solo para employer
     }
 
-    // Actualizar el empleador si se proporciona
-    if (employerId) {
-      const employer = await this.companyRepository.findOne({ where: { id: employerId } });
-      if (!employer) {
-        throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+    // 4. Actualizar company si viene en el DTO
+    if (typeof companyId !== 'undefined') {
+      if (companyId === null) {
+        user.company = null;
+      } else {
+        const company = await this.companyRepository.findOne({ where: { id: companyId } });
+        if (!company) throw new BadRequestException(`Company with ID ${companyId} not found`);
+        user.company = company;
       }
-      user.employer = employer;
-    } else if (employerId === null) { // Si se envía explícitamente como null, eliminar la relación
-      user.employer = null;
+      await this.usersRepository.save(user); // Solo para company
     }
 
-    // Actualizar relaciones anidadas
-    if (education) {
-      await this.educationRepository.delete({ user: { id: user.id } });
-      for (const edu of education) {
-        try {
-          const eduEntity = this.educationRepository.create({ ...edu, user });
-          this.logger.log('Saving education:', JSON.stringify(eduEntity));
-          await this.educationRepository.save(eduEntity);
-        } catch (err) {
-          this.logger.error('Error saving education:', err);
-        }
-      }
-    }
-    if (references) {
-      await this.referenceRepository.delete({ user: { id: user.id } });
-      for (const ref of references) {
-        try {
-          const refEntity = this.referenceRepository.create({ ...ref, user });
-          this.logger.log('Saving reference:', JSON.stringify(refEntity));
-          await this.referenceRepository.save(refEntity);
-        } catch (err) {
-          this.logger.error('Error saving reference:', err);
-        }
-      }
-    }
-    if (socialLinks) {
-      await this.socialLinkRepository.delete({ user: { id: user.id } });
-      for (const link of socialLinks) {
-        try {
-          const linkEntity = this.socialLinkRepository.create({ ...link, user });
-          this.logger.log('Saving socialLink:', JSON.stringify(linkEntity));
-          await this.socialLinkRepository.save(linkEntity);
-        } catch (err) {
-          this.logger.error('Error saving socialLink:', err);
+    // 5. Actualizar relaciones anidadas (education, references, socialLinks)
+    const userEntity = await this.usersRepository.findOne({ where: { id } });
+
+    if (typeof education !== 'undefined') {
+      await this.educationRepository.delete({ user: { id } });
+      if (Array.isArray(education) && education.length > 0) {
+        for (const edu of education) {
+          if (edu.institution && edu.degree && edu.startDate) {
+            delete (edu as any).user;
+            delete (edu as any).user_id;
+            const eduEntity = this.educationRepository.create({
+              ...edu,
+              user: userEntity,
+              startDate: typeof edu.startDate === 'string' ? new Date(edu.startDate) : edu.startDate,
+              endDate: edu.endDate ? (typeof edu.endDate === 'string' ? new Date(edu.endDate) : edu.endDate) : null
+            });
+            await this.educationRepository.save(eduEntity);
+          }
         }
       }
     }
 
-    try {
-      await this.usersRepository.save(user);
-      return user;
-    } catch (error) {
-      this.handleDBExceptions(error);
+    if (typeof references !== 'undefined') {
+      await this.referenceRepository.delete({ user: { id } });
+      if (Array.isArray(references) && references.length > 0) {
+        for (const ref of references) {
+          if (ref.name && ref.relationship && ref.contact) {
+            delete (ref as any).user;
+            delete (ref as any).user_id;
+            const refEntity = this.referenceRepository.create({ ...ref, user: userEntity });
+            await this.referenceRepository.save(refEntity);
+          }
+        }
+      }
     }
+
+    if (typeof socialLinks !== 'undefined') {
+      await this.socialLinkRepository.delete({ user: { id } });
+      if (Array.isArray(socialLinks) && socialLinks.length > 0) {
+        for (const link of socialLinks) {
+          if (link.type && link.url) {
+            delete (link as any).user;
+            delete (link as any).user_id;
+            const linkEntity = this.socialLinkRepository.create({ ...link, user: userEntity });
+            await this.socialLinkRepository.save(linkEntity);
+          }
+        }
+      }
+    }
+
+    // Devuelve el usuario actualizado
+    return this.findOne(id);
   }
 
   async findByEmail(email: string) {

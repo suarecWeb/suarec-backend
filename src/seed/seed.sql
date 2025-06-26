@@ -4,11 +4,43 @@ DELETE FROM messages;
 DELETE FROM comments;
 DELETE FROM applications;
 DELETE FROM publications;
+DELETE FROM social_link;
+DELETE FROM reference;
+DELETE FROM education;
+DELETE FROM experiences;
 DELETE FROM roles_users_users;
 DELETE FROM users;
 DELETE FROM companies;
 DELETE FROM roles;
 DELETE FROM permissions;
+
+-- Crear tablas si no existen
+CREATE TABLE IF NOT EXISTS education (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution TEXT NOT NULL,
+    degree TEXT NOT NULL,
+    fieldOfStudy TEXT,
+    startDate DATE NOT NULL,
+    endDate DATE,
+    description TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS reference (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    relationship TEXT NOT NULL,
+    contact TEXT NOT NULL,
+    comment TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS social_link (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- Insertar permisos
 INSERT INTO permissions (id, name, description)
@@ -97,6 +129,28 @@ UPDATE users SET employer_id = '550e8400-e29b-41d4-a716-446655440002' WHERE id I
 UPDATE companies SET user_id = 1 WHERE id = '550e8400-e29b-41d4-a716-446655440000'; -- Tech Solutions
 UPDATE companies SET user_id = 2 WHERE id = '550e8400-e29b-41d4-a716-446655440001'; -- Digital Innovations
 UPDATE companies SET user_id = 3 WHERE id = '550e8400-e29b-41d4-a716-446655440002'; -- Innovate Corp
+
+-- Insertar datos de ejemplo para educación, referencias y redes sociales
+INSERT INTO education (id, institution, degree, fieldOfStudy, startDate, endDate, description, user_id)
+VALUES 
+    (gen_random_uuid(), 'Universidad Nacional', 'Ingeniería de Sistemas', 'Informática', '2018-01-01', '2022-12-01', 'Especialización en desarrollo web', 4),
+    (gen_random_uuid(), 'Universidad de los Andes', 'Diseño Gráfico', 'Diseño', '2019-01-01', '2023-06-01', 'Enfoque en UX/UI', 5),
+    (gen_random_uuid(), 'Universidad Javeriana', 'Ingeniería Informática', 'Software', '2017-01-01', '2021-12-01', 'Especialización en Python', 6);
+
+INSERT INTO reference (id, name, relationship, contact, comment, user_id)
+VALUES 
+    (gen_random_uuid(), 'Dr. Carlos Mendoza', 'Profesor', 'carlos.mendoza@universidad.edu', 'Excelente estudiante, muy dedicado', 4),
+    (gen_random_uuid(), 'Ing. Ana García', 'Supervisor', 'ana.garcia@empresa.com', 'Muy profesional y responsable', 5),
+    (gen_random_uuid(), 'Lic. Roberto Silva', 'Colega', 'roberto.silva@trabajo.com', 'Gran compañero de trabajo', 6);
+
+INSERT INTO social_link (id, type, url, user_id)
+VALUES 
+    (gen_random_uuid(), 'LinkedIn', 'https://linkedin.com/in/juanperez', 4),
+    (gen_random_uuid(), 'GitHub', 'https://github.com/juanperez', 4),
+    (gen_random_uuid(), 'LinkedIn', 'https://linkedin.com/in/marialopez', 5),
+    (gen_random_uuid(), 'Portfolio', 'https://marialopez.design', 5),
+    (gen_random_uuid(), 'LinkedIn', 'https://linkedin.com/in/carlosruiz', 6),
+    (gen_random_uuid(), 'GitHub', 'https://github.com/carlosruiz', 6);
 
 -- Insertar publicaciones
 INSERT INTO publications (id, title, description, requirements, salary, location, type, status, created_at, updated_at, user_id)

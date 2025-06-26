@@ -1,5 +1,5 @@
-import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID, IsDateString } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateUserDto {
   @IsString()
@@ -81,19 +81,36 @@ export class CreateUserDto {
 
 export class CreateEducationDto {
   @IsString()
+  @IsNotEmpty()
   institution: string;
+  
   @IsString()
+  @IsNotEmpty()
   degree: string;
+  
   @IsString()
   @IsOptional()
   fieldOfStudy?: string;
-  @IsDate()
-  @Type(() => Date)
+  
+  @IsDateString()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return new Date(value);
+    }
+    return value;
+  })
   startDate: Date;
-  @IsDate()
-  @Type(() => Date)
+  
+  @IsDateString()
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value && typeof value === 'string') {
+      return new Date(value);
+    }
+    return value;
+  })
   endDate?: Date;
+  
   @IsString()
   @IsOptional()
   description?: string;
