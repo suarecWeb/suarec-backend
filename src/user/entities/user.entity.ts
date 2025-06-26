@@ -15,6 +15,7 @@ import { Experience } from './experience.entity';
 import { Education } from './education.entity';
 import { Reference } from './reference.entity';
 import { SocialLink } from './social-link.entity';
+import { Contract, ContractBid } from '../../contract/entities/contract.entity';
 
 @Entity('users')
 export class User {
@@ -178,10 +179,6 @@ export class User {
   @OneToMany(() => Experience, (experience) => experience.user)
   experiences: Experience[];
 
-  // Notificaciones
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications: Notification[];
-
   // Verificaciones de email
   @OneToMany(() => EmailVerification, (verification) => verification.user)
   emailVerifications: EmailVerification[];
@@ -194,4 +191,14 @@ export class User {
 
   @OneToMany(() => SocialLink, (socialLink) => socialLink.user, { cascade: true })
   socialLinks: SocialLink[];
+
+  // Relaciones para contrataciones y subastas
+  @OneToMany(() => Contract, (contract) => contract.client)
+  serviceContractsAsClient: Contract[];
+
+  @OneToMany(() => Contract, (contract) => contract.provider)
+  serviceContractsAsProvider: Contract[];
+
+  @OneToMany(() => ContractBid, (bid) => bid.bidder)
+  bids: ContractBid[];
 }

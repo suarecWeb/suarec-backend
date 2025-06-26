@@ -16,7 +16,7 @@ async function bootstrap() {
       // tipo de objeto
       forbidNonWhitelisted: true, // me informa del error del envio
       // de un dato o atributo no necesario y que no tengo definido
-      transform: true, // Permite la transformación de objetos anidados
+      transform: true, // habilita la transformación automática de tipos
     })
     );
 
