@@ -201,4 +201,7 @@ export class User {
 
   @OneToMany(() => ContractBid, (bid) => bid.bidder)
   bids: ContractBid[];
+
+  @Column('text', { nullable: true })
+  cedula: string;
 }

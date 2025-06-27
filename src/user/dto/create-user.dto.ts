@@ -1,4 +1,4 @@
-import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID, IsDateString } from 'class-validator';
+import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID, IsDateString, ValidateIf } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateUserDto {
@@ -77,6 +77,11 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   bio?: string;
+
+  @ValidateIf(o => o.roles?.includes('PERSON'))
+  @IsString()
+  @IsNotEmpty()
+  cedula: string;
 }
 
 export class CreateEducationDto {
