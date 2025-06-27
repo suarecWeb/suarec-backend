@@ -104,7 +104,7 @@ export class UserService {
           password: 'admin123',
           genre: 'Male',
           cellphone: '1234567890',
-          cv_url: 'https://example.com/admin-cv.pdf',
+          cv_url: '',
           born_at: new Date('1990-01-01'),
           roleName: 'ADMIN'
         },
@@ -114,7 +114,7 @@ export class UserService {
           password: 'business123',
           genre: 'Female',
           cellphone: '2345678901',
-          cv_url: 'https://example.com/business-cv.pdf',
+          cv_url: '',
           born_at: new Date('1985-05-15'),
           roleName: 'BUSINESS',
           company: {
@@ -137,7 +137,7 @@ export class UserService {
           password: 'person123',
           genre: 'Male',
           cellphone: '3456789012',
-          cv_url: 'https://example.com/person-cv.pdf',
+          cv_url: '',
           born_at: new Date('1995-10-20'),
           roleName: 'PERSON'
         },
