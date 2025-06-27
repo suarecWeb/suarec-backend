@@ -10,6 +10,34 @@ DELETE FROM company;
 DELETE FROM roles;
 DELETE FROM permissions;
 
+-- Crear tablas si no existen
+CREATE TABLE IF NOT EXISTS education (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution TEXT NOT NULL,
+    degree TEXT NOT NULL,
+    fieldOfStudy TEXT,
+    startDate DATE NOT NULL,
+    endDate DATE,
+    description TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS reference (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    relationship TEXT NOT NULL,
+    contact TEXT NOT NULL,
+    comment TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS social_link (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Insertar permisos
 INSERT INTO permissions (id, name, description)
 VALUES 

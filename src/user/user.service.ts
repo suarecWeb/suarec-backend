@@ -10,6 +10,9 @@ import { Permission } from '../permission/entities/permission.entity';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 import { Company } from '../company/entities/company.entity';
+import { Education } from './entities/education.entity';
+import { Reference } from './entities/reference.entity';
+import { SocialLink } from './entities/social-link.entity';
 
 @Injectable()
 export class UserService {
@@ -27,6 +30,15 @@ export class UserService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(Education)
+    private readonly educationRepository: Repository<Education>,
+
+    @InjectRepository(Reference)
+    private readonly referenceRepository: Repository<Reference>,
+
+    @InjectRepository(SocialLink)
+    private readonly socialLinkRepository: Repository<SocialLink>,
   ) {}
 
   async onModuleInit() {
@@ -92,7 +104,7 @@ export class UserService {
           password: 'admin123',
           genre: 'Male',
           cellphone: '1234567890',
-          cv_url: 'https://example.com/admin-cv.pdf',
+          cv_url: '',
           born_at: new Date('1990-01-01'),
           roleName: 'ADMIN'
         },
@@ -102,7 +114,7 @@ export class UserService {
           password: 'business123',
           genre: 'Female',
           cellphone: '2345678901',
-          cv_url: 'https://example.com/business-cv.pdf',
+          cv_url: '',
           born_at: new Date('1985-05-15'),
           roleName: 'BUSINESS',
           company: {
@@ -125,7 +137,7 @@ export class UserService {
           password: 'person123',
           genre: 'Male',
           cellphone: '3456789012',
-          cv_url: 'https://example.com/person-cv.pdf',
+          cv_url: '',
           born_at: new Date('1995-10-20'),
           roleName: 'PERSON'
         },
@@ -207,112 +219,170 @@ export class UserService {
   }
 
   // Actualización del método create en UserService para manejar la relación con el empleador
-async create(createUserDto: CreateUserDto) {
-  try {
-    const { password, email, roles: roleNames, employerId, companyId, ...userData } = createUserDto;
+  async create(createUserDto: CreateUserDto) {
+    try {
+      const { password, email, roles: roleNames, employerId, companyId, education, references, socialLinks, ...userData } = createUserDto;
 
-    const existingUser = await this.usersRepository.findOne({ where: { email } });
-    if (existingUser) {
-      throw new BadRequestException('Email already in use');
+      const existingUser = await this.usersRepository.findOne({ where: { email } });
+      if (existingUser) {
+        throw new BadRequestException('Email already in use');
+      }
+
+      // Buscar los roles en la base de datos
+      const roles = [];
+      if (roleNames && roleNames.length > 0) {
+        for (const roleName of roleNames) {
+          const role = await this.roleRepository.findOne({ where: { name: roleName } });
+          if (!role) {
+            throw new BadRequestException(`Role ${roleName} not found`);
+          }
+          roles.push(role);
+        }
+      }
+
+      const user = this.usersRepository.create({
+        ...userData,
+        email,
+        password: bcrypt.hashSync(password, 10),
+        created_at: new Date(),
+        roles,
+      });
+
+      // Vincular con la empresa administrada (oneToOne)
+      if (companyId) {
+        const company = await this.companyRepository.findOne({ where: { id: companyId } });
+        if (!company) {
+          throw new BadRequestException(`Company with ID ${companyId} not found`);
+        }
+        user.company = company;
+      }
+
+      // Vincular con la empresa como empleador (manyToOne)
+      if (employerId) {
+        const employer = await this.companyRepository.findOne({ where: { id: employerId } });
+        if (!employer) {
+          throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+        }
+        user.employer = employer;
+      }
+
+      // Antes de guardar el usuario, elimina las relaciones anidadas para evitar updates a null
+      delete (user as any).socialLinks;
+      delete (user as any).education;
+      delete (user as any).references;
+      await this.usersRepository.save(user);
+      return user;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  // Actualización del método update en UserService para manejar la relación con el empleador
+  async update(id: number, updateDto: UpdateUserDto) {
+    this.logger.log('UpdateUserDto recibido (raw):', JSON.stringify(updateDto));
+    const { roles: roleNames, employerId, companyId, education, references, socialLinks, ...updateData } = updateDto;
+    this.logger.log('education recibido:', JSON.stringify(education));
+    this.logger.log('references recibido:', JSON.stringify(references));
+    this.logger.log('socialLinks recibido:', JSON.stringify(socialLinks));
+
+    // Buscar el usuario a actualizar
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // Buscar los roles en la base de datos
-    const roles = [];
-    if (roleNames && roleNames.length > 0) {
+    // 1. Actualizar campos simples
+    await this.usersRepository.update(id, updateData);
+
+    // 2. Actualizar roles si vienen en el DTO
+    if (roleNames && Array.isArray(roleNames) && roleNames.length > 0) {
+      const roles = [];
       for (const roleName of roleNames) {
         const role = await this.roleRepository.findOne({ where: { name: roleName } });
-        if (!role) {
-          throw new BadRequestException(`Role ${roleName} not found`);
-        }
+        if (!role) throw new BadRequestException(`Role ${roleName} not found`);
         roles.push(role);
       }
+      user.roles = roles;
+      await this.usersRepository.save(user); // Solo para roles, no para relaciones anidadas
     }
 
-    const user = this.usersRepository.create({
-      ...userData,
-      email,
-      password: bcrypt.hashSync(password, 10),
-      created_at: new Date(),
-      roles,
-    });
-
-    // Vincular con la empresa administrada (oneToOne)
-    if (companyId) {
-      const company = await this.companyRepository.findOne({ where: { id: companyId } });
-      if (!company) {
-        throw new BadRequestException(`Company with ID ${companyId} not found`);
+    // 3. Actualizar employer si viene en el DTO
+    if (typeof employerId !== 'undefined') {
+      if (employerId === null) {
+        user.employer = null;
+      } else {
+        const employer = await this.companyRepository.findOne({ where: { id: employerId } });
+        if (!employer) throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+        user.employer = employer;
       }
-      user.company = company;
+      await this.usersRepository.save(user); // Solo para employer
     }
 
-    // Vincular con la empresa como empleador (manyToOne)
-    if (employerId) {
-      const employer = await this.companyRepository.findOne({ where: { id: employerId } });
-      if (!employer) {
-        throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+    // 4. Actualizar company si viene en el DTO
+    if (typeof companyId !== 'undefined') {
+      if (companyId === null) {
+        user.company = null;
+      } else {
+        const company = await this.companyRepository.findOne({ where: { id: companyId } });
+        if (!company) throw new BadRequestException(`Company with ID ${companyId} not found`);
+        user.company = company;
       }
-      user.employer = employer;
+      await this.usersRepository.save(user); // Solo para company
     }
 
-    await this.usersRepository.save(user);
-    return user;
-  } catch (error) {
-    this.handleDBErrors(error);
-  }
-}
+    // 5. Actualizar relaciones anidadas (education, references, socialLinks)
+    const userEntity = await this.usersRepository.findOne({ where: { id } });
 
-// Actualización del método update en UserService para manejar la relación con el empleador
-async update(id: number, updateDto: UpdateUserDto) {
-  const { roles: roleNames, employerId, companyId, ...updateData } = updateDto;
-
-  // Buscar el usuario a actualizar
-  const user = await this.findOne(id);
-  if (!user) {
-    throw new NotFoundException(`User with ID ${id} not found`);
-  }
-
-  // Actualizar los campos básicos
-  Object.assign(user, updateData);
-
-  // Actualizar los roles si se proporcionan
-  if (roleNames && roleNames.length > 0) {
-    user.roles = [];
-    for (const roleName of roleNames) {
-      const role = await this.roleRepository.findOne({ where: { name: roleName } });
-      if (!role) {
-        throw new BadRequestException(`Role ${roleName} not found`);
+    if (typeof education !== 'undefined') {
+      await this.educationRepository.delete({ user: { id } });
+      if (Array.isArray(education) && education.length > 0) {
+        for (const edu of education) {
+          if (edu.institution && edu.degree && edu.startDate) {
+            delete (edu as any).user;
+            delete (edu as any).user_id;
+            const eduEntity = this.educationRepository.create({
+              ...edu,
+              user: userEntity,
+              startDate: typeof edu.startDate === 'string' ? new Date(edu.startDate) : edu.startDate,
+              endDate: edu.endDate ? (typeof edu.endDate === 'string' ? new Date(edu.endDate) : edu.endDate) : null
+            });
+            await this.educationRepository.save(eduEntity);
+          }
+        }
       }
-      user.roles.push(role);
     }
-  }
 
-  // Actualizar la empresa administrada si se proporciona
-  if (companyId) {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
-    if (!company) {
-      throw new BadRequestException(`Company with ID ${companyId} not found`);
+    if (typeof references !== 'undefined') {
+      await this.referenceRepository.delete({ user: { id } });
+      if (Array.isArray(references) && references.length > 0) {
+        for (const ref of references) {
+          if (ref.name && ref.relationship && ref.contact) {
+            delete (ref as any).user;
+            delete (ref as any).user_id;
+            const refEntity = this.referenceRepository.create({ ...ref, user: userEntity });
+            await this.referenceRepository.save(refEntity);
+          }
+        }
+      }
     }
-    user.company = company;
-  }
 
-  // Actualizar el empleador si se proporciona
-  if (employerId) {
-    const employer = await this.companyRepository.findOne({ where: { id: employerId } });
-    if (!employer) {
-      throw new BadRequestException(`Employer company with ID ${employerId} not found`);
+    if (typeof socialLinks !== 'undefined') {
+      await this.socialLinkRepository.delete({ user: { id } });
+      if (Array.isArray(socialLinks) && socialLinks.length > 0) {
+        for (const link of socialLinks) {
+          if (link.type && link.url) {
+            delete (link as any).user;
+            delete (link as any).user_id;
+            const linkEntity = this.socialLinkRepository.create({ ...link, user: userEntity });
+            await this.socialLinkRepository.save(linkEntity);
+          }
+        }
+      }
     }
-    user.employer = employer;
-  } else if (employerId === null) { // Si se envía explícitamente como null, eliminar la relación
-    user.employer = null;
-  }
 
-  try {
-    await this.usersRepository.save(user);
-    return user;
-  } catch (error) {
-    this.handleDBExceptions(error);
+    // Devuelve el usuario actualizado
+    return this.findOne(id);
   }
-}
 
   async findByEmail(email: string) {
     const user: User = await this.usersRepository.findOne({ where: { email }, relations: ['roles'] });
@@ -385,7 +455,16 @@ async update(id: number, updateDto: UpdateUserDto) {
   async findOne(id: number) {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['roles', 'company', 'publications', 'comments']
+      relations: [
+        'roles',
+        'company',
+        'publications',
+        'comments',
+        'experiences',
+        'education',
+        'references',
+        'socialLinks',
+      ]
     });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -421,33 +500,33 @@ async update(id: number, updateDto: UpdateUserDto) {
   }
 
   // Método adicional para obtener usuarios por empleador
-async findByEmployer(employerId: string, paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
-  try {
-    const { page = 1, limit = 10 } = paginationDto;
-    const skip = (page - 1) * limit;
+  async findByEmployer(employerId: string, paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+    try {
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
 
-    const [data, total] = await this.usersRepository.findAndCount({
-      where: { employer: { id: employerId } },
-      relations: ['roles', 'employer'],
-      skip,
-      take: limit,
-    });
+      const [data, total] = await this.usersRepository.findAndCount({
+        where: { employer: { id: employerId } },
+        relations: ['roles', 'employer'],
+        skip,
+        take: limit,
+      });
 
-    const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    };
-  } catch (error) {
-    this.handleDBErrors(error);
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
   }
-}
 }

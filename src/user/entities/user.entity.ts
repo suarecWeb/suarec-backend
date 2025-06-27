@@ -11,6 +11,10 @@ import { Rating } from '../../rating/entities/rating.entity';
 import { WorkContract } from '../../work-contract/entities/work-contract.entity';
 import { Notification } from '../../notification/entities/notification.entity';
 import { EmailVerification } from '../../email-verification/entities/email-verification.entity';
+import { Experience } from './experience.entity';
+import { Education } from './education.entity';
+import { Reference } from './reference.entity';
+import { SocialLink } from './social-link.entity';
 import { Contract, ContractBid } from '../../contract/entities/contract.entity';
 
 @Entity('users')
@@ -36,10 +40,23 @@ export class User {
   @Column('text', { nullable: false })
   email: string;
 
-  @Column('date', { nullable: false })
+  @Column('date', { 
+    nullable: false,
+    transformer: {
+      to: (value: Date) => value,
+      from: (value: string | Date) => value instanceof Date ? value : new Date(value)
+    }
+  })
   born_at: Date;
 
-  @Column('date', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
+  @Column('date', { 
+    nullable: false, 
+    default: () => 'CURRENT_TIMESTAMP',
+    transformer: {
+      to: (value: Date) => value,
+      from: (value: string | Date) => value instanceof Date ? value : new Date(value)
+    }
+  })
   created_at: Date;
 
   // Nuevos campos para verificación de email
@@ -159,9 +176,21 @@ export class User {
   @OneToMany(() => WorkContract, (contract) => contract.provider)
   contractsAsProvider: WorkContract[];
 
+  @OneToMany(() => Experience, (experience) => experience.user)
+  experiences: Experience[];
+
   // Verificaciones de email
   @OneToMany(() => EmailVerification, (verification) => verification.user)
   emailVerifications: EmailVerification[];
+
+  @OneToMany(() => Education, (education) => education.user, { cascade: true })
+  education: Education[];
+
+  @OneToMany(() => Reference, (reference) => reference.user, { cascade: true })
+  references: Reference[];
+
+  @OneToMany(() => SocialLink, (socialLink) => socialLink.user, { cascade: true })
+  socialLinks: SocialLink[];
 
   // Relaciones para contrataciones y subastas
   @OneToMany(() => Contract, (contract) => contract.client)

@@ -1,5 +1,5 @@
-import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID, IsDateString } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateUserDto {
   @IsString()
@@ -55,4 +55,82 @@ export class CreateUserDto {
   @IsString({ each: true })
   @IsOptional()
   skills?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEducationDto)
+  @IsOptional()
+  education?: CreateEducationDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateReferenceDto)
+  @IsOptional()
+  references?: CreateReferenceDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateSocialLinkDto)
+  @IsOptional()
+  socialLinks?: CreateSocialLinkDto[];
+
+  @IsString()
+  @IsOptional()
+  bio?: string;
+}
+
+export class CreateEducationDto {
+  @IsString()
+  @IsNotEmpty()
+  institution: string;
+  
+  @IsString()
+  @IsNotEmpty()
+  degree: string;
+  
+  @IsString()
+  @IsOptional()
+  fieldOfStudy?: string;
+  
+  @IsDateString()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return new Date(value);
+    }
+    return value;
+  })
+  startDate: Date;
+  
+  @IsDateString()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value && typeof value === 'string') {
+      return new Date(value);
+    }
+    return value;
+  })
+  endDate?: Date;
+  
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class CreateReferenceDto {
+  @IsString()
+  name: string;
+  @IsString()
+  relationship: string;
+  @IsString()
+  contact: string;
+  @IsString()
+  @IsOptional()
+  comment?: string;
+}
+
+export class CreateSocialLinkDto {
+  @IsString()
+  type: string;
+  @IsString()
+  url: string;
 }
