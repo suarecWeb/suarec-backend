@@ -116,6 +116,22 @@ export class ApplicationService {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
+      // Verificar si el usuario existe
+      const user = await this.userRepository.findOne({ where: { id: companyUserId } });
+      if (!user) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        };
+      }
+
       // Obtener todas las aplicaciones para las publicaciones de esta empresa
       const queryBuilder = this.applicationRepository.createQueryBuilder('application')
         .leftJoinAndSelect('application.user', 'user')
