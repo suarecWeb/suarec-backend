@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, IsEmail, IsDate, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, IsEmail, IsDate, IsUUID, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 // DTOs específicos para actualización que permiten el campo id
@@ -140,4 +140,9 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   bio?: string;
+
+  @ValidateIf(o => o.roles?.includes('PERSON'))
+  @IsString()
+  @IsOptional()
+  cedula?: string;
 }

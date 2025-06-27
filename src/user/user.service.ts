@@ -225,7 +225,7 @@ export class UserService {
 
       const existingUser = await this.usersRepository.findOne({ where: { email } });
       if (existingUser) {
-        throw new BadRequestException('Email already in use');
+        throw new BadRequestException('Este correo ya está en uso');
       }
 
       // Buscar los roles en la base de datos
