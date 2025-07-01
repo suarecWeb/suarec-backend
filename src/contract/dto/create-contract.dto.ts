@@ -14,6 +14,11 @@ export class CreateContractDto {
   @Transform(({ value }) => parseFloat(value))
   initialPrice: number;
 
+  @IsNumber()
+  @IsNotEmpty()
+  @Transform(({ value }) => parseFloat(value))
+  totalPrice: number;
+
   @IsString()
   @IsNotEmpty()
   priceUnit: string;
@@ -29,6 +34,26 @@ export class CreateContractDto {
   @IsString()
   @IsOptional()
   requestedTime?: string;
+
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
+
+  @IsString()
+  @IsOptional()
+  serviceAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  propertyType?: string;
+
+  @IsString()
+  @IsOptional()
+  neighborhood?: string;
+
+  @IsString()
+  @IsOptional()
+  locationDescription?: string;
 }
 
 export class CreateBidDto {
@@ -83,4 +108,4 @@ export class ProviderResponseDto {
   @IsString()
   @IsOptional()
   proposedTime?: string;
-} 
+}
