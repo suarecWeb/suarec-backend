@@ -1,4 +1,5 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, IsDecimal } from 'class-validator';
+import { IsDate, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, IsDecimal } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class CreatePublicationDto {
   @IsString()
@@ -13,7 +14,7 @@ export class CreatePublicationDto {
 
   @IsDateString()
   @IsNotEmpty()
-  created_at: Date;
+  created_at: string;
 
   @IsDateString()
   @IsNotEmpty()
