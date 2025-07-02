@@ -4,6 +4,7 @@ import { Publication } from '../../publication/entities/publication.entity';
 
 export enum ApplicationStatus {
   PENDING = 'PENDING',
+  INTERVIEW = 'INTERVIEW',
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
 }

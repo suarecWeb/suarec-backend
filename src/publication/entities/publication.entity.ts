@@ -18,7 +18,7 @@ export class Publication {
   @Column('date', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
   modified_at: Date;
 
-  @Column('date', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
+  @Column('timestamp', { nullable: false, default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
   @Column('text', { nullable: false })
