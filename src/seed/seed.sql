@@ -10,7 +10,7 @@ DELETE FROM company;
 DELETE FROM roles;
 DELETE FROM permissions;
 
--- Crear tablas si no existen
+-- Crear tablas si no existe
 CREATE TABLE IF NOT EXISTS education (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution TEXT NOT NULL,
