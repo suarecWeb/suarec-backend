@@ -15,6 +15,10 @@ export class CreateUserDto {
   cv_url?: string;
 
   @IsString()
+  @IsOptional()
+  profile_image?: string;
+
+  @IsString()
   @IsNotEmpty()
   genre: string;
 

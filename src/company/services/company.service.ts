@@ -262,6 +262,19 @@ export class CompanyService {
     };
   }
 
+  async findByUserId(userId: number): Promise<Company | null> {
+    try {
+      const company = await this.companyRepository.findOne({
+        where: { user: { id: userId } },
+        relations: ['user'],
+      });
+
+      return company;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
   private handleDBErrors(error: any) {
     if (error.status === 400) {
       throw new BadRequestException(error.response.message);
