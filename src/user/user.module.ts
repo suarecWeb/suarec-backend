@@ -23,11 +23,13 @@ import { WorkContract } from '../work-contract/entities/work-contract.entity';
 import { Education } from './entities/education.entity';
 import { Reference } from './entities/reference.entity';
 import { SocialLink } from './entities/social-link.entity';
+import { UserGallery } from './entities/user-gallery.entity';
+import { GalleryService } from './services/gallery.service';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application, Experience, EmailVerification, Notification, Attendance, Rating, WorkContract, Education, Reference, SocialLink]),
+    TypeOrmModule.forFeature([User, Role, Permission, Company, Publication, Comment, Application, Experience, EmailVerification, Notification, Attendance, Rating, WorkContract, Education, Reference, SocialLink, UserGallery]),
     PermissionModule,
     
     // Importar CompanyModule con referencia circular
@@ -46,10 +48,12 @@ import { SocialLink } from './entities/social-link.entity';
   providers: [
     UserService,
     ExperienceService,
+    GalleryService,
   ],
   exports: [
     UserService,
     ExperienceService,
+    GalleryService,
     TypeOrmModule,
   ],
 })

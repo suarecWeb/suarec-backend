@@ -16,6 +16,7 @@ import { Education } from './education.entity';
 import { Reference } from './reference.entity';
 import { SocialLink } from './social-link.entity';
 import { Contract, ContractBid } from '../../contract/entities/contract.entity';
+import { UserGallery } from './user-gallery.entity';
 
 @Entity('users')
 export class User {
@@ -201,6 +202,9 @@ export class User {
 
   @OneToMany(() => ContractBid, (bid) => bid.bidder)
   bids: ContractBid[];
+
+  @OneToMany(() => UserGallery, (gallery) => gallery.user, { cascade: true })
+  gallery: UserGallery[];
 
   @Column('text', { nullable: true })
   cedula: string;

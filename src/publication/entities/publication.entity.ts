@@ -3,6 +3,7 @@ import { User } from '../../user/entities/user.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { Application } from '../../application/entities/application.entity';
 import { Contract } from '../../contract/entities/contract.entity';
+import { PublicationLike } from './publication-like.entity';
 
 @Entity()
 export class Publication {
@@ -36,6 +37,9 @@ export class Publication {
   @Column('text', { nullable: true })
   priceUnit?: string; // 'hour', 'project', 'monthly', etc.
 
+  @Column('simple-array', { nullable: true })
+  gallery_images?: string[];
+
   @ManyToOne(() => User, (user) => user.publications)
   user: User;
 
@@ -49,4 +53,8 @@ export class Publication {
   // Nueva relación para contrataciones
   @OneToMany(() => Contract, (contract) => contract.publication)
   contracts: Contract[];
+
+  // Relación para likes
+  @OneToMany(() => PublicationLike, (like) => like.publication)
+  likes: PublicationLike[];
 }
