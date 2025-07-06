@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards, Query, Patch, Request } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -10,13 +10,18 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 import { User } from './entities/user.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { AuthGuard } from '../auth/guard/auth.guard'; // Cambié esta importación
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { GalleryService } from './services/gallery.service';
+import { CreateGalleryImageDto, UpdateGalleryImageDto, UploadGalleryImagesDto } from './dto/gallery.dto';
 
 @ApiTags('Users')
 @Controller('users')
 @UseGuards(RolesGuard)
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly galleryService: GalleryService,
+  ) {}
 
   @Public()
   @Post()
@@ -110,5 +115,42 @@ export class UserController {
   removeEmployer(@Param('id') id: string): Promise<User> {
     const updateDto: UpdateUserDto = { employerId: null };
     return this.userService.update(+id, updateDto);
+  }
+
+  // Endpoints para galería de fotos
+  @UseGuards(AuthGuard)
+  @Get('me/gallery')
+  async getUserGallery(@Request() req) {
+    return this.galleryService.getUserGallery(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/gallery')
+  async addImageToGallery(@Request() req, @Body() createDto: CreateGalleryImageDto) {
+    return this.galleryService.addImageToGallery(req.user.id, createDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/gallery/upload-multiple')
+  async uploadMultipleImages(@Request() req, @Body() uploadDto: UploadGalleryImagesDto) {
+    return this.galleryService.uploadMultipleImages(req.user.id, uploadDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/gallery/:imageId')
+  async updateImage(@Request() req, @Param('imageId') imageId: string, @Body() updateDto: UpdateGalleryImageDto) {
+    return this.galleryService.updateImage(req.user.id, +imageId, updateDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('me/gallery/:imageId')
+  async deleteImage(@Request() req, @Param('imageId') imageId: string) {
+    return this.galleryService.deleteImage(req.user.id, +imageId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/gallery/reorder')
+  async reorderImages(@Request() req, @Body() body: { imageIds: number[] }) {
+    return this.galleryService.reorderImages(req.user.id, body.imageIds);
   }
 }
