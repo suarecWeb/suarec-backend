@@ -87,27 +87,76 @@ export class PublicationService {
     }
   }
 
-  async update(id: string, updatePublicationDto: UpdatePublicationDto): Promise<Publication> {
+  async update(id: string, updatePublicationDto: UpdatePublicationDto, user?: any): Promise<Publication> {
     try {
-      const publication = await this.publicationRepository.preload({
-        id,
-        ...updatePublicationDto,
+      const publication = await this.publicationRepository.findOne({
+        where: { id },
+        relations: ['user'],
       });
 
       if (!publication) {
         throw new NotFoundException(`Publication with ID ${id} not found`);
       }
 
-      await this.publicationRepository.save(publication);
-      return publication;
+      // Verificar permisos: solo el propietario o admin puede editar
+      if (user) {
+        const isAdmin = user.roles.some((role: any) => role.name === 'ADMIN');
+        const isOwner = publication.user.id === user.id;
+        
+        console.log('Debug permissions:', {
+          userId: user.id,
+          publicationUserId: publication.user.id,
+          isAdmin,
+          isOwner,
+          userRoles: user.roles
+        });
+        
+        if (!isAdmin && !isOwner) {
+          throw new BadRequestException('You can only edit your own publications');
+        }
+      }
+
+      const updatedPublication = await this.publicationRepository.preload({
+        id,
+        ...updatePublicationDto,
+      });
+
+      await this.publicationRepository.save(updatedPublication);
+      return updatedPublication;
     } catch (error) {
       this.handleDBErrors(error);
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, user?: any): Promise<void> {
     try {
-      const publication = await this.findOne(id);
+      const publication = await this.publicationRepository.findOne({
+        where: { id },
+        relations: ['user'],
+      });
+
+      if (!publication) {
+        throw new NotFoundException(`Publication with ID ${id} not found`);
+      }
+
+      // Verificar permisos: solo el propietario o admin puede eliminar
+      if (user) {
+        const isAdmin = user.roles.some((role: any) => role.name === 'ADMIN');
+        const isOwner = publication.user.id === user.id;
+        
+        console.log('Debug delete permissions:', {
+          userId: user.id,
+          publicationUserId: publication.user.id,
+          isAdmin,
+          isOwner,
+          userRoles: user.roles
+        });
+        
+        if (!isAdmin && !isOwner) {
+          throw new BadRequestException('You can only delete your own publications');
+        }
+      }
+
       await this.publicationRepository.remove(publication);
     } catch (error) {
       this.handleDBErrors(error);

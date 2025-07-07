@@ -506,13 +506,15 @@ export class UserService {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
-      const [data, total] = await this.usersRepository.findAndCount({
-        where: { employer: { id: employerId } },
-        relations: ['roles', 'employer'],
-        skip,
-        take: limit,
-      });
+      const queryBuilder = this.usersRepository.createQueryBuilder('user')
+        .leftJoinAndSelect('user.roles', 'roles')
+        .leftJoinAndSelect('user.company', 'company')
+        .where('user.employerId = :employerId', { employerId })
+        .orderBy('user.created_at', 'DESC')
+        .skip(skip)
+        .take(limit);
 
+      const [data, total] = await queryBuilder.getManyAndCount();
       const totalPages = Math.ceil(total / limit);
 
       return {
@@ -526,6 +528,32 @@ export class UserService {
           hasPrevPage: page > 1,
         },
       };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async searchUsers(query: string, limit: number = 10, currentUserId: number): Promise<User[]> {
+    try {
+      if (!query || query.trim().length < 2) {
+        return [];
+      }
+
+      const searchQuery = query.trim().toLowerCase();
+      
+      const users = await this.usersRepository.createQueryBuilder('user')
+        .leftJoinAndSelect('user.roles', 'roles')
+        .leftJoinAndSelect('user.company', 'company')
+        .where(
+          '(LOWER(user.name) LIKE :query OR LOWER(user.email) LIKE :query)',
+          { query: `%${searchQuery}%` }
+        )
+        .andWhere('user.id != :currentUserId', { currentUserId }) // Excluir al usuario actual
+        .orderBy('user.name', 'ASC')
+        .limit(limit)
+        .getMany();
+
+      return users;
     } catch (error) {
       this.handleDBErrors(error);
     }

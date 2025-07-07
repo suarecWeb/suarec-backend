@@ -45,7 +45,30 @@ export class MessageService {
       });
 
       await this.messageRepository.save(message);
-      return message;
+      
+      // Cargar el mensaje con las relaciones para retornarlo completo
+      const savedMessage = await this.messageRepository.findOne({
+        where: { id: message.id },
+        relations: ['sender', 'recipient'],
+      });
+      
+      // Debug: Log para verificar que las relaciones están correctas
+      console.log('Mensaje creado:', {
+        id: savedMessage.id,
+        content: savedMessage.content,
+        senderId: savedMessage.sender?.id,
+        senderName: savedMessage.sender?.name,
+        recipientId: savedMessage.recipient?.id,
+        recipientName: savedMessage.recipient?.name,
+      });
+      
+      // Asegurar que el senderId y recipientId estén presentes
+      if (savedMessage) {
+        (savedMessage as any).senderId = savedMessage.sender?.id;
+        (savedMessage as any).recipientId = savedMessage.recipient?.id;
+      }
+      
+      return savedMessage;
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -64,7 +87,20 @@ export class MessageService {
       message.read_at = new Date();
       
       await this.messageRepository.save(message);
-      return message;
+      
+      // Cargar el mensaje con las relaciones para retornarlo completo
+      const savedMessage = await this.messageRepository.findOne({
+        where: { id: message.id },
+        relations: ['sender', 'recipient'],
+      });
+      
+      // Asegurar que el senderId y recipientId estén presentes
+      if (savedMessage) {
+        (savedMessage as any).senderId = savedMessage.sender?.id;
+        (savedMessage as any).recipientId = savedMessage.recipient?.id;
+      }
+      
+      return savedMessage;
     } catch (error) {
       this.handleDBErrors(error);
     }
