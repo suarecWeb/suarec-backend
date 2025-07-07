@@ -9,11 +9,15 @@ import { Roles } from '../../auth/decorators/role.decorator';
 import { Publication } from '../entities/publication.entity';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApplicationService } from '../../application/services/application.service';
 
 @ApiTags('Publications')
 @Controller('publications')
 export class PublicationController {
-  constructor(private readonly publicationService: PublicationService) {}
+  constructor(
+    private readonly publicationService: PublicationService,
+    private readonly applicationService: ApplicationService
+  ) {}
 
   @Post()
   @Roles('ADMIN', 'PERSON', 'BUSINESS')
@@ -55,5 +59,17 @@ export class PublicationController {
   @ApiOperation({ summary: 'Delete a publication' })
   remove(@Param('id') id: string): Promise<void> {
     return this.publicationService.remove(id);
+  }
+
+  @Get(':id/applications')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Get applications for a publication' })
+  @ApiQuery({ type: PaginationDto })
+  async getApplicationsForPublication(
+    @Param('id') id: string,
+    @Query() paginationDto: PaginationDto
+  ) {
+    return this.applicationService.getPublicationApplications(id, paginationDto);
   }
 }

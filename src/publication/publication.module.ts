@@ -5,9 +5,10 @@ import { PublicationController } from '../publication/controllers/publication.co
 import { Publication } from './entities/publication.entity';
 import { User } from '../user/entities/user.entity';
 import { Application } from '../application/entities/application.entity';
+import { ApplicationModule } from '../application/application.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Publication, User, Application])],
+  imports: [TypeOrmModule.forFeature([Publication, User, Application]), ApplicationModule],
   controllers: [PublicationController],
   providers: [PublicationService],
   exports: [PublicationService],

@@ -24,6 +24,9 @@ export class Publication {
   @Column('text', { nullable: false })
   category: string;
 
+  @Column('text', { nullable: false, default: 'SERVICE_OFFER' })
+  publicationType: string; // SERVICE_OFFER, SERVICE_REQUEST, COMPANY_SERVICE_OFFER, COMPANY_JOB_OFFER, INFORMAL_JOB_OFFER
+
   @Column('text', { nullable: true })
   image_url?: string;
 

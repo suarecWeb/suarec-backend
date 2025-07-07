@@ -24,6 +24,11 @@ export class CreatePublicationDto {
   @MaxLength(100)
   category: string;
 
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  publicationType: string;
+
   @IsUrl()
   @IsOptional()
   image_url?: string;

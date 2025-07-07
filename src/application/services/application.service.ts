@@ -259,9 +259,31 @@ export class ApplicationService {
     }
   }
 
-  async update(id: string, updateApplicationDto: UpdateApplicationDto): Promise<Application> {
+  async update(id: string, updateApplicationDto: UpdateApplicationDto, currentUser?: any): Promise<Application> {
     try {
       const application = await this.findOne(id);
+      const publication = application.publication;
+
+      // Validación de permisos
+      if (currentUser) {
+        const roles = currentUser.roles?.map((r: any) => typeof r === 'string' ? r : r.name) || [];
+        const isAdmin = roles.includes('ADMIN');
+        const isBusiness = roles.includes('BUSINESS');
+        const isPerson = roles.includes('PERSON');
+        // Si es PERSON, solo puede actualizar si es dueño de la publicación
+        if (isPerson && !isAdmin && !isBusiness) {
+          if (String(publication.user?.id) !== String(currentUser.id)) {
+            throw new BadRequestException('No tienes permiso para actualizar esta aplicación');
+          }
+        }
+        // Si es BUSINESS, debe ser dueño de la publicación
+        if (isBusiness && !isAdmin) {
+          if (String(publication.user?.id) !== String(currentUser.id)) {
+            throw new BadRequestException('No tienes permiso para actualizar esta aplicación');
+          }
+        }
+        // ADMIN puede todo
+      }
 
       // Solo actualizar campos permitidos
       if (updateApplicationDto.status) {

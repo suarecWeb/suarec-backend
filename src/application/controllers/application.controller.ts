@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Req } from '@nestjs/common';
 import { ApplicationService } from '../services/application.service';
 import { CreateApplicationDto } from '../dto/create-application.dto';
 import { UpdateApplicationDto } from '../dto/update-application.dto';
@@ -52,10 +52,14 @@ export class ApplicationController {
   }
 
   @Patch(':id')
-  @Roles('BUSINESS', 'ADMIN')
-  @ApiOperation({ summary: 'Update application status (business/admin only)' })
-  update(@Param('id') id: string, @Body() updateApplicationDto: UpdateApplicationDto): Promise<Application> {
-    return this.applicationService.update(id, updateApplicationDto);
+  @Roles('PERSON', 'BUSINESS', 'ADMIN')
+  @ApiOperation({ summary: 'Update application status (business/admin/person only)' })
+  update(
+    @Param('id') id: string,
+    @Body() updateApplicationDto: UpdateApplicationDto,
+    @Req() req: any
+  ): Promise<Application> {
+    return this.applicationService.update(id, updateApplicationDto, req.user);
   }
 
   @Delete(':id')
