@@ -13,6 +13,7 @@ import { WsAuthGuard } from '../auth/guard/ws-auth.guard';
 import { MessageService } from './message.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { Message } from './entities/message.entity';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
   cors: {
@@ -27,26 +28,42 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
   private connectedUsers = new Map<string, { userId: number; socket: Socket }>();
 
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly jwtService: JwtService
+  ) {}
 
   async handleConnection(client: Socket) {
     try {
       // Verificar autenticación del usuario
       const token = client.handshake.auth.token;
+      console.log('🔑 Token recibido en WebSocket:', token ? 'Sí' : 'No');
       if (!token) {
+        console.log('Token no proporcionado, desconectando cliente');
         client.disconnect();
         return;
       }
 
-      // Aquí deberías verificar el token JWT
-      // Por simplicidad, asumimos que el userId viene en el token
+      // Verificar el token JWT
       const userId = this.extractUserIdFromToken(token);
+      console.log('👤 UserId extraído:', userId);
       if (!userId) {
+        console.log('Token inválido, desconectando cliente');
         client.disconnect();
         return;
       }
 
-      // Guardar la conexión del usuario
+      // Verificar si el usuario ya está conectado y desconectarlo
+      const existingConnection = Array.from(this.connectedUsers.entries())
+        .find(([_, userData]) => userData.userId === userId);
+      
+      if (existingConnection) {
+        console.log(`Usuario ${userId} ya conectado, manteniendo conexión anterior`);
+        // No desconectar la conexión anterior, solo actualizar la referencia
+        this.connectedUsers.delete(existingConnection[0]);
+      }
+
+      // Guardar la nueva conexión del usuario
       this.connectedUsers.set(client.id, { userId, socket: client });
       
       // Unir al usuario a su sala personal
@@ -60,8 +77,13 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   handleDisconnect(client: Socket) {
-    this.connectedUsers.delete(client.id);
-    console.log(`Cliente desconectado: ${client.id}`);
+    const userData = this.connectedUsers.get(client.id);
+    if (userData) {
+      console.log(`Usuario ${userData.userId} desconectado: ${client.id}`);
+      this.connectedUsers.delete(client.id);
+    } else {
+      console.log(`Cliente desconectado: ${client.id}`);
+    }
   }
 
   @SubscribeMessage('send_message')
@@ -70,15 +92,23 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     @ConnectedSocket() client: Socket
   ) {
     try {
+      console.log('📤 Enviando mensaje:', data);
+      
       // Crear el mensaje en la base de datos
       const message = await this.messageService.create(data);
+      console.log('✅ Mensaje creado:', message);
       
       // Emitir el mensaje al destinatario si está conectado
       const recipientRoom = `user_${data.recipientId}`;
-      this.server.to(recipientRoom).emit('new_message', {
+      const messageData = {
         message,
         conversationId: `${Math.min(data.senderId, data.recipientId)}_${Math.max(data.senderId, data.recipientId)}`
-      });
+      };
+      
+      console.log('📨 Emitiendo mensaje a:', recipientRoom);
+      console.log('📋 Datos del mensaje:', messageData);
+      
+      this.server.to(recipientRoom).emit('new_message', messageData);
 
       // Confirmar al remitente que el mensaje se envió
       client.emit('message_sent', { message });
@@ -95,7 +125,7 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
       });
 
     } catch (error) {
-      console.error('Error enviando mensaje:', error);
+      console.error('❌ Error enviando mensaje:', error);
       client.emit('message_error', { error: 'Error al enviar mensaje' });
     }
   }
@@ -147,11 +177,12 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
   private extractUserIdFromToken(token: string): number | null {
     try {
-      // Aquí deberías implementar la verificación real del JWT
-      // Por ahora, asumimos que el token contiene el userId
-      const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      return decoded.id || null;
+      console.log('🔍 Verificando token con JwtService...');
+      const payload = this.jwtService.verify(token);
+      console.log('✅ Token verificado correctamente, payload:', payload);
+      return payload.id || payload.sub || null;
     } catch (error) {
+      console.error('❌ Error verificando token:', error);
       return null;
     }
   }
