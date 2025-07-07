@@ -7,7 +7,7 @@ import { UpdatePaymentDto } from '../dto/update-payment.dto';
 import { WompiService } from './wompi.service';
 import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
 import { User } from '../../user/entities/user.entity';
-import { WorkContract } from '../../work-contract/entities/work-contract.entity';
+import { Contract } from '../../contract/entities/contract.entity';
 
 @Injectable()
 export class PaymentService {
@@ -17,15 +17,15 @@ export class PaymentService {
     private paymentTransactionRepository: Repository<PaymentTransaction>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(WorkContract)
-    private workContractRepository: Repository<WorkContract>,
+    @InjectRepository(Contract)
+    private contractRepository: Repository<Contract>,
     wompiService: WompiService,
   ) {
     this.wompiService = wompiService;
   }
 
   async createPayment(createPaymentDto: CreatePaymentDto, payerId: number): Promise<PaymentTransaction> {
-    const { work_contract_id, payee_id, ...paymentData } = createPaymentDto;
+    const { contract_id, payee_id, ...paymentData } = createPaymentDto;
 
     // Verify payer exists
     const payer = await this.userRepository.findOne({ where: { id: payerId } });
@@ -40,21 +40,21 @@ export class PaymentService {
     }
 
     // Verify work contract exists
-    const workContract = await this.workContractRepository.findOne({ 
-      where: { id: work_contract_id },
+    const contract = await this.contractRepository.findOne({ 
+      where: { id: contract_id },
       relations: ['client', 'provider']
     });
-    if (!workContract) {
-      throw new NotFoundException(`Work contract with ID ${work_contract_id} not found`);
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${contract_id} not found`);
     }
 
     // Verify payer is the client of the work contract
-    if (workContract.client.id !== payerId) {
+    if (contract.client.id !== payerId) {
       throw new BadRequestException('Only the client can make payments for this contract');
     }
 
     // Verify payee is the provider of the work contract
-    if (workContract.provider.id !== payee_id) {
+    if (contract.provider.id !== payee_id) {
       throw new BadRequestException('Payee must be the provider of the work contract');
     }
 
@@ -63,7 +63,7 @@ export class PaymentService {
       ...paymentData,
       payer,
       payee,
-      work_contract: workContract,
+      contract: contract,
       status: PaymentStatus.PENDING,
       reference: paymentData.reference || `PAY-${Date.now()}`,
     });
@@ -113,14 +113,14 @@ export class PaymentService {
 
   async findAll(): Promise<PaymentTransaction[]> {
     return this.paymentTransactionRepository.find({
-      relations: ['payer', 'payee', 'work_contract'],
+      relations: ['payer', 'payee', 'contract'],
     });
   }
 
   async findOne(id: string): Promise<PaymentTransaction> {
     const paymentTransaction = await this.paymentTransactionRepository.findOne({
       where: { id },
-      relations: ['payer', 'payee', 'work_contract'],
+      relations: ['payer', 'payee', 'contract'],
     });
 
     if (!paymentTransaction) {
@@ -136,15 +136,15 @@ export class PaymentService {
         { payer: { id: userId } },
         { payee: { id: userId } },
       ],
-      relations: ['payer', 'payee', 'work_contract'],
+      relations: ['payer', 'payee', 'contract'],
       order: { created_at: 'DESC' },
     });
   }
 
-  async findByWorkContract(workContractId: string): Promise<PaymentTransaction[]> {
+  async findByContract(contractId: string): Promise<PaymentTransaction[]> {
     return this.paymentTransactionRepository.find({
-      where: { work_contract: { id: workContractId } },
-      relations: ['payer', 'payee', 'work_contract'],
+      where: { contract: { id: contractId } },
+      relations: ['payer', 'payee', 'contract'],
       order: { created_at: 'DESC' },
     });
   }
@@ -165,7 +165,7 @@ export class PaymentService {
       // Find payment transaction by Wompi transaction ID
       const paymentTransaction = await this.paymentTransactionRepository.findOne({
         where: { wompi_transaction_id: data.id },
-        relations: ['work_contract'],
+        relations: ['contract'],
       });
 
       if (!paymentTransaction) {

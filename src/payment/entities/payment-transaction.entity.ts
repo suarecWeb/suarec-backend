@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
-import { WorkContract } from '../../work-contract/entities/work-contract.entity';
+import { Contract } from '../../contract/entities/contract.entity';
 import { PaymentMethod, PaymentStatus, WompiPaymentType } from '../../enums/paymentMethod.enum';
 
 @Entity('payment_transactions')
@@ -70,6 +70,6 @@ export class PaymentTransaction {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   payee: User; // User receiving the payment
 
-  @ManyToOne(() => WorkContract, { onDelete: 'CASCADE' })
-  work_contract: WorkContract; // Associated work contract
+  @ManyToOne(() => Contract, { onDelete: 'CASCADE' })
+  contract: Contract; // Associated work contract
 } 

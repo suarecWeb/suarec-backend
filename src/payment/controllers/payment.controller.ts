@@ -17,7 +17,7 @@ export class PaymentController {
   @ApiOperation({ summary: 'Create a new payment transaction' })
   @ApiResponse({ status: 201, description: 'Payment transaction created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 404, description: 'User or work contract not found' })
+  @ApiResponse({ status: 404, description: 'User or contract not found' })
   @ApiBearerAuth()
   async create(@Body() createPaymentDto: CreatePaymentDto, @Request() req): Promise<PaymentTransaction> {
     return this.paymentService.createPayment(createPaymentDto, req.user.id);
@@ -39,13 +39,13 @@ export class PaymentController {
     return this.paymentService.findByUser(req.user.id);
   }
 
-  @Get('work-contract/:workContractId')
-  @ApiOperation({ summary: 'Get payment transactions for a specific work contract' })
-  @ApiResponse({ status: 200, description: 'List of work contract payment transactions' })
-  @ApiResponse({ status: 404, description: 'Work contract not found' })
+  @Get('contract/:contractId')
+  @ApiOperation({ summary: 'Get payment transactions for a specific contract' })
+  @ApiResponse({ status: 200, description: 'List of contract payment transactions' })
+  @ApiResponse({ status: 404, description: 'Contract not found' })
   @ApiBearerAuth()
-  async findByWorkContract(@Param('workContractId') workContractId: string): Promise<PaymentTransaction[]> {
-    return this.paymentService.findByWorkContract(workContractId);
+  async findByContract(@Param('contractId') contractId: string): Promise<PaymentTransaction[]> {
+    return this.paymentService.findByContract(contractId);
   }
 
   @Get(':id')

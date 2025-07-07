@@ -44,7 +44,7 @@ export class CreatePaymentDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  work_contract_id: string;
+  contract_id: string;
 
   @ApiProperty({
     description: 'ID del usuario que recibe el pago',
