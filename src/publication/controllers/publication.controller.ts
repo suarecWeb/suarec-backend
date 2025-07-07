@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Request } from '@nestjs/common';
 import { PublicationService } from '../services/publication.service';
 import { CreatePublicationDto } from '../dto/create-publication.dto';
 import { UpdatePublicationDto } from '../dto/update-publication.dto';
@@ -45,15 +45,15 @@ export class PublicationController {
   @Roles('ADMIN', 'BUSINESS', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update a publication' })
-  update(@Param('id') id: string, @Body() updatePublicationDto: UpdatePublicationDto): Promise<Publication> {
-    return this.publicationService.update(id, updatePublicationDto);
+  update(@Param('id') id: string, @Body() updatePublicationDto: UpdatePublicationDto, @Request() req): Promise<Publication> {
+    return this.publicationService.update(id, updatePublicationDto, req.user);
   }
 
   @Delete(':id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'BUSINESS', 'PERSON')
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Delete a publication' })
-  remove(@Param('id') id: string): Promise<void> {
-    return this.publicationService.remove(id);
+  remove(@Param('id') id: string, @Request() req): Promise<void> {
+    return this.publicationService.remove(id, req.user);
   }
 }
