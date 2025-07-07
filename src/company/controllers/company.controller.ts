@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Request } from '@nestjs/common';
 import { CompanyService } from '../services/company.service';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
@@ -13,13 +13,13 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
-import { Request } from 'express';
 import { Req } from '@nestjs/common';
+import { UpdateCheckInTimeDto, AttendanceStatsQueryDto } from '../dto/in-time.dto';
 
 @ApiTags('Companies')
 @Controller('companies')
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService) {}
+  constructor(private readonly companyService: CompanyService) { }
 
   @Post()
   @Public()
@@ -46,7 +46,7 @@ export class CompanyController {
   findOne(@Param('id') id: string): Promise<Company> {
     return this.companyService.findOne(id);
   }
-    
+
   @Patch(':id')
   @Roles('ADMIN')
   @UseGuards(AuthGuard, RolesGuard)
@@ -64,7 +64,7 @@ export class CompanyController {
   }
 
   // Nuevos endpoints para gestionar empleados
-  
+
   @Get(':id/employees')
   @Roles('ADMIN', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
@@ -136,7 +136,48 @@ export class CompanyController {
     @Body() updateLocationDto: UpdateCompanyLocationDto,
     @Req() req: Request
   ) {
-    console.log('Entrando a updateLocation, usuario:', req.user);
     return this.companyService.updateLocation(id, updateLocationDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('me/checkin-time')
+  async getCompanyCheckInTime(@Request() req) {
+    const user = req.user;
+    const company = await this.companyService.findByUserId(user.id);
+    if (!company) {
+      throw new Error('Usuario no tiene empresa asociada');
+    }
+    return {
+      checkInTime: company.checkInTime || '07:00',
+      companyName: company.name,
+      companyId: company.id
+    };
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/checkin-time')
+  async updateCompanyCheckInTime(@Request() req, @Body() updateCheckInTimeDto: UpdateCheckInTimeDto) {
+    const user = req.user;
+    const company = await this.companyService.findByUserId(user.id);
+    if (!company) {
+      throw new Error('Usuario no tiene empresa asociada');
+    }
+
+    return this.companyService.updateCheckInTime(company.id, updateCheckInTimeDto.checkInTime);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('me/attendance-stats')
+  async getCompanyAttendanceStats(@Request() req, @Query() query: AttendanceStatsQueryDto) {
+    const user = req.user;
+    const company = await this.companyService.findByUserId(user.id);
+    if (!company) {
+      throw new Error('Usuario no tiene empresa asociada');
+    }
+
+    const startDate = query.startDate ? new Date(query.startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 días atrás
+    const endDate = query.endDate ? new Date(query.endDate) : new Date();
+
+    return this.companyService.getCompanyAttendanceStats(company.id, startDate, endDate);
   }
 }
