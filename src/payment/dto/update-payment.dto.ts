@@ -37,6 +37,21 @@ export class UpdatePaymentDto {
   wompi_payment_link?: string;
 
   @ApiProperty({
+    description: 'ID del Payment Link de Wompi',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  wompi_payment_link_id?: string;
+
+  @ApiProperty({
+    description: 'Respuesta completa de Wompi',
+    required: false,
+  })
+  @IsOptional()
+  wompi_response?: any;
+
+  @ApiProperty({
     description: 'Mensaje de error',
     required: false,
   })

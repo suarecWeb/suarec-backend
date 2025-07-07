@@ -69,6 +69,17 @@ export class WompiService {
     }
   }
 
+  // Add email cleaning method
+  private cleanEmailForPayment(email: string): string {
+    if (!email || typeof email !== 'string') {
+      return email;
+    }
+    // Remove everything from + until @ (but not including @)
+    const cleanedEmail = email.replace(/\+[^@]*(?=@)/g, '');
+    this.logger.log(`Email cleaned: ${email} -> ${cleanedEmail}`);
+    return cleanedEmail;
+  }
+
   async createTransaction(
     amount: number,
     currency: string,
@@ -81,20 +92,40 @@ export class WompiService {
     accept_personal_auth?: string
   ): Promise<WompiTransactionResponse> {
     try {
-      if (!this.publicKey) {
-        throw new Error('Wompi public key not configured');
+      if (!this.privateKey) {
+        throw new Error('Wompi private key not configured');
       }
+
+      // Validate required fields
+      if (!customerEmail) {
+        throw new Error('Customer email is required');
+      }
+
+      if (!acceptance_token) {
+        throw new Error('Acceptance token is required');
+      }
+
+      if (!accept_personal_auth) {
+        throw new Error('Personal data authorization token is required');
+      }
+
+      // Clean the email to remove + aliases
+      const cleanedEmail = this.cleanEmailForPayment(customerEmail);
 
       const requestData: any = {
         amount_in_cents: Math.round(amount * 100), // Convert to cents
         currency: currency.toUpperCase(),
         reference,
         public_key: this.publicKey,
-        redirect_url: redirectUrl,
-        customer_email: customerEmail,
+        customer_email: cleanedEmail, // Use cleaned email
+        acceptance_token: acceptance_token,
+        accept_personal_auth: accept_personal_auth,
       };
-      if (acceptance_token) requestData.acceptance_token = acceptance_token;
-      if (accept_personal_auth) requestData.accept_personal_auth = accept_personal_auth;
+
+      // Add redirect URL if provided
+      if (redirectUrl) {
+        requestData.redirect_url = redirectUrl;
+      }
 
       // Add payment method if specified
       if (paymentType) {
@@ -120,10 +151,17 @@ export class WompiService {
         }
       );
 
-      this.logger.log(`Wompi transaction created: ${response.data.data.id}`);
+      this.logger.log(`Wompi transaction created successfully: ${response.data.data.id}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`Error creating Wompi transaction: ${error.message}`, error.stack);
+      this.logger.error(`Error creating Wompi transaction: ${error.message}`);
+      
+      // Log the response for debugging
+      if (error.response) {
+        this.logger.error(`Wompi API Error Status: ${error.response.status}`);
+        this.logger.error(`Wompi API Error Response: ${JSON.stringify(error.response.data)}`);
+      }
+      
       throw new Error(`Failed to create Wompi transaction: ${error.message}`);
     }
   }
@@ -153,27 +191,33 @@ export class WompiService {
   async verifyWebhookSignature(eventBody: any): Promise<boolean> {
     const secret = process.env.WOMPI_EVENTS_SECRET;
     if (!secret) throw new Error('WOMPI_EVENTS_SECRET is not set');
-
+  
     const { signature, timestamp, data } = eventBody;
     if (!signature || !signature.properties || !signature.checksum) return false;
-
+  
     // 1. Concatenar los valores de las propiedades en orden
     let concat = '';
     for (const prop of signature.properties) {
       // Soporta propiedades anidadas tipo "transaction.id"
       const value = prop.split('.').reduce((obj, key) => obj && obj[key], data);
       concat += value;
+      console.log(`Prop: ${prop}, Value: ${value}`);
     }
-
+  
     // 2. Concatenar el timestamp
     concat += timestamp;
-
+    console.log('Timestamp:', timestamp);
+  
     // 3. Concatenar el secreto
     concat += secret;
-
+    console.log('Secret:', secret);
+  
     // 4. Calcular el hash SHA256
     const calculatedChecksum = crypto.createHash('sha256').update(concat).digest('hex').toUpperCase();
-
+    console.log('Concatenated string:', concat);
+    console.log('Calculated checksum:', calculatedChecksum);
+    console.log('Received checksum:', signature.checksum);
+  
     // 5. Comparar con el checksum recibido
     return calculatedChecksum === signature.checksum;
   }
@@ -201,5 +245,41 @@ export class WompiService {
 
   isConfigured(): boolean {
     return !!(this.publicKey && this.privateKey);
+  }
+
+  async createPaymentLink({
+    name,
+    description,
+    amount,
+    currency,
+    redirect_url,
+    single_use = false,
+    collect_shipping = false,
+  }: {
+    name: string;
+    description: string;
+    amount: number;
+    currency: string;
+    redirect_url: string;
+    single_use?: boolean;
+    collect_shipping?: boolean;
+  }) {
+    const url = `${this.baseUrl}/payment_links`;
+    const payload: any = {
+      name,
+      description,
+      single_use,
+      collect_shipping,
+      currency,
+      amount_in_cents: Math.round(amount * 100),
+      redirect_url,
+    };
+    const response = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${this.privateKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data.data;
   }
 } 

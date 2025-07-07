@@ -45,6 +45,9 @@ export class PaymentTransaction {
   @Column('text', { nullable: true })
   wompi_payment_link?: string;
 
+  @Column('text', { nullable: true })
+  wompi_payment_link_id?: string;
+
   @Column('json', { nullable: true })
   wompi_response?: any; // Store full Wompi response
 
