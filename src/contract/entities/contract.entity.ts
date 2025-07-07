@@ -29,10 +29,28 @@ export class Contract {
   initialPrice: number; // Precio inicial de la publicación
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  totalPrice: number; // Precio total calculado
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
   currentPrice: number; // Precio actual en la negociación
 
   @Column('text', { nullable: false })
   priceUnit: string; // 'hour', 'project', 'monthly', etc.
+
+  @Column('varchar', { length: 50, nullable: true })
+  paymentMethod?: string; // Método de pago seleccionado
+
+  @Column('text', { nullable: true })
+  serviceAddress?: string; // Dirección donde se prestará el servicio
+
+  @Column('varchar', { length: 100, nullable: true })
+  propertyType?: string; // Tipo de propiedad
+
+  @Column('varchar', { length: 100, nullable: true })
+  neighborhood?: string; // Barrio o zona
+
+  @Column('text', { nullable: true })
+  locationDescription?: string; // Descripción adicional de la ubicación
 
   @Column({
     type: 'enum',
@@ -91,4 +109,4 @@ export class ContractBid {
 
   @CreateDateColumn()
   createdAt: Date;
-} 
+}

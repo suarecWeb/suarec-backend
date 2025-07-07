@@ -12,12 +12,13 @@ export class AttendanceController {
   @Post('register')
   @Roles('ADMIN', 'BUSINESS')
   async registerAttendance(
-    @Body() data: { employeeId: number; checkInTime: string; date: Date },
+    @Body() data: { employeeId: number; checkInTime: string; date: Date, isAbsent },
   ) {
     return this.attendanceService.registerAttendance(
       data.employeeId,
       data.checkInTime,
       data.date,
+      data.isAbsent,
     );
   }
 

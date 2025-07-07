@@ -46,6 +46,9 @@ export class Company {
     @Column('text', { nullable: true })
     country: string;
 
+    @Column('time', { nullable: true, default: '07:00' })
+    checkInTime: string;
+
     // Relación con el usuario administrador (para login)
     @OneToOne(() => User, (user) => user.company)
     user: User;

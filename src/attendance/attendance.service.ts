@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Attendance } from './entities/attendance.entity';
 import { User } from '../user/entities/user.entity';
+import { Company } from '../company/entities/company.entity';
 
 @Injectable()
 export class AttendanceService {
@@ -11,7 +12,33 @@ export class AttendanceService {
     private attendanceRepository: Repository<Attendance>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Company)
+    private companyRepository: Repository<Company>,
   ) {}
+
+  private async calculateIsLate(employeeId: number, checkInTime: string): Promise<boolean> {
+    const employee = await this.userRepository.findOne({ 
+      where: { id: employeeId }, 
+      relations: ['employer'] 
+    });
+    
+    if (!employee || !employee.employer) {
+      // Si no hay empleador, usar la hora por defecto (9:00 AM)
+      const [hours, minutes] = checkInTime.split(':').map(Number);
+      return hours > 9 || (hours === 9 && minutes > 0);
+    }
+
+    // Obtener la hora límite de la empresa
+    const companyCheckInTime = employee.employer.checkInTime || '07:00';
+    const [companyHours, companyMinutes] = companyCheckInTime.split(':').map(Number);
+    const [actualHours, actualMinutes] = checkInTime.split(':').map(Number);
+    
+    // Convertir a minutos para comparar más fácilmente
+    const companyTotalMinutes = companyHours * 60 + companyMinutes;
+    const actualTotalMinutes = actualHours * 60 + actualMinutes;
+    
+    return actualTotalMinutes > companyTotalMinutes;
+  }
 
   async registerAttendance(
     employeeId: number,
@@ -28,12 +55,11 @@ export class AttendanceService {
     attendance.employee = employee;
     attendance.date = date;
     attendance.checkInTime = checkInTime;
-    attendance.isAbsent = isAbsent; // <--- ¡AQUÍ!
+    attendance.isAbsent = isAbsent;
   
     // Solo calcular isLate si no es ausencia
     if (!isAbsent) {
-      const [hours, minutes] = checkInTime.split(':').map(Number);
-      attendance.isLate = hours > 9 || (hours === 9 && minutes > 0);
+      attendance.isLate = await this.calculateIsLate(employeeId, checkInTime);
     } else {
       attendance.isLate = false;
     }
@@ -98,16 +124,20 @@ export class AttendanceService {
   }
 
   async updateAttendance(id: string, data: Partial<Attendance>): Promise<Attendance> {
-    const attendance = await this.attendanceRepository.findOne({ where: { id } });
+    const attendance = await this.attendanceRepository.findOne({ 
+      where: { id }, 
+      relations: ['employee'] 
+    });
     if (!attendance) {
       throw new Error('Attendance record not found');
     }
     Object.assign(attendance, data);
+    
     // Si se actualiza checkInTime, recalcular isLate
-    if (data.checkInTime) {
-      const [hours, minutes] = data.checkInTime.split(':').map(Number);
-      attendance.isLate = hours > 9 || (hours === 9 && minutes > 0);
+    if (data.checkInTime && !attendance.isAbsent) {
+      attendance.isLate = await this.calculateIsLate(attendance.employee.id, data.checkInTime);
     }
+    
     return this.attendanceRepository.save(attendance);
   }
 

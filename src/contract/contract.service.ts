@@ -22,7 +22,21 @@ export class ContractService {
   ) {}
 
   async createContract(createContractDto: CreateContractDto): Promise<Contract> {
-    const { publicationId, clientId, initialPrice, priceUnit, clientMessage } = createContractDto;
+    const { 
+      publicationId, 
+      clientId, 
+      initialPrice, 
+      totalPrice, 
+      priceUnit, 
+      clientMessage,
+      requestedDate,
+      requestedTime,
+      paymentMethod,
+      serviceAddress,
+      propertyType,
+      neighborhood,
+      locationDescription
+    } = createContractDto;
 
     // Verificar que la publicación existe
     const publication = await this.publicationRepository.findOne({
@@ -58,9 +72,17 @@ export class ContractService {
       client,
       provider,
       initialPrice,
+      totalPrice,
       currentPrice: initialPrice,
       priceUnit,
       clientMessage,
+      requestedDate,
+      requestedTime,
+      paymentMethod,
+      serviceAddress,
+      propertyType,
+      neighborhood,
+      locationDescription,
       status: ContractStatus.PENDING
     });
 

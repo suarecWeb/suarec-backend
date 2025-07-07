@@ -41,6 +41,19 @@ export class UserController {
     return this.userService.findAll(paginationDto);
   }
 
+  @Get('search')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Search users by name or email' })
+  @ApiQuery({ name: 'q', description: 'Search query (name or email)', required: true })
+  @ApiQuery({ name: 'limit', description: 'Maximum number of results', required: false })
+  searchUsers(
+    @Query('q') query: string,
+    @Query('limit') limit: string = '10',
+    @Request() req
+  ): Promise<User[]> {
+    return this.userService.searchUsers(query, +limit, req.user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id' })
   findOne(@Param('id') id: number, @Req() req: ExpressRequest) {
