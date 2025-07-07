@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/
 import { User } from '../../user/entities/user.entity';
 import { Req } from '@nestjs/common';
 import { UpdateCheckInTimeDto, AttendanceStatsQueryDto } from '../dto/in-time.dto';
+import { AddEmployeeDto, RemoveEmployeeDto } from '../dto/employee-management.dto';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -86,22 +87,24 @@ export class CompanyController {
   @ApiParam({ name: 'userId', description: 'User ID to add as employee' })
   addEmployee(
     @Param('id') id: string,
-    @Param('userId') userId: string
+    @Param('userId') userId: string,
+    @Body() addEmployeeDto?: AddEmployeeDto
   ): Promise<Company> {
-    return this.companyService.addEmployee(id, +userId);
+    return this.companyService.addEmployee(id, +userId, addEmployeeDto);
   }
 
   @Post(':id/employees-email/:userId')
   @Roles('ADMIN', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Add an employee to a company' })
+  @ApiOperation({ summary: 'Add an employee to a company by email' })
   @ApiParam({ name: 'email', description: 'Company Email' })
   @ApiParam({ name: 'userId', description: 'User ID to add as employee' })
   addEmployeeEmail(
     @Param('email') email: string,
-    @Param('userId') userId: string
+    @Param('userId') userId: string,
+    @Body() addEmployeeDto?: AddEmployeeDto
   ): Promise<Company> {
-    return this.companyService.addEmployeeEmail(email, +userId);
+    return this.companyService.addEmployeeEmail(email, +userId, addEmployeeDto);
   }
 
   @Delete(':id/employees/:userId')
@@ -112,9 +115,10 @@ export class CompanyController {
   @ApiParam({ name: 'userId', description: 'User ID to remove as employee' })
   removeEmployee(
     @Param('id') id: string,
-    @Param('userId') userId: string
+    @Param('userId') userId: string,
+    @Body() removeEmployeeDto?: RemoveEmployeeDto
   ): Promise<Company> {
-    return this.companyService.removeEmployee(id, +userId);
+    return this.companyService.removeEmployee(id, +userId, removeEmployeeDto);
   }
 
   @Get(':id/location')

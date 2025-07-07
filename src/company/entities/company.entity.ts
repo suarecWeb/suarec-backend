@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "../../user/entities/user.entity";
 import { CompanyGallery } from "./company-gallery.entity";
+import { CompanyHistory } from "./company-history.entity";
 
 @Entity()
 export class Company {
@@ -60,4 +61,8 @@ export class Company {
     // Relación con la galería de fotos de la empresa
     @OneToMany(() => CompanyGallery, (gallery) => gallery.company, { cascade: true })
     gallery: CompanyGallery[];
+
+    // Relación con el historial de empleados
+    @OneToMany(() => CompanyHistory, (history) => history.company)
+    companyHistory: CompanyHistory[];
 }
