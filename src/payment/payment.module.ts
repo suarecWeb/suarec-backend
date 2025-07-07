@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentController } from './controllers/payment.controller';
 import { WebhookController } from './controllers/webhook.controller';
-import { WompiWebhookController } from './controllers/wompi-webhook.controller';
 import { PaymentService } from './services/payment.service';
 import { WompiService } from './services/wompi.service';
 import { PaymentTransaction } from './entities/payment-transaction.entity';
@@ -13,7 +12,7 @@ import { Contract } from '../contract/entities/contract.entity';
   imports: [
     TypeOrmModule.forFeature([PaymentTransaction, User, Contract]),
   ],
-  controllers: [PaymentController, WebhookController, WompiWebhookController],
+  controllers: [PaymentController, WebhookController],
   providers: [PaymentService, WompiService],
   exports: [PaymentService, WompiService],
 })
