@@ -1,4 +1,4 @@
-import { IsDate, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, IsDecimal } from 'class-validator';
+import { IsDate, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, IsDecimal, IsArray } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class CreatePublicationDto {
@@ -44,4 +44,9 @@ export class CreatePublicationDto {
   @IsNumber()
   @IsNotEmpty()
   userId: number;
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  gallery_images?: string[];
 }

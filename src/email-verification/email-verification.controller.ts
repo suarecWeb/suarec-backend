@@ -106,4 +106,54 @@ export class EmailVerificationController {
       message: user.email_verified ? 'Email is verified' : 'Email is not verified' 
     };
   }
+
+  @Public()
+  @Post('send-application-status')
+  @ApiOperation({ summary: 'Send application status email to candidate' })
+  @ApiResponse({ status: 200, description: 'Application status email sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', description: 'Candidate email address' },
+        candidateName: { type: 'string', description: 'Candidate full name' },
+        companyName: { type: 'string', description: 'Company name' },
+        jobTitle: { type: 'string', description: 'Job position title' },
+        status: { 
+          type: 'string', 
+          enum: ['INTERVIEW', 'ACCEPTED', 'REJECTED'],
+          description: 'Application status' 
+        },
+        customMessage: { 
+          type: 'string', 
+          description: 'Optional custom message from company'
+        },
+        customDescription: { 
+          type: 'string', 
+          description: 'Optional custom description'
+        }
+      },
+      required: ['email', 'candidateName', 'companyName', 'jobTitle', 'status']
+    }
+  })
+  async sendApplicationStatusEmail(
+    @Body('email') email: string,
+    @Body('candidateName') candidateName: string,
+    @Body('companyName') companyName: string,
+    @Body('jobTitle') jobTitle: string,
+    @Body('status') status: 'INTERVIEW' | 'ACCEPTED' | 'REJECTED',
+    @Body('customMessage') customMessage?: string,
+    @Body('customDescription') customDescription?: string
+  ): Promise<{ message: string }> {
+    await this.emailVerificationService.sendApplicationStatusEmailWithBrevo(
+      email,
+      candidateName,
+      companyName,
+      jobTitle,
+      status,
+      customMessage,
+      customDescription
+    );
+    return { message: 'Application status email sent successfully' };
+  }
 }

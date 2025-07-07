@@ -79,6 +79,10 @@ export class UpdateUserDto {
 
   @IsString()
   @IsOptional()
+  profile_image?: string;
+
+  @IsString()
+  @IsOptional()
   genre?: string;
 
   @IsString()

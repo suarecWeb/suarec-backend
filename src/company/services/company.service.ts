@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Company } from '../entities/company.entity';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
 import { UpdateCompanyLocationDto } from '../dto/update-company-location.dto';
 import { User } from '../../user/entities/user.entity';
+import { Attendance } from '../../attendance/entities/attendance.entity';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
@@ -18,7 +19,9 @@ export class CompanyService {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Attendance)
+    private readonly attendanceRepository: Repository<Attendance>
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
@@ -260,6 +263,122 @@ export class CompanyService {
       city: company.city,
       country: company.country
     };
+  }
+
+  async findByUserId(userId: number): Promise<Company | null> {
+    try {
+      const company = await this.companyRepository.findOne({
+        where: { user: { id: userId } },
+        relations: ['user'],
+      });
+
+      return company;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async updateCheckInTime(companyId: string, checkInTime: string): Promise<Company> {
+    try {
+      const company = await this.companyRepository.findOne({ where: { id: companyId } });
+      if (!company) {
+        throw new NotFoundException('Company not found');
+      }
+
+      company.checkInTime = checkInTime;
+      await this.companyRepository.save(company);
+
+      return company;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async getCompanyAttendanceStats(companyId: string, startDate: Date, endDate: Date): Promise<{
+    companyCheckInTime: string;
+    totalEmployees: number;
+    totalAttendanceRecords: number;
+    lateArrivals: number;
+    onTimeArrivals: number;
+    latePercentage: number;
+    employeeStats: Array<{
+      employeeId: number;
+      employeeName: string;
+      totalDays: number;
+      lateDays: number;
+      onTimeDays: number;
+      latePercentage: number;
+    }>;
+  }> {
+    try {
+      const company = await this.companyRepository.findOne({ 
+        where: { id: companyId },
+        relations: ['employees']
+      });
+
+      if (!company) {
+        throw new NotFoundException('Company not found');
+      }
+
+      // Obtener todas las asistencias de los empleados de la empresa en el rango de fechas
+      const attendances = await this.attendanceRepository.find({
+        where: {
+          employee: { employer: { id: companyId } },
+          date: Between(startDate, endDate),
+          isAbsent: false // Solo contar días trabajados
+        },
+        relations: ['employee']
+      });
+
+      const totalAttendanceRecords = attendances.length;
+      const lateArrivals = attendances.filter(a => a.isLate).length;
+      const onTimeArrivals = totalAttendanceRecords - lateArrivals;
+      const latePercentage = totalAttendanceRecords > 0 ? (lateArrivals / totalAttendanceRecords) * 100 : 0;
+
+      // Estadísticas por empleado
+      const employeeStatsMap = new Map();
+      
+      attendances.forEach(attendance => {
+        const employeeId = attendance.employee.id;
+        const employeeName = attendance.employee.name;
+        
+        if (!employeeStatsMap.has(employeeId)) {
+          employeeStatsMap.set(employeeId, {
+            employeeId,
+            employeeName,
+            totalDays: 0,
+            lateDays: 0,
+            onTimeDays: 0,
+            latePercentage: 0
+          });
+        }
+        
+        const stats = employeeStatsMap.get(employeeId);
+        stats.totalDays++;
+        
+        if (attendance.isLate) {
+          stats.lateDays++;
+        } else {
+          stats.onTimeDays++;
+        }
+        
+        stats.latePercentage = stats.totalDays > 0 ? (stats.lateDays / stats.totalDays) * 100 : 0;
+      });
+
+      const employeeStats = Array.from(employeeStatsMap.values());
+
+      return {
+        companyCheckInTime: company.checkInTime || '07:00',
+        totalEmployees: company.employees.length,
+        totalAttendanceRecords,
+        lateArrivals,
+        onTimeArrivals,
+        latePercentage: Math.round(latePercentage * 100) / 100,
+        employeeStats
+      };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
   }
 
   private handleDBErrors(error: any) {
