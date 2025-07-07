@@ -76,14 +76,16 @@ export class WompiService {
     customerEmail?: string,
     redirectUrl?: string,
     paymentType?: WompiPaymentType,
-    installments?: number
+    installments?: number,
+    acceptance_token?: string,
+    accept_personal_auth?: string
   ): Promise<WompiTransactionResponse> {
     try {
       if (!this.publicKey) {
         throw new Error('Wompi public key not configured');
       }
 
-      const requestData: WompiTransactionRequest = {
+      const requestData: any = {
         amount_in_cents: Math.round(amount * 100), // Convert to cents
         currency: currency.toUpperCase(),
         reference,
@@ -91,6 +93,8 @@ export class WompiService {
         redirect_url: redirectUrl,
         customer_email: customerEmail,
       };
+      if (acceptance_token) requestData.acceptance_token = acceptance_token;
+      if (accept_personal_auth) requestData.accept_personal_auth = accept_personal_auth;
 
       // Add payment method if specified
       if (paymentType) {

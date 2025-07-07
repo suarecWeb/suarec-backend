@@ -25,7 +25,7 @@ export class PaymentService {
   }
 
   async createPayment(createPaymentDto: CreatePaymentDto, payerId: number): Promise<PaymentTransaction> {
-    const { contract_id, payee_id, ...paymentData } = createPaymentDto;
+    const { contract_id, payee_id, acceptance_token, accept_personal_auth, ...paymentData } = createPaymentDto;
 
     // Verify payer exists
     const payer = await this.userRepository.findOne({ where: { id: payerId } });
@@ -72,13 +72,13 @@ export class PaymentService {
 
     // If payment method is Wompi, create Wompi transaction
     if (paymentData.payment_method === PaymentMethod.Wompi) {
-      await this.processWompiPayment(paymentTransaction);
+      await this.processWompiPayment(paymentTransaction, acceptance_token, accept_personal_auth);
     }
 
     return this.findOne(paymentTransaction.id);
   }
 
-  private async processWompiPayment(paymentTransaction: PaymentTransaction): Promise<void> {
+  private async processWompiPayment(paymentTransaction: PaymentTransaction, acceptance_token?: string, accept_personal_auth?: string): Promise<void> {
     try {
       if (!this.wompiService.isConfigured()) {
         throw new Error('Wompi is not configured');
@@ -91,6 +91,9 @@ export class PaymentService {
         paymentTransaction.payer.email,
         `${process.env.FRONTEND_URL}/payment/success?transaction_id=${paymentTransaction.id}`,
         paymentTransaction.wompi_payment_type,
+        undefined, // installments
+        acceptance_token,
+        accept_personal_auth,
       );
 
       // Update payment transaction with Wompi data

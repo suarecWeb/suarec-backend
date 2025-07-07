@@ -71,4 +71,20 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   reference?: string;
+
+  @ApiProperty({
+    description: 'Token de aceptación de términos y condiciones de Wompi',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  acceptance_token?: string;
+
+  @ApiProperty({
+    description: 'Token de autorización para tratamiento de datos personales de Wompi',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  accept_personal_auth?: string;
 } 
