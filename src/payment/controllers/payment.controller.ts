@@ -1,12 +1,14 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, UnauthorizedException, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { PaymentService } from '../services/payment.service';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentDto } from '../dto/update-payment.dto';
+import { PaymentHistoryDto } from '../dto/payment-history.dto';
 import { PaymentTransaction } from '../entities/payment-transaction.entity';
 import { AuthGuard } from '../../auth/guard/auth.guard';
 import { Public } from '../../auth/decorators/public.decorator';
 import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -38,6 +40,18 @@ export class PaymentController {
   @ApiBearerAuth()
   async findMyPayments(@Request() req): Promise<PaymentTransaction[]> {
     return this.paymentService.findByUser(req.user.id);
+  }
+
+  @Get('my-history')
+  @ApiOperation({ summary: 'Get paginated payment history for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Paginated payment history with filters' })
+  @ApiQuery({ type: PaymentHistoryDto })
+  @ApiBearerAuth()
+  async getMyPaymentHistory(
+    @Request() req,
+    @Query() historyDto: PaymentHistoryDto
+  ): Promise<PaginationResponse<PaymentTransaction>> {
+    return this.paymentService.getPaymentHistory(req.user.id, historyDto);
   }
 
   @Get('contract/:contractId')
@@ -224,4 +238,4 @@ export class PaymentController {
       return { success: false, error: error.message };
     }
   }
-} 
+}

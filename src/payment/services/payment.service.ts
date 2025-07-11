@@ -1,13 +1,15 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { PaymentTransaction } from '../entities/payment-transaction.entity';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentDto } from '../dto/update-payment.dto';
+import { PaymentHistoryDto, PaymentHistoryType } from '../dto/payment-history.dto';
 import { WompiService } from './wompi.service';
 import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
 import { User } from '../../user/entities/user.entity';
 import { Contract } from '../../contract/entities/contract.entity';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class PaymentService {
@@ -326,4 +328,88 @@ export class PaymentService {
     const paymentTransaction = await this.findOne(id);
     await this.paymentTransactionRepository.remove(paymentTransaction);
   }
-} 
+
+  async getPaymentHistory(
+    userId: number, 
+    historyDto: PaymentHistoryDto
+  ): Promise<PaginationResponse<PaymentTransaction>> {
+    const { page, limit, type, status, startDate, endDate } = historyDto;
+    const skip = (page - 1) * limit;
+
+    // Construir query base con QueryBuilder para mejor control
+    const queryBuilder = this.paymentTransactionRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.payer', 'payer')
+      .leftJoinAndSelect('payment.payee', 'payee')
+      .leftJoinAndSelect('payment.contract', 'contract')
+      .leftJoinAndSelect('contract.publication', 'publication');
+
+    // Aplicar filtros por tipo de historial
+    if (type === PaymentHistoryType.SENT) {
+      // Solo pagos enviados (usuario como payer)
+      queryBuilder.where('payer.id = :userId', { userId });
+    } else if (type === PaymentHistoryType.RECEIVED) {
+      // Solo pagos recibidos (usuario como payee)
+      queryBuilder.where('payee.id = :userId', { userId });
+    } else {
+      // Todos los pagos (enviados y recibidos)
+      queryBuilder.where('(payer.id = :userId OR payee.id = :userId)', { userId });
+    }
+
+    // Filtro por estado
+    if (status) {
+      queryBuilder.andWhere('payment.status = :status', { status });
+    }
+
+    // Filtros por fecha
+    if (startDate && endDate) {
+      queryBuilder.andWhere('payment.created_at BETWEEN :startDate AND :endDate', {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate + ' 23:59:59') // Incluir todo el día
+      });
+    } else if (startDate) {
+      queryBuilder.andWhere('payment.created_at >= :startDate', {
+        startDate: new Date(startDate)
+      });
+    } else if (endDate) {
+      queryBuilder.andWhere('payment.created_at <= :endDate', {
+        endDate: new Date(endDate + ' 23:59:59')
+      });
+    }
+
+    // Ordenar por fecha más reciente
+    queryBuilder.orderBy('payment.created_at', 'DESC');
+
+    // Ejecutar queries de datos y conteo en paralelo
+    const [payments, total] = await Promise.all([
+      queryBuilder.skip(skip).take(limit).getMany(),
+      queryBuilder.getCount()
+    ]);
+
+    // Enriquecer los datos con información adicional
+    const enrichedPayments = payments.map(payment => ({
+      ...payment,
+      // Agregar flag para identificar si es enviado o recibido
+      isOutgoing: payment.payer.id === userId,
+      isIncoming: payment.payee.id === userId,
+      // Información del contrato
+      contractTitle: payment.contract?.publication?.title || 'Sin título',
+      // Información del otro usuario
+      otherUser: payment.payer.id === userId ? payment.payee : payment.payer
+    }));
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: enrichedPayments as any,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
+  }
+}
