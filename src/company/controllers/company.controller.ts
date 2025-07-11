@@ -9,7 +9,7 @@ import { LocationGuard } from '../../auth/guard/location.guard';
 import { Roles } from '../../auth/decorators/role.decorator';
 import { Company } from '../entities/company.entity';
 import { Public } from '../../auth/decorators/public.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationDto, EmployeePaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
@@ -71,10 +71,10 @@ export class CompanyController {
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get all employees of a company' })
   @ApiParam({ name: 'id', description: 'Company ID' })
-  @ApiQuery({ type: PaginationDto })
+  @ApiQuery({ type: EmployeePaginationDto })
   getEmployees(
     @Param('id') id: string,
-    @Query() paginationDto: PaginationDto
+    @Query() paginationDto: EmployeePaginationDto
   ): Promise<PaginationResponse<User>> {
     return this.companyService.getEmployees(id, paginationDto);
   }
