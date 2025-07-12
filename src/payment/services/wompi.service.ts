@@ -189,37 +189,65 @@ export class WompiService {
   }
 
   async verifyWebhookSignature(eventBody: any): Promise<boolean> {
-    const secret = process.env.WOMPI_EVENTS_SECRET;
-    if (!secret) throw new Error('WOMPI_EVENTS_SECRET is not set');
-  
-    const { signature, timestamp, data } = eventBody;
-    if (!signature || !signature.properties || !signature.checksum) return false;
-  
-    // 1. Concatenar los valores de las propiedades en orden
-    let concat = '';
-    for (const prop of signature.properties) {
-      // Soporta propiedades anidadas tipo "transaction.id"
-      const value = prop.split('.').reduce((obj, key) => obj && obj[key], data);
-      concat += value;
-      console.log(`Prop: ${prop}, Value: ${value}`);
+    try {
+      const secret = process.env.WOMPI_EVENTS_SECRET;
+      if (!secret) {
+        console.error('WOMPI_EVENTS_SECRET is not set');
+        return false;
+      }
+
+      console.log('🔍 Verificando firma del webhook...');
+      console.log('Event body keys:', Object.keys(eventBody));
+      
+      // Verificar estructura del webhook
+      const { signature, timestamp, data } = eventBody;
+      
+      if (!signature || !timestamp || !data) {
+        console.error('❌ Webhook structure invalid - missing signature, timestamp, or data');
+        return false;
+      }
+      
+      if (!signature.properties || !signature.checksum) {
+        console.error('❌ Signature structure invalid - missing properties or checksum');
+        return false;
+      }
+
+      console.log('Signature properties:', signature.properties);
+      console.log('Timestamp:', timestamp);
+      console.log('Received checksum:', signature.checksum);
+
+      // 1. Concatenar los valores de las propiedades en orden
+      let concat = '';
+      for (const prop of signature.properties) {
+        // Soporta propiedades anidadas tipo "transaction.id"
+        const value = prop.split('.').reduce((obj, key) => obj && obj[key], data);
+        if (value !== undefined && value !== null) {
+          concat += value;
+        }
+        console.log(`Property: ${prop}, Value: ${value}`);
+      }
+
+      // 2. Concatenar el timestamp
+      concat += timestamp;
+
+      // 3. Concatenar el secreto
+      concat += secret;
+
+      // 4. Calcular el hash SHA256
+      const calculatedChecksum = crypto.createHash('sha256').update(concat).digest('hex');
+
+      console.log('Calculated checksum:', calculatedChecksum);
+      console.log('Received checksum:', signature.checksum);
+
+      // 5. Comparar con el checksum recibido (case insensitive)
+      const isValid = calculatedChecksum.toLowerCase() === signature.checksum.toLowerCase();
+      console.log('Signature valid:', isValid);
+
+      return isValid;
+    } catch (error) {
+      console.error('❌ Error verifying webhook signature:', error);
+      return false;
     }
-  
-    // 2. Concatenar el timestamp
-    concat += timestamp;
-    console.log('Timestamp:', timestamp);
-  
-    // 3. Concatenar el secreto
-    concat += secret;
-    console.log('Secret:', secret);
-  
-    // 4. Calcular el hash SHA256
-    const calculatedChecksum = crypto.createHash('sha256').update(concat).digest('hex').toUpperCase();
-    console.log('Concatenated string:', concat);
-    console.log('Calculated checksum:', calculatedChecksum);
-    console.log('Received checksum:', signature.checksum);
-  
-    // 5. Comparar con el checksum recibido
-    return calculatedChecksum === signature.checksum;
   }
 
   private mapPaymentType(paymentType: WompiPaymentType): string {
