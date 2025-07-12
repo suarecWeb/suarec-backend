@@ -4,11 +4,13 @@ import { PaymentService } from '../services/payment.service';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentDto } from '../dto/update-payment.dto';
 import { PaymentHistoryDto } from '../dto/payment-history.dto';
+import { AdminPaymentFilterDto } from '../dto/admin-payment-filter.dto';
 import { PaymentTransaction } from '../entities/payment-transaction.entity';
 import { AuthGuard } from '../../auth/guard/auth.guard';
 import { Public } from '../../auth/decorators/public.decorator';
 import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import { Roles } from 'src/auth/decorators/role.decorator';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -27,11 +29,13 @@ export class PaymentController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all payment transactions' })
-  @ApiResponse({ status: 200, description: 'List of payment transactions' })
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Get all payment transactions (Admin only) with pagination and filters' })
+  @ApiResponse({ status: 200, description: 'Paginated list of all payment transactions' })
+  @ApiQuery({ type: AdminPaymentFilterDto })
   @ApiBearerAuth()
-  async findAll(): Promise<PaymentTransaction[]> {
-    return this.paymentService.findAll();
+  async findAll(@Query() filterDto: AdminPaymentFilterDto): Promise<PaginationResponse<PaymentTransaction>> {
+    return this.paymentService.getAllPaymentsForAdmin(filterDto);
   }
 
   @Get('my-payments')
@@ -43,6 +47,7 @@ export class PaymentController {
   }
 
   @Get('my-history')
+  @Roles('ADMIN', 'PERSON', 'BUSINESS')
   @ApiOperation({ summary: 'Get paginated payment history for the authenticated user' })
   @ApiResponse({ status: 200, description: 'Paginated payment history with filters' })
   @ApiQuery({ type: PaymentHistoryDto })
