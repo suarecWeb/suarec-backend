@@ -203,6 +203,7 @@ export class PaymentService {
       const { event, data } = webhookData;
       console.log('=== WEBHOOK WOMPI RECIBIDO ===');
       console.log('Event:', event);
+      console.log('Data structure:', Object.keys(data));
 
       // Extraer el payment_link_id del webhook
       let paymentLinkId = null;
@@ -212,16 +213,30 @@ export class PaymentService {
         // Estructura del webhook real de Wompi
         paymentLinkId = data.transaction.payment_link_id;
         transactionStatus = data.transaction.status;
+        console.log('📋 Webhook structure: transaction nested');
+        console.log('Payment Link ID:', paymentLinkId, 'Status:', transactionStatus);
+      } else if (data.payment_link_id) {
+        // Estructura directa
+        paymentLinkId = data.payment_link_id;
+        transactionStatus = data.status;
+        console.log('📋 Webhook structure: direct');
         console.log('Payment Link ID:', paymentLinkId, 'Status:', transactionStatus);
       } else {
-        // Estructura alternativa
+        // Estructura alternativa usando ID
         paymentLinkId = data.id;
         transactionStatus = data.status;
+        console.log('📋 Webhook structure: using ID field');
         console.log('Data ID:', paymentLinkId, 'Status:', transactionStatus);
       }
 
+      if (!paymentLinkId) {
+        console.error('❌ No se pudo extraer payment_link_id del webhook');
+        console.log('📋 Estructura completa del data:', JSON.stringify(data, null, 2));
+        throw new Error('Payment link ID not found in webhook data');
+      }
+
       // Buscar por Payment Link ID
-      console.log('Buscando transacción por wompi_payment_link_id:', paymentLinkId);
+      console.log('🔍 Buscando transacción por wompi_payment_link_id:', paymentLinkId);
       const paymentTransaction = await this.paymentTransactionRepository.findOne({
         where: { wompi_payment_link_id: paymentLinkId },
         relations: ['contract'],
@@ -231,7 +246,7 @@ export class PaymentService {
         console.log('❌ Transacción NO encontrada por wompi_payment_link_id');
         
         // Buscar por transaction ID como alternativa
-        console.log('Buscando transacción por wompi_transaction_id:', paymentLinkId);
+        console.log('🔍 Buscando transacción por wompi_transaction_id:', paymentLinkId);
         const altTransaction = await this.paymentTransactionRepository.findOne({
           where: { wompi_transaction_id: paymentLinkId },
           relations: ['contract'],
@@ -245,7 +260,7 @@ export class PaymentService {
           const allTransactions = await this.paymentTransactionRepository.find({
             select: ['id', 'wompi_payment_link_id', 'wompi_transaction_id', 'status', 'amount']
           });
-          console.log('Todas las transacciones:', allTransactions);
+          console.log('📋 Todas las transacciones:', allTransactions);
           
           throw new Error(`Payment transaction not found for Wompi ID: ${paymentLinkId}`);
         }
@@ -254,9 +269,9 @@ export class PaymentService {
         return await this.updatePaymentStatus(altTransaction, transactionStatus);
       }
 
-      console.log('Transacción encontrada:', paymentTransaction.id);
-      console.log('Evento del webhook:', event);
-      console.log('Estado de Wompi:', transactionStatus);
+      console.log('✅ Transacción encontrada por wompi_payment_link_id:', paymentTransaction.id);
+      console.log('🎯 Evento del webhook:', event);
+      console.log('📊 Estado de Wompi:', transactionStatus);
 
       // Update payment status based on webhook event
       switch (event) {
@@ -264,16 +279,23 @@ export class PaymentService {
           await this.updatePaymentStatus(paymentTransaction, transactionStatus);
           break;
         case 'transaction.paid':
-          await this.updatePaymentStatus(paymentTransaction, 'COMPLETED');
+          await this.updatePaymentStatus(paymentTransaction, 'APPROVED');
           break;
         case 'transaction.declined':
-          await this.updatePaymentStatus(paymentTransaction, 'FAILED');
+          await this.updatePaymentStatus(paymentTransaction, 'DECLINED');
+          break;
+        case 'transaction.pending':
+          await this.updatePaymentStatus(paymentTransaction, 'PENDING');
           break;
         default:
-          console.log(`Unhandled webhook event: ${event}`);
+          console.log(`⚠️ Evento de webhook no manejado: ${event}`);
+          // Aún así, actualizar con el estado recibido
+          if (transactionStatus) {
+            await this.updatePaymentStatus(paymentTransaction, transactionStatus);
+          }
       }
     } catch (error) {
-      console.error('Error processing Wompi webhook:', error);
+      console.error('❌ Error processing Wompi webhook:', error);
       throw error;
     }
   }
