@@ -1,16 +1,18 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, Response, HttpCode, HttpStatus, UnauthorizedException, Query, Redirect } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, Response, HttpCode, HttpStatus, UnauthorizedException, Query, Redirect, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { PaymentService } from '../services/payment.service';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentDto } from '../dto/update-payment.dto';
+import { UpdatePaymentStatusDto } from '../dto/update-payment-status.dto';
 import { PaymentHistoryDto } from '../dto/payment-history.dto';
 import { AdminPaymentFilterDto } from '../dto/admin-payment-filter.dto';
 import { PaymentTransaction } from '../entities/payment-transaction.entity';
 import { AuthGuard } from '../../auth/guard/auth.guard';
+import { RolesGuard } from '../../auth/guard/roles.guard';
+import { Roles } from '../../auth/decorators/role.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
-import { Roles } from 'src/auth/decorators/role.decorator';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -78,7 +80,8 @@ export class PaymentController {
   }
 
   @Post(':id/update')
-  @ApiOperation({ summary: 'Update a payment transaction' })
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Update a payment transaction (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment transaction updated successfully' })
   @ApiResponse({ status: 404, description: 'Payment transaction not found' })
   @ApiBearerAuth()

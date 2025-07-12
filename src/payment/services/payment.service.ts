@@ -4,6 +4,7 @@ import { Repository, Between } from 'typeorm';
 import { PaymentTransaction } from '../entities/payment-transaction.entity';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentDto } from '../dto/update-payment.dto';
+import { UpdatePaymentStatusDto } from '../dto/update-payment-status.dto';
 import { PaymentHistoryDto, PaymentHistoryType } from '../dto/payment-history.dto';
 import { AdminPaymentFilterDto } from '../dto/admin-payment-filter.dto';
 import { WompiService } from './wompi.service';
@@ -199,6 +200,24 @@ export class PaymentService {
     await this.paymentTransactionRepository.save(paymentTransaction);
 
     return paymentTransaction;
+  }
+
+  async updateStatus(
+    id: string, 
+    updateStatusDto: UpdatePaymentStatusDto
+  ): Promise<PaymentTransaction> {
+    const paymentTransaction = await this.findOne(id);
+
+    // Guardar el estado anterior para logging
+    const previousStatus = paymentTransaction.status;
+    
+    // Actualizar el status y el comentario
+    paymentTransaction.status = updateStatusDto.status;
+
+    // Guardar la fecha de actualización automáticamente por el decorator
+    await this.paymentTransactionRepository.save(paymentTransaction);
+
+    return this.findOne(id);
   }
 
   async processWompiWebhook(webhookData: any): Promise<void> {
