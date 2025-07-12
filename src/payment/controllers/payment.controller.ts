@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, UnauthorizedException, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, Response, HttpCode, HttpStatus, UnauthorizedException, Query, Redirect, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { PaymentService } from '../services/payment.service';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
@@ -244,6 +244,68 @@ export class PaymentController {
     } catch (error) {
       console.error('❌ Error actualizando transacción:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  @Get('redirect/:transactionId')
+  @Public()
+  @ApiOperation({ summary: 'Handle payment redirect from Wompi' })
+  @ApiResponse({ status: 302, description: 'Redirect to appropriate frontend page' })
+  async handlePaymentRedirect(
+    @Param('transactionId') transactionId: string,
+    @Query('status') status?: string
+  ): Promise<{ url: string }> {
+    try {
+      // Buscar la transacción para obtener el estado actual
+      const transaction = await this.paymentService.findOne(transactionId);
+      
+      // Determinar URL de redirección basada en el estado
+      const redirectUrl = await this.paymentService.handlePaymentRedirect(
+        transactionId, 
+        transaction.status
+      );
+      
+      console.log(`🔄 Redirigiendo transacción ${transactionId} (${transaction.status}) a: ${redirectUrl}`);
+      
+      // Retornar URL para redirección manual o usar @Redirect
+      return { url: redirectUrl };
+    } catch (error) {
+      // Si no se encuentra la transacción, redirigir a página de error
+      const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
+      console.log(`❌ Error en redirección para ${transactionId}, enviando a: ${fallbackUrl}`);
+      return { url: fallbackUrl };
+    }
+  }
+
+  @Get('redirect-direct/:transactionId')
+  @Public()
+  @ApiOperation({ summary: 'Direct HTTP redirect from Wompi' })
+  @ApiResponse({ status: 302, description: 'HTTP redirect to frontend' })
+  async handleDirectRedirect(
+    @Param('transactionId') transactionId: string,
+    @Query('status') status: string,
+    @Request() req,
+    @Response() res
+  ) {
+    try {
+      // Buscar la transacción para obtener el estado actual
+      const transaction = await this.paymentService.findOne(transactionId);
+      
+      // Determinar URL de redirección basada en el estado
+      const redirectUrl = await this.paymentService.handlePaymentRedirect(
+        transactionId, 
+        transaction.status
+      );
+      
+      console.log(`🔄 Redirección directa para ${transactionId} (${transaction.status}) a: ${redirectUrl}`);
+      
+      // Hacer redirección HTTP real
+      return res.redirect(302, redirectUrl);
+    } catch (error) {
+      // Si no se encuentra la transacción, redirigir a página de error
+      const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
+      console.log(`❌ Error en redirección directa para ${transactionId}, enviando a: ${fallbackUrl}`);
+      return res.redirect(302, fallbackUrl);
     }
   }
 }

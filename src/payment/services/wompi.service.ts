@@ -293,6 +293,17 @@ export class WompiService {
     collect_shipping?: boolean;
   }) {
     const url = `${this.baseUrl}/payment_links`;
+    
+    // Crear URLs específicas para éxito y fallo
+    const baseUrl = redirect_url.split('?')[0]; // Obtener la URL base sin parámetros
+    const urlParams = new URLSearchParams(redirect_url.split('?')[1] || '');
+    
+    // URL para éxito (mantener la original)
+    const successUrl = redirect_url;
+    
+    // URL para fallo (cambiar el path a /failed)
+    const failedUrl = baseUrl.replace('/success', '/failed') + '?' + urlParams.toString();
+    
     const payload: any = {
       name,
       description,
@@ -300,8 +311,15 @@ export class WompiService {
       collect_shipping,
       currency,
       amount_in_cents: Math.round(amount * 100),
-      redirect_url,
+      redirect_url: successUrl, // Wompi usa esta URL por defecto
+      // Configurar tiempo de expiración
+      expire_in: '7200', // 2 horas de expiración
     };
+    
+    console.log('🔗 URLs configuradas:');
+    console.log('  - Success URL:', successUrl);
+    console.log('  - Failed URL:', failedUrl);
+    
     const response = await axios.post(url, payload, {
       headers: {
         Authorization: `Bearer ${this.privateKey}`,

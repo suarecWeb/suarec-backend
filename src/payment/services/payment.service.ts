@@ -82,7 +82,7 @@ export class PaymentService {
         description: paymentData.description || 'Pago de servicio',
         amount: paymentData.amount,
         currency: paymentData.currency,
-        redirect_url: `${process.env.FRONTEND_URL}/payments/success`,
+        redirect_url: `${process.env.BACKEND_URL || 'http://localhost:3001'}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
         single_use: true,
         collect_shipping: false,
       });
@@ -129,7 +129,7 @@ export class PaymentService {
         paymentTransaction.currency,
         paymentTransaction.reference,
         customerEmail, // This will be cleaned in WompiService
-        `${process.env.FRONTEND_URL}/payment/success?transaction_id=${paymentTransaction.id}`,
+        `${process.env.FRONTEND_URL}/payments/success?transaction_id=${paymentTransaction.id}`,
         paymentTransaction.wompi_payment_type,
         undefined, // installments
         acceptance_token,
@@ -576,5 +576,36 @@ export class PaymentService {
         hasPrevPage: page > 1,
       },
     };
+  }
+
+  /**
+   * Genera URLs de redirección basadas en el estado del pago
+   */
+  private generateRedirectUrls(transactionId: string, baseUrl: string) {
+    const frontendUrl = process.env.FRONTEND_URL;
+    return {
+      success: `${frontendUrl}/payments/success?transaction_id=${transactionId}`,
+      failed: `${frontendUrl}/payments/failed?transaction_id=${transactionId}`,
+      pending: `${frontendUrl}/payments/pending?transaction_id=${transactionId}`,
+    };
+  }
+
+  /**
+   * Maneja la redirección del usuario después del pago
+   */
+  async handlePaymentRedirect(transactionId: string, status: PaymentStatus): Promise<string> {
+    const urls = this.generateRedirectUrls(transactionId, process.env.FRONTEND_URL);
+    
+    switch (status) {
+      case PaymentStatus.COMPLETED:
+        return urls.success;
+      case PaymentStatus.FAILED:
+        return urls.failed;
+      case PaymentStatus.PROCESSING:
+      case PaymentStatus.PENDING:
+        return urls.pending;
+      default:
+        return urls.pending;
+    }
   }
 }
