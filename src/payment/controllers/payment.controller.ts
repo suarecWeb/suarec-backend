@@ -308,4 +308,29 @@ export class PaymentController {
       return res.redirect(302, fallbackUrl);
     }
   }
+
+  @Get('contract/:contractId/status')
+  @ApiOperation({ 
+    summary: 'Get payment status for a contract',
+    description: 'Get simple payment status information for a contract to determine if payment button should be shown'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Payment status information',
+    schema: {
+      type: 'object',
+      properties: {
+        contractId: { type: 'string', description: 'Contract ID' },
+        hasPendingPayments: { type: 'boolean', description: 'Has payments in pending or processing status' },
+        hasCompletedPayments: { type: 'boolean', description: 'Has completed or finished payments' },
+        hasActivePayments: { type: 'boolean', description: 'Has any active payments (pending, processing, completed, or finished)' },
+        latestStatus: { type: 'string', enum: Object.values(PaymentStatus), description: 'Status of the most recent payment' }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Contract not found' })
+  @ApiBearerAuth()
+  async getPaymentStatusByContract(@Param('contractId') contractId: string) {
+    return this.paymentService.getPaymentStatusByContract(contractId);
+  }
 }

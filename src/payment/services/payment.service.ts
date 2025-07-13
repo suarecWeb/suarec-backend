@@ -608,4 +608,53 @@ export class PaymentService {
         return urls.pending;
     }
   }
+
+  async getPaymentStatusByContract(contractId: string): Promise<{
+    contractId: string;
+    hasPendingPayments: boolean;
+    hasCompletedPayments: boolean;
+    hasActivePayments: boolean; // pending, processing, or completed
+    latestStatus?: PaymentStatus;
+  }> {
+    // Buscar todos los pagos del contrato
+    const payments = await this.paymentTransactionRepository.find({
+      where: { contract: { id: contractId } },
+      order: { created_at: 'DESC' },
+    });
+
+    if (payments.length === 0) {
+      return {
+        contractId,
+        hasPendingPayments: false,
+        hasCompletedPayments: false,
+        hasActivePayments: false,
+      };
+    }
+
+    const hasPendingPayments = payments.some(p => 
+      p.status === PaymentStatus.PENDING || p.status === PaymentStatus.PROCESSING
+    );
+    
+    const hasCompletedPayments = payments.some(p => 
+      p.status === PaymentStatus.COMPLETED || p.status === PaymentStatus.FINISHED
+    );
+
+    const hasActivePayments = payments.some(p => 
+      p.status === PaymentStatus.PENDING || 
+      p.status === PaymentStatus.PROCESSING || 
+      p.status === PaymentStatus.COMPLETED ||
+      p.status === PaymentStatus.FINISHED
+    );
+
+    // El pago más reciente
+    const latestPayment = payments[0];
+
+    return {
+      contractId,
+      hasPendingPayments,
+      hasCompletedPayments,
+      hasActivePayments,
+      latestStatus: latestPayment.status,
+    };
+  }
 }
