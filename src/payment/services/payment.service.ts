@@ -337,12 +337,15 @@ export class PaymentService {
         break;
       case 'DECLINED':
       case 'FAILED':
+      case 'ERROR':
         newStatus = PaymentStatus.FAILED;
+        console.log(`🔴 Estado de error detectado: ${wompiStatus} → ${newStatus}`);
         break;
       case 'PENDING':
         newStatus = PaymentStatus.PROCESSING;
         break;
       default:
+        console.log(`⚠️ Estado de Wompi no manejado: ${wompiStatus}, marcando como PENDING`);
         newStatus = PaymentStatus.PENDING;
     }
 
