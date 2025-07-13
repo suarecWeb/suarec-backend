@@ -101,7 +101,7 @@ export class UserService {
       const initialUsers = [
         {
           name: 'Admin User',
-          email: 'fernandodj2004+admin@gmail.com',
+          email: 'santiesleo17+admin@gmail.com',
           password: 'admin123',
           genre: 'Male',
           cellphone: '1234567890',
@@ -111,7 +111,7 @@ export class UserService {
         },
         {
           name: 'Business User',
-          email: 'fernandodj2004+business@gmail.com',
+          email: 'santiesleo17+business@gmail.com',
           password: 'business123',
           genre: 'Female',
           cellphone: '2345678901',
@@ -134,7 +134,7 @@ export class UserService {
         },
         {
           name: 'Regular Person',
-          email: 'fernandodj2004+person@gmail.com',
+          email: 'santiesleo17+person@gmail.com',
           password: 'person123',
           genre: 'Male',
           cedula: '1234567890',
