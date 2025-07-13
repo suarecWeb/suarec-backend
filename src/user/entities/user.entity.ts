@@ -210,6 +210,6 @@ export class User {
   @OneToMany(() => CompanyHistory, (history) => history.user)
   companyHistory: CompanyHistory[];
 
-  @Column('text', { nullable: true })
+  @Column('text', { nullable: true, unique: true })
   cedula: string;
 }

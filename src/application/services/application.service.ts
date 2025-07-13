@@ -274,7 +274,9 @@ export class ApplicationService {
       }
 
       await this.applicationRepository.save(application);
-      return application;
+      
+      // Devolver la aplicación actualizada con todas las relaciones
+      return this.findOne(id);
     } catch (error) {
       this.handleDBErrors(error);
     }

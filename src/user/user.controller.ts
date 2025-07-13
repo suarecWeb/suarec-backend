@@ -166,4 +166,55 @@ export class UserController {
   async reorderImages(@Request() req, @Body() body: { imageIds: number[] }) {
     return this.galleryService.reorderImages(req.user.id, body.imageIds);
   }
+
+  @Get('me/stats')  
+  @UseGuards(AuthGuard)
+  @ApiOperation({ 
+    summary: 'Get user statistics',
+    description: 'Get basic statistics about user performance and activity'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'User statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number' },
+        totalEarnings: { type: 'number', description: 'Total money earned from completed contracts' },
+        totalContractsCompleted: { type: 'number', description: 'Total contracts completed with status accepted' },
+        totalPublications: { type: 'number', description: 'Total publications created by user' }
+      }
+    }
+  })
+  async getMyStats(@Request() req) {
+    return this.userService.getUserStats(req.user.id);
+  }
+
+  @Get(':id/stats')
+  @Roles('ADMIN')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ 
+    summary: 'Get user statistics by ID (Admin only)',
+    description: 'Get basic statistics about any user performance and activity (Admin access required)'
+  })
+  @ApiParam({ name: 'id', description: 'User ID', type: 'number' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'User statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number' },
+        totalEarnings: { type: 'number', description: 'Total money earned from completed contracts' },
+        totalContractsCompleted: { type: 'number', description: 'Total contracts completed with status accepted' },
+        totalPublications: { type: 'number', description: 'Total publications created by user' }
+      }
+    }
+  })
+
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getUserStats(@Param('id') id: number) {
+    return this.userService.getUserStats(+id);
+  }
 }

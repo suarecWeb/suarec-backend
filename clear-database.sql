@@ -4,6 +4,9 @@
 -- Deshabilitar verificación de claves foráneas temporalmente
 SET session_replication_role = replica;
 
+-- Limpiar tablas de transacciones y pagos
+DELETE FROM payment_transactions;
+
 -- Limpiar tablas de calificaciones
 DELETE FROM ratings;
 

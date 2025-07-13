@@ -24,6 +24,7 @@ import { Notification } from './notification/entities/notification.entity';
 import { WorkContractModule } from './work-contract/work-contract.module';
 import { EmailVerificationModule } from './email-verification/email-verification.module';
 import { ContractModule } from './contract/contract.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -38,10 +39,9 @@ import { ContractModule } from './contract/contract.module';
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      synchronize: true, 
+      synchronize: process.env.NODE_ENV === 'development', // Enable sync only in development
       autoLoadEntities: true,
-      logging: true, // Puedes habilitar el logging para ver las consultas SQL
-
+      logging: process.env.NODE_ENV === 'development', // Enable logging in development mode only
     }),
 
     CompanyModule,
@@ -58,6 +58,7 @@ import { ContractModule } from './contract/contract.module';
     EmailVerificationModule,
     WorkContractModule,
     ContractModule,
+    PaymentModule,
     //RolePermissionModule,
     ],
   controllers: [AppController],
