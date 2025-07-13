@@ -34,6 +34,15 @@ export class Contract {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   currentPrice: number; // Precio actual en la negociación
 
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  suarecCommission: number; // Comisión del 8% calculada sobre currentPrice
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  priceWithoutCommission: number; // Precio sin la comisión del 8%
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  totalCommissionWithTax: number; // Comisión del 8% + IVA del 19%
+
   @Column('text', { nullable: false })
   priceUnit: string; // 'hour', 'project', 'monthly', etc.
 
