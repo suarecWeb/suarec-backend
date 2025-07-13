@@ -9,6 +9,9 @@ import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ContractService {
+  private readonly SUAREC_COMMISSION_RATE = 0.08; // 8%
+  private readonly TAX_RATE = 0.19; // 19% IVA
+
   constructor(
     @InjectRepository(Contract)
     private contractRepository: Repository<Contract>,
@@ -20,6 +23,21 @@ export class ContractService {
     private userRepository: Repository<User>,
     private emailService: EmailService,
   ) {}
+
+  /**
+   * Calcula las comisiones de SUAREC basadas en el precio actual
+   */
+  private calculateCommissions(currentPrice: number) {
+    const suarecCommission = currentPrice * this.SUAREC_COMMISSION_RATE;
+    const priceWithoutCommission = currentPrice - suarecCommission;
+    const totalCommissionWithTax = suarecCommission + (currentPrice * this.TAX_RATE);
+
+    return {
+      suarecCommission: Number(suarecCommission.toFixed(2)),
+      priceWithoutCommission: Number(priceWithoutCommission.toFixed(2)),
+      totalCommissionWithTax: Number(totalCommissionWithTax.toFixed(2))
+    };
+  }
 
   async createContract(createContractDto: CreateContractDto): Promise<Contract> {
     const { 
@@ -172,9 +190,15 @@ export class ContractService {
     bid.isAccepted = true;
     await this.bidRepository.save(bid);
 
-    // Actualizar el estado del contrato
+    // Calcular las comisiones basadas en el precio de la oferta aceptada
+    const commissions = this.calculateCommissions(bid.amount);
+
+    // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
     bid.contract.currentPrice = bid.amount;
+    bid.contract.suarecCommission = commissions.suarecCommission;
+    bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
+    bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
     const updatedContract = await this.contractRepository.save(bid.contract);
 
     // Enviar notificación por email al otro participante
@@ -272,6 +296,12 @@ export class ContractService {
         contract.agreedDate = data.proposedDate || contract.requestedDate;
         contract.agreedTime = data.proposedTime || contract.requestedTime;
         
+        // Calcular las comisiones basadas en el precio actual
+        const acceptCommissions = this.calculateCommissions(contract.currentPrice);
+        contract.suarecCommission = acceptCommissions.suarecCommission;
+        contract.priceWithoutCommission = acceptCommissions.priceWithoutCommission;
+        contract.totalCommissionWithTax = acceptCommissions.totalCommissionWithTax;
+        
         // Enviar notificación al cliente
         await this.emailService.sendContractNotification(
           contract.client.email,
@@ -317,4 +347,4 @@ export class ContractService {
 
     return await this.contractRepository.save(contract);
   }
-} 
+}
