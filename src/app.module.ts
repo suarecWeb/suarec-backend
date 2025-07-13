@@ -39,10 +39,9 @@ import { PaymentModule } from './payment/payment.module';
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      synchronize: true, 
+      synchronize: process.env.NODE_ENV === 'development', // Enable sync only in development
       autoLoadEntities: true,
-      logging: true, // Puedes habilitar el logging para ver las consultas SQL
-
+      logging: process.env.NODE_ENV === 'development', // Enable logging in development mode only
     }),
 
     CompanyModule,
