@@ -2,6 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus, UnauthorizedException } f
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PaymentService } from '../services/payment.service';
 import { Public } from '../../auth/decorators/public.decorator';
+import * as crypto from 'crypto';
 
 @ApiTags('webhooks')
 @Controller('webhooks')
@@ -15,36 +16,75 @@ export class WebhookController {
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid webhook data' })
   async wompiWebhook(@Body() webhookData: any): Promise<{ success: boolean; error?: string }> {
-    console.log('🚨 WEBHOOK WOMPI RECIBIDO EN WEBHOOK CONTROLLER 🚨');
+    const requestId = `webhook-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🚨 WEBHOOK WOMPI RECIBIDO [${requestId}] 🚨`);
     console.log('Body recibido:', JSON.stringify(webhookData, null, 2));
     
+    // Validar estructura básica del webhook
+    if (!webhookData || !webhookData.event || !webhookData.data) {
+      console.error(`❌ [${requestId}] Webhook structure invalid - missing event or data`);
+      return { success: false, error: 'Invalid webhook structure' };
+    }
+    
     try {
-      // En modo desarrollo, permitir webhooks sin verificación de firma
+      // Determinar si estamos en producción
+      const isProduction = process.env.NODE_ENV === 'production';
       const isDevelopment = process.env.NODE_ENV === 'development';
+      
+      console.log(`🔧 [${requestId}] Environment: ${process.env.NODE_ENV || 'unknown'}`);
+      console.log(`🔧 [${requestId}] Production mode: ${isProduction}`);
+      
+      // Verificar firma del webhook
       let isValid = true;
       
-      if (!isDevelopment) {
-        // Verificar firma del webhook solo en producción
+      if (isProduction) {
+        console.log(`🔒 [${requestId}] Verificando firma del webhook en producción...`);
+        
+        // Verificar que el secret esté configurado
+        if (!process.env.WOMPI_EVENTS_SECRET) {
+          console.error(`❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado en producción`);
+          return { success: false, error: 'Webhook secret not configured' };
+        }
+        
         isValid = await this.paymentService.wompiService.verifyWebhookSignature(webhookData);
-        console.log('✅ Firma del webhook válida:', isValid);
+        console.log(`${isValid ? '✅' : '❌'} [${requestId}] Firma del webhook válida: ${isValid}`);
         
         if (!isValid) {
-          console.log('❌ Firma del webhook inválida');
-          throw new UnauthorizedException('Invalid webhook signature');
+          console.error(`❌ [${requestId}] Firma del webhook inválida - rechazando webhook`);
+          return { success: false, error: 'Invalid webhook signature' };
         }
+      } else if (isDevelopment) {
+        console.log(`🔧 [${requestId}] Modo desarrollo: Omitiendo verificación de firma`);
       } else {
-        console.log('🔧 Modo desarrollo: Omitiendo verificación de firma');
+        // En cualquier otro ambiente que no sea development, verificar firma
+        console.log(`🔒 [${requestId}] Ambiente desconocido, verificando firma por seguridad...`);
+        
+        if (!process.env.WOMPI_EVENTS_SECRET) {
+          console.error(`❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado`);
+          return { success: false, error: 'Webhook secret not configured' };
+        }
+        
+        isValid = await this.paymentService.wompiService.verifyWebhookSignature(webhookData);
+        console.log(`${isValid ? '✅' : '❌'} [${requestId}] Firma del webhook válida: ${isValid}`);
+        
+        if (!isValid) {
+          console.error(`❌ [${requestId}] Firma del webhook inválida - rechazando webhook`);
+          return { success: false, error: 'Invalid webhook signature' };
+        }
       }
       
+      // Procesar webhook
+      console.log(`🔄 [${requestId}] Procesando webhook...`);
       await this.paymentService.processWompiWebhook(webhookData);
-      console.log('✅ Webhook procesado exitosamente');
+      console.log(`✅ [${requestId}] Webhook procesado exitosamente`);
+      
       return { success: true };
     } catch (error) {
-      console.error('❌ Error procesando webhook:', error);
+      console.error(`❌ [${requestId}] Error procesando webhook:`, error);
       
       // En desarrollo, devolver el error detallado
       if (process.env.NODE_ENV === 'development') {
-        console.error('Stack trace:', error.stack);
+        console.error(`📋 [${requestId}] Stack trace:`, error.stack);
       }
       
       // No re-lanzar el error para evitar que Wompi reintente
@@ -103,6 +143,145 @@ export class WebhookController {
       success: true,
       webhookData,
       analysis
+    };
+  }
+
+  @Post('verify-webhook-config')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify webhook configuration for production' })
+  @ApiResponse({ status: 200, description: 'Webhook configuration verified' })
+  async verifyWebhookConfig(): Promise<any> {
+    console.log('🔍 VERIFICANDO CONFIGURACIÓN DEL WEBHOOK 🔍');
+    
+    const config = {
+      nodeEnv: process.env.NODE_ENV,
+      isProduction: process.env.NODE_ENV === 'production',
+      isDevelopment: process.env.NODE_ENV === 'development',
+      hasWompiEventsSecret: !!process.env.WOMPI_EVENTS_SECRET,
+      hasWompiPublicKey: !!process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
+      hasWompiPrivateKey: !!process.env.WOMPI_PRIVATE_KEY,
+      backendUrl: process.env.BACKEND_URL,
+      frontendUrl: process.env.FRONTEND_URL,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📋 Configuración del webhook:', JSON.stringify(config, null, 2));
+    
+    // Validaciones específicas para producción
+    const validationResults = [];
+    
+    if (config.isProduction) {
+      if (!config.hasWompiEventsSecret) {
+        validationResults.push({
+          type: 'ERROR',
+          message: 'WOMPI_EVENTS_SECRET no está configurado en producción'
+        });
+      }
+      
+      if (!config.hasWompiPrivateKey) {
+        validationResults.push({
+          type: 'ERROR',
+          message: 'WOMPI_PRIVATE_KEY no está configurado en producción'
+        });
+      }
+      
+      if (!config.backendUrl) {
+        validationResults.push({
+          type: 'WARNING',
+          message: 'BACKEND_URL no está configurado'
+        });
+      }
+      
+      if (!config.frontendUrl) {
+        validationResults.push({
+          type: 'WARNING',
+          message: 'FRONTEND_URL no está configurado'
+        });
+      }
+    }
+    
+    if (validationResults.length === 0) {
+      validationResults.push({
+        type: 'SUCCESS',
+        message: 'Configuración del webhook válida'
+      });
+    }
+    
+    return {
+      success: true,
+      config,
+      validationResults
+    };
+  }
+
+  @Post('test-signature')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Test webhook signature verification' })
+  @ApiResponse({ status: 200, description: 'Signature test completed' })
+  async testSignatureVerification(@Body() testData?: any): Promise<any> {
+    console.log('🧪 TESTING WEBHOOK SIGNATURE VERIFICATION 🧪');
+    
+    const secret = process.env.WOMPI_EVENTS_SECRET;
+    if (!secret) {
+      return {
+        success: false,
+        error: 'WOMPI_EVENTS_SECRET not configured'
+      };
+    }
+    
+    // Crear un webhook de prueba con firma válida
+    const timestamp = Math.floor(Date.now() / 1000);
+    const testWebhookData = testData || {
+      event: 'transaction.updated',
+      data: {
+        transaction: {
+          id: 'test-transaction-123',
+          status: 'APPROVED',
+          amount_in_cents: 1000000,
+          payment_link_id: 'test-payment-link-123'
+        }
+      },
+      timestamp: timestamp
+    };
+    
+    // Generar firma válida
+    const properties = ['transaction.id', 'transaction.status', 'transaction.amount_in_cents'];
+    
+    let concat = '';
+    for (const prop of properties) {
+      const value = prop.split('.').reduce((obj, key) => obj && obj[key], testWebhookData.data);
+      if (value !== undefined && value !== null) {
+        concat += value;
+      }
+    }
+    concat += timestamp;
+    concat += secret;
+    
+    const checksum = crypto.createHash('sha256').update(concat).digest('hex');
+    
+    const webhookWithSignature = {
+      ...testWebhookData,
+      signature: {
+        checksum,
+        properties
+      }
+    };
+    
+    console.log('📋 Test webhook data:', JSON.stringify(webhookWithSignature, null, 2));
+    
+    // Verificar la firma
+    const isValid = await this.paymentService.wompiService.verifyWebhookSignature(webhookWithSignature);
+    
+    return {
+      success: true,
+      testWebhookData: webhookWithSignature,
+      signatureValid: isValid,
+      secret: secret ? '[CONFIGURED]' : '[NOT CONFIGURED]',
+      timestamp,
+      concatenatedString: concat.replace(secret, '[SECRET]'),
+      calculatedChecksum: checksum
     };
   }
 }
