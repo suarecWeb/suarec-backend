@@ -9,12 +9,17 @@ import { Message } from './entities/message.entity';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { MessageGateway } from './message.gateway';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Messages')
 @Controller('messages')
 @UseGuards(AuthGuard, RolesGuard)
 export class MessageController {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly messageGateway: MessageGateway
+  ) {}
 
   @Post()
   @Roles('ADMIN', 'PERSON', 'BUSINESS')
@@ -87,5 +92,56 @@ export class MessageController {
   @ApiOperation({ summary: 'Delete a message (admin only)' })
   remove(@Param('id') id: string): Promise<void> {
     return this.messageService.remove(id);
+  }
+
+  @Get('websocket/status')
+  @Public()
+  @ApiOperation({ summary: 'Get WebSocket connection status' })
+  @ApiResponse({ status: 200, description: 'WebSocket status retrieved successfully' })
+  getWebSocketStatus() {
+    return {
+      success: true,
+      ...this.messageGateway.getConnectionStats()
+    };
+  }
+
+  @Get('websocket/test')
+  @Public()
+  @ApiOperation({ summary: 'Test WebSocket functionality' })
+  @ApiResponse({ status: 200, description: 'WebSocket test completed successfully' })
+  async testWebSocket() {
+    try {
+      // Crear un mensaje de prueba
+      const testData = {
+        message: {
+          id: 'test-message-' + Date.now(),
+          content: 'Mensaje de prueba del sistema',
+          senderId: 1,
+          recipientId: 2,
+          sent_at: new Date(),
+          sender: {
+            id: 1,
+            name: 'Sistema',
+            profile_image: null
+          }
+        },
+        conversationId: '1_2'
+      };
+
+      // Emitir el mensaje a través del WebSocket
+      this.messageGateway.server.emit('new_message', testData);
+
+      return {
+        success: true,
+        message: 'Mensaje de prueba enviado',
+        data: testData,
+        connectionStats: this.messageGateway.getConnectionStats()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 }
