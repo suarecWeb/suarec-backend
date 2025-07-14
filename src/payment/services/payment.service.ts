@@ -92,7 +92,7 @@ export class PaymentService {
         description: paymentData.description || 'Pago de servicio',
         amount: paymentData.amount,
         currency: paymentData.currency,
-        redirect_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
+        redirect_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://suarec-backend-production-de98.up.railway.app' || 'http://localhost:3001'}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
         single_use: true,
         collect_shipping: false,
       });
