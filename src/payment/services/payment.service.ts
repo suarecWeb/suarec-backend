@@ -87,12 +87,16 @@ export class PaymentService {
     // If payment method is Wompi, create Wompi transaction
     if (paymentData.payment_method === PaymentMethod.Wompi) {
       console.log('=== CREANDO PAYMENT LINK ===');
+      
+      // Usar el endpoint del backend que ya maneja las redirecciones correctamente
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      
       const paymentLink = await this.wompiService.createPaymentLink({
         name: contract.publication?.title || 'Pago de servicio',
         description: paymentData.description || 'Pago de servicio',
         amount: paymentData.amount,
         currency: paymentData.currency,
-        redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payments/redirect/${paymentTransaction.id}`,
+        redirect_url: `${backendUrl}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
         single_use: true,
         collect_shipping: false,
       });
