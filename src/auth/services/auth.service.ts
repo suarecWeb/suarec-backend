@@ -76,8 +76,8 @@ export class AuthService {
             </div>
 
             <div style="padding: 20px; background-color: #f5f5f5; color: black; text-align: center; margin: 0 auto; max-width: 600px;">
-                <p> http://localhost:3000/auth/forgot/${user.id}</p>
-                <h2 style="margin-top: 20px;">Gracias por tu confiar en nuestra pagina!</h2>
+                <p> ${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/forgot/${user.id}</p>
+                <h2 style="margin-top: 20px;">Gracias por confiar en nuestra página!</h2>
             </div>
             <div style="color: #fff; text-align: center; margin: 0 auto; max-width: 600px; padding-top: 20px;">
                 <p>-------------------------</p>
