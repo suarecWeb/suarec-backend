@@ -6,11 +6,12 @@ import { RatingController } from './rating.controller';
 import { Rating } from './entities/rating.entity';
 import { User } from '../user/entities/user.entity';
 import { WorkContract } from '../work-contract/entities/work-contract.entity';
+import { Contract } from '../contract/entities/contract.entity';
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([Rating, User, WorkContract]),
+    TypeOrmModule.forFeature([Rating, User, WorkContract, Contract]),
   ],
   controllers: [RatingController], // Registrar el controlador
   providers: [RatingService], // Registrar el servicio

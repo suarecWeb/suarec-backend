@@ -7,6 +7,7 @@ import { CreateRatingDto } from '../dto/create-rating.dto';
 import { UpdateRatingDto } from '../dto/update-rating.dto';
 import { User } from '../../user/entities/user.entity';
 import { WorkContract } from '../../work-contract/entities/work-contract.entity';
+import { Contract } from '../../contract/entities/contract.entity';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
 
@@ -21,6 +22,8 @@ export class RatingService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkContract)
     private readonly workContractRepository: Repository<WorkContract>,
+    @InjectRepository(Contract)
+    private readonly contractRepository: Repository<Contract>,
   ) {}
 
   async create(createRatingDto: CreateRatingDto): Promise<Rating> {
@@ -49,43 +52,26 @@ export class RatingService {
         throw new BadRequestException('Cannot rate yourself');
       }
 
-      let workContract = null;
-      if (workContractId) {
-        workContract = await this.workContractRepository.findOne({ 
-          where: { id: workContractId },
-          relations: ['client', 'provider']
-        });
-        
-        if (!workContract) {
-          throw new BadRequestException(`Work contract with ID ${workContractId} not found`);
+      // Verificar que no haya calificado ya a este usuario
+      const existingRating = await this.ratingRepository.findOne({
+        where: {
+          reviewer: { id: reviewerId },
+          reviewee: { id: revieweeId }
         }
+      });
 
-        // Verificar que el reviewer sea parte del contrato
-        if (workContract.client.id !== reviewerId && workContract.provider.id !== reviewerId) {
-          throw new BadRequestException('Only participants in the contract can rate');
-        }
-
-        // Verificar que no haya calificado ya este contrato
-        const existingRating = await this.ratingRepository.findOne({
-          where: {
-            reviewer: { id: reviewerId },
-            workContract: { id: workContractId }
-          }
-        });
-
-        if (existingRating) {
-          throw new BadRequestException('You have already rated this work contract');
-        }
+      if (existingRating) {
+        throw new BadRequestException('You have already rated this user');
       }
 
-      // Crear la calificación
+      // Crear la calificación (sin workContract por ahora)
       const rating = this.ratingRepository.create({
         stars,
         comment,
         category,
         reviewer,
         reviewee,
-        workContract,
+        workContract: null, // No requerimos workContract
       });
 
       await this.ratingRepository.save(rating);
@@ -258,6 +244,78 @@ export class RatingService {
     try {
       const rating = await this.findOne(id);
       await this.ratingRepository.remove(rating);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async getContractsReadyForRating(userId: number): Promise<any[]> {
+    try {
+      // Buscar contratos donde el usuario participó y hay pagos completados
+      // Usamos Contract porque PaymentTransaction se relaciona con Contract
+      const contracts = await this.contractRepository
+        .createQueryBuilder('contract')
+        .leftJoinAndSelect('contract.client', 'client')
+        .leftJoinAndSelect('contract.provider', 'provider')
+        .leftJoinAndSelect('contract.publication', 'publication')
+        .where('(contract.client.id = :userId OR contract.provider.id = :userId)', { userId })
+        .andWhere('contract.status = :status', { status: 'accepted' })
+        .getMany();
+
+      console.log(`🔍 Encontrados ${contracts.length} contratos aceptados para usuario ${userId}`);
+
+      // Filtrar contratos que tengan pagos completados
+      const contractsWithCompletedPayments = [];
+      
+      for (const contract of contracts) {
+        // Buscar pagos completados para este contrato
+        const completedPayments = await this.contractRepository.manager.query(`
+          SELECT COUNT(*) as count 
+          FROM payment_transactions 
+          WHERE "contractId" = $1 AND status = 'COMPLETED'
+        `, [contract.id]);
+
+        if (parseInt(completedPayments[0].count) > 0) {
+          contractsWithCompletedPayments.push(contract);
+          console.log(`✅ Contrato ${contract.id} tiene ${completedPayments[0].count} pagos completados`);
+        } else {
+          console.log(`❌ Contrato ${contract.id} no tiene pagos completados`);
+        }
+      }
+
+      const contractsWithRatingStatus = await Promise.all(
+        contractsWithCompletedPayments.map(async (contract) => {
+          // Verificar si el usuario ya calificó al otro usuario de este contrato
+          const otherUserId = contract.client.id === userId ? contract.provider.id : contract.client.id;
+          const existingRating = await this.ratingRepository.findOne({
+            where: {
+              reviewer: { id: userId },
+              reviewee: { id: otherUserId }
+            }
+          });
+
+          const otherUser = contract.client.id === userId ? contract.provider : contract.client;
+          const userRole = contract.client.id === userId ? 'CLIENT' : 'PROVIDER';
+
+          return {
+            contractId: contract.id,
+            contractTitle: contract.publication?.title || 'Sin título',
+            otherUser: {
+              id: otherUser.id,
+              name: otherUser.name,
+              profile_image: otherUser.profile_image
+            },
+            userRole,
+            canRate: !existingRating,
+            alreadyRated: !!existingRating,
+            completedAt: contract.updatedAt
+          };
+        })
+      );
+
+      const finalContracts = contractsWithRatingStatus.filter(contract => contract.canRate);
+      console.log(`🎯 Contratos finales disponibles para rating: ${finalContracts.length}`);
+      return finalContracts;
     } catch (error) {
       this.handleDBErrors(error);
     }

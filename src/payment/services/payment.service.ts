@@ -74,6 +74,16 @@ export class PaymentService {
 
     await this.paymentTransactionRepository.save(paymentTransaction);
 
+    // MODO MOCK: Si está habilitado, simular pago exitoso inmediatamente
+    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === 'true';
+    if (MOCK_PAYMENT_SUCCESS && paymentData.payment_method === PaymentMethod.Wompi) {
+      console.log('🎭 MODO MOCK ACTIVADO - Marcando pago como completado automáticamente');
+      paymentTransaction.status = PaymentStatus.COMPLETED;
+      await this.paymentTransactionRepository.save(paymentTransaction);
+      await this.enableRatingAfterPayment(paymentTransaction);
+      console.log('✅ Pago mockeado como exitoso - Rating habilitado');
+    }
+
     // If payment method is Wompi, create Wompi transaction
     if (paymentData.payment_method === PaymentMethod.Wompi) {
       console.log('=== CREANDO PAYMENT LINK ===');
@@ -328,6 +338,13 @@ export class PaymentService {
     console.log('Estado actual:', paymentTransaction.status);
     console.log('Estado de Wompi:', wompiStatus);
     
+    // MODO MOCK: Si está habilitado, simular pago exitoso
+    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === 'true';
+    if (MOCK_PAYMENT_SUCCESS) {
+      console.log('🎭 MODO MOCK ACTIVADO - Simulando pago exitoso');
+      wompiStatus = 'APPROVED';
+    }
+    
     let newStatus: PaymentStatus;
 
     switch (wompiStatus) {
@@ -358,6 +375,11 @@ export class PaymentService {
       });
       console.log('✅ Estado actualizado correctamente en BD');
       
+      // Si el pago fue completado, habilitar calificación
+      if (newStatus === PaymentStatus.COMPLETED) {
+        await this.enableRatingAfterPayment(paymentTransaction);
+      }
+      
       // Verificar que se actualizó
       const updatedTransaction = await this.paymentTransactionRepository.findOne({
         where: { id: paymentTransaction.id }
@@ -366,6 +388,22 @@ export class PaymentService {
     } catch (error) {
       console.error('❌ Error actualizando estado:', error);
       throw error;
+    }
+  }
+
+  private async enableRatingAfterPayment(paymentTransaction: PaymentTransaction): Promise<void> {
+    try {
+      console.log('⭐ Habilitando calificación después del pago exitoso');
+      console.log('Payer ID:', paymentTransaction.payer.id);
+      console.log('Payee ID:', paymentTransaction.payee.id);
+      console.log('Contract ID:', paymentTransaction.contract?.id);
+      
+      // Aquí podrías crear un registro de "oportunidad de calificación" o simplemente
+      // permitir que los usuarios califiquen basándose en el contrato completado
+      
+      console.log('✅ Calificación habilitada para ambos usuarios');
+    } catch (error) {
+      console.error('❌ Error habilitando calificación:', error);
     }
   }
 

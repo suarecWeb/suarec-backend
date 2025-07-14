@@ -195,8 +195,8 @@ export class EmailVerificationService {
       // Verificar que el email del remitente esté verificado en Brevo
       // IMPORTANTE: Este email debe estar verificado en tu cuenta de Brevo
       // Solo tienes verificado: dyez1110@gmail.com
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || "dyez1110@gmail.com";
-      const replyToEmail = process.env.BREVO_REPLY_TO_EMAIL || "dyez1110@gmail.com";
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || "contactosuarec@gmail.com";
+      const replyToEmail = process.env.BREVO_REPLY_TO_EMAIL || "contactosuarec@gmail.com";
 
       this.logger.log(`Sender email: ${senderEmail}`);
       this.logger.log(`Reply to email: ${replyToEmail}`);

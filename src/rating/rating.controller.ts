@@ -71,6 +71,16 @@ export class RatingController {
     return this.ratingService.getUserRatingStats(+userId);
   }
 
+  @Get('ready-to-rate')
+  @ApiOperation({ summary: 'Get contracts ready for rating' })
+  async getContractsReadyForRating(
+    @Req() req: ExpressRequest
+  ): Promise<any[]> {
+    console.log("Usuario autenticado:", req.user);
+    const userId = (req.user as any).id;
+    return this.ratingService.getContractsReadyForRating(userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a rating by id' })
   @ApiParam({ name: 'id', description: 'Rating ID' })
