@@ -82,7 +82,7 @@ export class PaymentService {
         description: paymentData.description || 'Pago de servicio',
         amount: paymentData.amount,
         currency: paymentData.currency,
-        redirect_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://suarec-backend-production-de98.up.railway.app' || 'http://localhost:3001'}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
+        redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payments/redirect/${paymentTransaction.id}`,
         single_use: true,
         collect_shipping: false,
       });
@@ -584,8 +584,8 @@ export class PaymentService {
   /**
    * Genera URLs de redirección basadas en el estado del pago
    */
-  private generateRedirectUrls(transactionId: string, baseUrl: string) {
-    const frontendUrl = process.env.FRONTEND_URL;
+  private generateRedirectUrls(transactionId: string, baseUrl?: string) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     return {
       success: `${frontendUrl}/payments/success?transaction_id=${transactionId}`,
       failed: `${frontendUrl}/payments/failed?transaction_id=${transactionId}`,
@@ -597,7 +597,7 @@ export class PaymentService {
    * Maneja la redirección del usuario después del pago
    */
   async handlePaymentRedirect(transactionId: string, status: PaymentStatus): Promise<string> {
-    const urls = this.generateRedirectUrls(transactionId, process.env.FRONTEND_URL);
+    const urls = this.generateRedirectUrls(transactionId);
     
     switch (status) {
       case PaymentStatus.COMPLETED:
