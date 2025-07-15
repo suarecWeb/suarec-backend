@@ -79,7 +79,7 @@ export class EmailVerificationService {
         { email_verified: true, email_verified_at: new Date() }
       );
 
-      return { success: true, message: 'Email verificado exitosamente' };
+      return { success: true, message: 'Correo electrónico verificado exitosamente' };
     } catch (error) {
       this.handleDBErrors(error);
     }
