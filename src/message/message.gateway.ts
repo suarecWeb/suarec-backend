@@ -47,16 +47,19 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     try {
       // Verificar autenticación del usuario
       const token = client.handshake.auth.token;
-      console.log('🔑 Token recibido en WebSocket:', token ? 'Sí' : 'No');
+      console.log('🔑 WebSocket Connection - Token recibido:', token ? 'Sí' : 'No');
+      console.log('🌐 WebSocket Connection - Origin:', client.handshake.headers.origin);
+      
       if (!token) {
-        console.log('Token no proporcionado, desconectando cliente');
+        console.log('❌ Token no proporcionado, desconectando cliente');
         client.disconnect();
         return;
       }
 
       // Verificar el token JWT
       const userId = this.extractUserIdFromToken(token);
-      console.log('👤 UserId extraído:', userId);
+      console.log('👤 UserId extraído del token:', userId);
+      
       if (!userId) {
         console.log('Token inválido, desconectando cliente');
         client.disconnect();
@@ -118,7 +121,11 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
       console.log('📨 Emitiendo mensaje a:', recipientRoom);
       console.log('📋 Datos del mensaje:', messageData);
       
+      // Emitir el mensaje al destinatario
       this.server.to(recipientRoom).emit('new_message', messageData);
+      
+      // También emitir al remitente para que vea su mensaje confirmado
+      this.server.to(`user_${data.senderId}`).emit('new_message', messageData);
 
       // Confirmar al remitente que el mensaje se envió
       client.emit('message_sent', { message });
@@ -185,6 +192,36 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     });
   }
 
+  // Método para depurar conexiones activas
+  @SubscribeMessage('debug_connection')
+  async handleDebugConnection(@ConnectedSocket() client: Socket) {
+    const userConnection = this.connectedUsers.get(client.id);
+    const connectionInfo = {
+      clientId: client.id,
+      connected: client.connected,
+      rooms: Array.from(client.rooms),
+      userId: userConnection?.userId,
+      totalConnections: this.connectedUsers.size,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('🔍 WebSocket Debug Info:', connectionInfo);
+    client.emit('debug_response', connectionInfo);
+  }
+
+  // Método para obtener estadísticas del WebSocket
+  getConnectionStats() {
+    return {
+      totalConnections: this.connectedUsers.size,
+      connectedUsers: Array.from(this.connectedUsers.values()).map(conn => ({
+        userId: conn.userId,
+        socketId: conn.socket.id,
+        connected: conn.socket.connected
+      })),
+      timestamp: new Date().toISOString()
+    };
+  }
+
   private extractUserIdFromToken(token: string): number | null {
     try {
       console.log('🔍 Verificando token con JwtService...');
@@ -196,4 +233,4 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
       return null;
     }
   }
-} 
+}

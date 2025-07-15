@@ -161,7 +161,7 @@ export class WebhookController {
       hasWompiEventsSecret: !!process.env.WOMPI_EVENTS_SECRET,
       hasWompiPublicKey: !!process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
       hasWompiPrivateKey: !!process.env.WOMPI_PRIVATE_KEY,
-      backendUrl: process.env.BACKEND_URL,
+      backendUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
       frontendUrl: process.env.FRONTEND_URL,
       timestamp: new Date().toISOString()
     };
