@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User } from './entities/user.entity';
@@ -34,12 +33,6 @@ import { GalleryService } from './services/gallery.service';
     
     // Importar CompanyModule con referencia circular
     forwardRef(() => CompanyModule),
-    
-    // Importar JwtModule para el servicio JwtService
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secretKey', // Clave secreta para firmar los tokens
-      signOptions: { expiresIn: '1h' }, // Opciones de firma (por ejemplo, expiración del token)
-    }),
   ],
   controllers: [
     UserController,
