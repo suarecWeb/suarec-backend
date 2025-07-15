@@ -17,7 +17,17 @@ import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:8081',
+      'http://localhost:19006',
+      'http://192.168.1.17:8081',
+      'http://192.168.1.17:19006',
+      process.env.PUBLIC_FRONT_URL,
+      'https://suarec-frontend-production.up.railway.app',
+      'https://suarec.com',
+      'https://api.suarec.com'
+    ],
     credentials: true
   },
   namespace: '/messages'
