@@ -19,13 +19,14 @@ import { JwtService } from '@nestjs/jwt';
   cors: {
     origin: [
       'http://localhost:3000',
-      'http://localhost:8081', // Expo web
-      'http://localhost:19006', // Expo web alternativo
-      'http://192.168.1.17:8081', // App móvil desde IP local
-      'http://192.168.1.17:19006', // App móvil desde IP local alternativo
+      'http://localhost:8081',
+      'http://localhost:19006',
+      'http://192.168.1.17:8081',
+      'http://192.168.1.17:19006',
       process.env.PUBLIC_FRONT_URL,
       'https://suarec-frontend-production.up.railway.app',
-      'https://suarec.com'
+      'https://suarec.com',
+      'https://api.suarec.com'
     ],
     credentials: true
   },
