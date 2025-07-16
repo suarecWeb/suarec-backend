@@ -1,21 +1,29 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { Company } from '../entities/company.entity';
-import { CompanyHistory } from '../entities/company-history.entity';
-import { CreateCompanyDto } from '../dto/create-company.dto';
-import { UpdateCompanyDto } from '../dto/update-company.dto';
-import { UpdateCompanyLocationDto } from '../dto/update-company-location.dto';
-import { User } from '../../user/entities/user.entity';
-import { Attendance } from '../../attendance/entities/attendance.entity';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
-import { AddEmployeeDto, RemoveEmployeeDto } from '../dto/employee-management.dto';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, Between } from "typeorm";
+import { Company } from "../entities/company.entity";
+import { CompanyHistory } from "../entities/company-history.entity";
+import { CreateCompanyDto } from "../dto/create-company.dto";
+import { UpdateCompanyDto } from "../dto/update-company.dto";
+import { UpdateCompanyLocationDto } from "../dto/update-company-location.dto";
+import { User } from "../../user/entities/user.entity";
+import { Attendance } from "../../attendance/entities/attendance.entity";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
+import {
+  AddEmployeeDto,
+  RemoveEmployeeDto,
+} from "../dto/employee-management.dto";
 
 @Injectable()
 export class CompanyService {
- 
-  private readonly logger = new Logger('CompanyService');
+  private readonly logger = new Logger("CompanyService");
 
   constructor(
     @InjectRepository(Company)
@@ -25,29 +33,38 @@ export class CompanyService {
     @InjectRepository(CompanyHistory)
     private readonly companyHistoryRepository: Repository<CompanyHistory>,
     @InjectRepository(Attendance)
-    private readonly attendanceRepository: Repository<Attendance>
+    private readonly attendanceRepository: Repository<Attendance>,
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     try {
-      console.log('Creating company...' + createCompanyDto.email + createCompanyDto.nit + createCompanyDto.userId)
+      console.log(
+        "Creating company..." +
+          createCompanyDto.email +
+          createCompanyDto.nit +
+          createCompanyDto.userId,
+      );
 
-      const existingCompany = await this.companyRepository.findOne({ where: { nit: createCompanyDto.nit } });
+      const existingCompany = await this.companyRepository.findOne({
+        where: { nit: createCompanyDto.nit },
+      });
 
-      console.log('Existing company ?...' + existingCompany)
+      console.log("Existing company ?..." + existingCompany);
 
       if (existingCompany) {
-        throw new BadRequestException('NIT already in use');
+        throw new BadRequestException("NIT already in use");
       }
 
       const company = this.companyRepository.create(createCompanyDto);
-      const user = await this.userRepository.findOne({ where: {id: createCompanyDto.userId}})
+      const user = await this.userRepository.findOne({
+        where: { id: createCompanyDto.userId },
+      });
 
       if (!user) {
-        throw new BadRequestException('User not found')
+        throw new BadRequestException("User not found");
       }
 
-      company.user = user
+      company.user = user;
 
       await this.companyRepository.save(company);
       return company;
@@ -56,13 +73,15 @@ export class CompanyService {
     }
   }
 
-  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Company>> {
+  async findAll(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Company>> {
     try {
       const { page, limit } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [companies, total] = await this.companyRepository.findAndCount({
-        relations: ['user', 'employees'],
+        relations: ["user", "employees"],
         skip,
         take: limit,
       });
@@ -90,7 +109,7 @@ export class CompanyService {
     try {
       const company = await this.companyRepository.findOne({
         where: { id },
-        relations: ['user', 'employees'],
+        relations: ["user", "employees"],
       });
 
       if (!company) {
@@ -107,7 +126,7 @@ export class CompanyService {
     try {
       const company = await this.companyRepository.findOne({
         where: { email },
-        relations: ['user', 'employees'],
+        relations: ["user", "employees"],
       });
 
       if (!company) {
@@ -120,7 +139,10 @@ export class CompanyService {
     }
   }
 
-  async update(id: string, updateCompanyDto: UpdateCompanyDto): Promise<Company> {
+  async update(
+    id: string,
+    updateCompanyDto: UpdateCompanyDto,
+  ): Promise<Company> {
     try {
       const company = await this.companyRepository.preload({
         id,
@@ -147,7 +169,11 @@ export class CompanyService {
     }
   }
 
-  async addEmployeeEmail(companyEmail: string, userId: number, addEmployeeDto?: AddEmployeeDto): Promise<Company> {
+  async addEmployeeEmail(
+    companyEmail: string,
+    userId: number,
+    addEmployeeDto?: AddEmployeeDto,
+  ): Promise<Company> {
     try {
       const company = await this.findOneEmail(companyEmail);
       const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -157,19 +183,25 @@ export class CompanyService {
       }
 
       // Verificar si ya existe un historial activo para este usuario en esta empresa
-      const existingActiveHistory = await this.companyHistoryRepository.findOne({
-        where: { 
-          user: { id: userId }, 
-          company: { id: company.id }, 
-          isActive: true 
-        }
-      });
+      const existingActiveHistory = await this.companyHistoryRepository.findOne(
+        {
+          where: {
+            user: { id: userId },
+            company: { id: company.id },
+            isActive: true,
+          },
+        },
+      );
 
       if (existingActiveHistory) {
-        throw new BadRequestException(`User is already an active employee of this company`);
+        throw new BadRequestException(
+          `User is already an active employee of this company`,
+        );
       }
 
-      const startDate = addEmployeeDto?.startDate ? new Date(addEmployeeDto.startDate) : new Date();
+      const startDate = addEmployeeDto?.startDate
+        ? new Date(addEmployeeDto.startDate)
+        : new Date();
 
       // Asignar la empresa al usuario como su empleador
       user.employer = company;
@@ -181,7 +213,7 @@ export class CompanyService {
         user: user,
         company: company,
         startDate: startDate,
-        isActive: true
+        isActive: true,
       });
       await this.companyHistoryRepository.save(companyHistory);
 
@@ -190,39 +222,51 @@ export class CompanyService {
     } catch (error) {
       this.handleDBErrors(error);
     }
-  }  
+  }
 
-  async addEmployee(companyId: string, userId: number, addEmployeeDto?: AddEmployeeDto): Promise<Company> {
+  async addEmployee(
+    companyId: string,
+    userId: number,
+    addEmployeeDto?: AddEmployeeDto,
+  ): Promise<Company> {
     try {
       const company = await this.findOne(companyId);
       const user = await this.userRepository.findOne({ where: { id: userId } });
 
-      console.error('Adding employee to company...' + companyId + ' for user ' + userId);
+      console.error(
+        "Adding employee to company..." + companyId + " for user " + userId,
+      );
 
       if (!user) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
 
-      console.log('User found: ', user);
+      console.log("User found: ", user);
 
       // Verificar si ya existe un historial activo para este usuario en esta empresa
-      const existingActiveHistory = await this.companyHistoryRepository.findOne({
-        where: { 
-          user: { id: userId }, 
-          company: { id: companyId }, 
-          isActive: true 
-        }
-      });
+      const existingActiveHistory = await this.companyHistoryRepository.findOne(
+        {
+          where: {
+            user: { id: userId },
+            company: { id: companyId },
+            isActive: true,
+          },
+        },
+      );
 
-      console.log('Existing active history: ', existingActiveHistory);
+      console.log("Existing active history: ", existingActiveHistory);
 
       if (existingActiveHistory) {
-        throw new BadRequestException(`User is already an active employee of this company`);
+        throw new BadRequestException(
+          `User is already an active employee of this company`,
+        );
       }
 
-      console.log('Creating new employee history...');
+      console.log("Creating new employee history...");
 
-      const startDate = addEmployeeDto?.startDate ? new Date(addEmployeeDto.startDate) : new Date();
+      const startDate = addEmployeeDto?.startDate
+        ? new Date(addEmployeeDto.startDate)
+        : new Date();
 
       // Asignar la empresa al usuario como su empleador
       user.employer = company;
@@ -234,10 +278,10 @@ export class CompanyService {
         user: user,
         company: company,
         startDate: startDate,
-        isActive: true
+        isActive: true,
       });
 
-      console.log('Saving company history: ', companyHistory);
+      console.log("Saving company history: ", companyHistory);
 
       await this.companyHistoryRepository.save(companyHistory);
 
@@ -248,12 +292,16 @@ export class CompanyService {
     }
   }
 
-  async removeEmployee(companyId: string, userId: number, removeEmployeeDto?: RemoveEmployeeDto): Promise<Company> {
+  async removeEmployee(
+    companyId: string,
+    userId: number,
+    removeEmployeeDto?: RemoveEmployeeDto,
+  ): Promise<Company> {
     try {
       const company = await this.findOne(companyId);
-      const user = await this.userRepository.findOne({ 
+      const user = await this.userRepository.findOne({
         where: { id: userId },
-        relations: ['employer'] 
+        relations: ["employer"],
       });
 
       if (!user) {
@@ -261,18 +309,22 @@ export class CompanyService {
       }
 
       if (!user.employer || user.employer.id !== company.id) {
-        throw new BadRequestException(`User with ID ${userId} is not an employee of company with ID ${companyId}`);
+        throw new BadRequestException(
+          `User with ID ${userId} is not an employee of company with ID ${companyId}`,
+        );
       }
 
-      const endDate = removeEmployeeDto?.endDate ? new Date(removeEmployeeDto.endDate) : new Date();
+      const endDate = removeEmployeeDto?.endDate
+        ? new Date(removeEmployeeDto.endDate)
+        : new Date();
 
       // Buscar el historial activo y marcarlo como inactivo
       const activeHistory = await this.companyHistoryRepository.findOne({
-        where: { 
-          user: { id: userId }, 
-          company: { id: companyId }, 
-          isActive: true 
-        }
+        where: {
+          user: { id: userId },
+          company: { id: companyId },
+          isActive: true,
+        },
       });
 
       if (activeHistory) {
@@ -293,33 +345,37 @@ export class CompanyService {
     }
   }
 
-  async getEmployees(companyId: string, paginationDto: PaginationDto): Promise<PaginationResponse<User>> {
+  async getEmployees(
+    companyId: string,
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<User>> {
     try {
       const company = await this.findOne(companyId);
       const { page, limit } = paginationDto;
       const skip = (page - 1) * limit;
 
       // Buscar todos los usuarios que han tenido historial con esta empresa
-      const [historyRecords, total] = await this.companyHistoryRepository.findAndCount({
-        where: { company: { id: companyId } },
-        relations: ['user', 'user.roles'],
-        order: { startDate: 'DESC' },
-        skip,
-        take: limit,
-      });
+      const [historyRecords, total] =
+        await this.companyHistoryRepository.findAndCount({
+          where: { company: { id: companyId } },
+          relations: ["user", "user.roles"],
+          order: { startDate: "DESC" },
+          skip,
+          take: limit,
+        });
 
       // Agrupar por usuario para obtener el historial más reciente de cada uno
       const userHistoryMap = new Map();
-      
+
       // Primero, obtener todos los usuarios únicos que aparecen en el historial
       const allHistoryForCompany = await this.companyHistoryRepository.find({
         where: { company: { id: companyId } },
-        relations: ['user', 'user.roles'],
-        order: { startDate: 'DESC' },
+        relations: ["user", "user.roles"],
+        order: { startDate: "DESC" },
       });
 
       // Agrupar por usuario y tomar el historial más reciente
-      allHistoryForCompany.forEach(history => {
+      allHistoryForCompany.forEach((history) => {
         const userId = history.user.id;
         if (!userHistoryMap.has(userId)) {
           userHistoryMap.set(userId, history);
@@ -334,19 +390,20 @@ export class CompanyService {
       const enrichedEmployees = await Promise.all(
         paginatedHistories.map(async (userHistory) => {
           const employee = userHistory.user;
-          
+
           // Buscar el historial activo actual
-          const currentActiveHistory = await this.companyHistoryRepository.findOne({
-            where: { 
-              user: { id: employee.id }, 
-              company: { id: companyId }, 
-              isActive: true 
-            }
-          });
+          const currentActiveHistory =
+            await this.companyHistoryRepository.findOne({
+              where: {
+                user: { id: employee.id },
+                company: { id: companyId },
+                isActive: true,
+              },
+            });
 
           // Si hay historial activo, usarlo; si no, usar el más reciente inactivo
           const relevantHistory = currentActiveHistory || userHistory;
-          
+
           let employmentInfo = null;
 
           if (relevantHistory) {
@@ -381,16 +438,20 @@ export class CompanyService {
                 days: diffDays,
                 months: diffMonths,
                 years: diffYears,
-                displayText: this.formatDuration(diffYears, diffMonths, diffDays)
-              }
+                displayText: this.formatDuration(
+                  diffYears,
+                  diffMonths,
+                  diffDays,
+                ),
+              },
             };
           }
 
           return {
             ...employee,
-            currentEmployment: employmentInfo
+            currentEmployment: employmentInfo,
           };
-        })
+        }),
       );
 
       const totalPages = Math.ceil(uniqueUserHistories.length / limit);
@@ -411,9 +472,12 @@ export class CompanyService {
     }
   }
 
-  async updateLocation(id: string, updateLocationDto: UpdateCompanyLocationDto): Promise<Company> {
+  async updateLocation(
+    id: string,
+    updateLocationDto: UpdateCompanyLocationDto,
+  ): Promise<Company> {
     const company = await this.findOne(id);
-    
+
     try {
       // Actualizar solo los campos de ubicación
       Object.assign(company, updateLocationDto);
@@ -423,15 +487,23 @@ export class CompanyService {
     }
   }
 
-  async getLocation(id: string): Promise<{ latitude: number; longitude: number; address: string; city: string; country: string }> {
+  async getLocation(
+    id: string,
+  ): Promise<{
+    latitude: number;
+    longitude: number;
+    address: string;
+    city: string;
+    country: string;
+  }> {
     const company = await this.findOne(id);
-    
+
     return {
       latitude: company.latitude,
       longitude: company.longitude,
       address: company.address,
       city: company.city,
-      country: company.country
+      country: company.country,
     };
   }
 
@@ -439,7 +511,7 @@ export class CompanyService {
     try {
       const company = await this.companyRepository.findOne({
         where: { user: { id: userId } },
-        relations: ['user'],
+        relations: ["user"],
       });
 
       return company;
@@ -448,11 +520,16 @@ export class CompanyService {
     }
   }
 
-  async updateCheckInTime(companyId: string, checkInTime: string): Promise<Company> {
+  async updateCheckInTime(
+    companyId: string,
+    checkInTime: string,
+  ): Promise<Company> {
     try {
-      const company = await this.companyRepository.findOne({ where: { id: companyId } });
+      const company = await this.companyRepository.findOne({
+        where: { id: companyId },
+      });
       if (!company) {
-        throw new NotFoundException('Company not found');
+        throw new NotFoundException("Company not found");
       }
 
       company.checkInTime = checkInTime;
@@ -464,7 +541,11 @@ export class CompanyService {
     }
   }
 
-  async getCompanyAttendanceStats(companyId: string, startDate: Date, endDate: Date): Promise<{
+  async getCompanyAttendanceStats(
+    companyId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<{
     companyCheckInTime: string;
     totalEmployees: number;
     totalAttendanceRecords: number;
@@ -481,13 +562,13 @@ export class CompanyService {
     }>;
   }> {
     try {
-      const company = await this.companyRepository.findOne({ 
+      const company = await this.companyRepository.findOne({
         where: { id: companyId },
-        relations: ['employees']
+        relations: ["employees"],
       });
 
       if (!company) {
-        throw new NotFoundException('Company not found');
+        throw new NotFoundException("Company not found");
       }
 
       // Obtener todas las asistencias de los empleados de la empresa en el rango de fechas
@@ -495,23 +576,26 @@ export class CompanyService {
         where: {
           employee: { employer: { id: companyId } },
           date: Between(startDate, endDate),
-          isAbsent: false // Solo contar días trabajados
+          isAbsent: false, // Solo contar días trabajados
         },
-        relations: ['employee']
+        relations: ["employee"],
       });
 
       const totalAttendanceRecords = attendances.length;
-      const lateArrivals = attendances.filter(a => a.isLate).length;
+      const lateArrivals = attendances.filter((a) => a.isLate).length;
       const onTimeArrivals = totalAttendanceRecords - lateArrivals;
-      const latePercentage = totalAttendanceRecords > 0 ? (lateArrivals / totalAttendanceRecords) * 100 : 0;
+      const latePercentage =
+        totalAttendanceRecords > 0
+          ? (lateArrivals / totalAttendanceRecords) * 100
+          : 0;
 
       // Estadísticas por empleado
       const employeeStatsMap = new Map();
-      
-      attendances.forEach(attendance => {
+
+      attendances.forEach((attendance) => {
         const employeeId = attendance.employee.id;
         const employeeName = attendance.employee.name;
-        
+
         if (!employeeStatsMap.has(employeeId)) {
           employeeStatsMap.set(employeeId, {
             employeeId,
@@ -519,32 +603,33 @@ export class CompanyService {
             totalDays: 0,
             lateDays: 0,
             onTimeDays: 0,
-            latePercentage: 0
+            latePercentage: 0,
           });
         }
-        
+
         const stats = employeeStatsMap.get(employeeId);
         stats.totalDays++;
-        
+
         if (attendance.isLate) {
           stats.lateDays++;
         } else {
           stats.onTimeDays++;
         }
-        
-        stats.latePercentage = stats.totalDays > 0 ? (stats.lateDays / stats.totalDays) * 100 : 0;
+
+        stats.latePercentage =
+          stats.totalDays > 0 ? (stats.lateDays / stats.totalDays) * 100 : 0;
       });
 
       const employeeStats = Array.from(employeeStatsMap.values());
 
       return {
-        companyCheckInTime: company.checkInTime || '07:00',
+        companyCheckInTime: company.checkInTime || "07:00",
         totalEmployees: company.employees.length,
         totalAttendanceRecords,
         lateArrivals,
         onTimeArrivals,
         latePercentage: Math.round(latePercentage * 100) / 100,
-        employeeStats
+        employeeStats,
       };
     } catch (error) {
       this.handleDBErrors(error);
@@ -560,52 +645,55 @@ export class CompanyService {
       throw error;
     }
 
-    if (error.code === '23505') {
+    if (error.code === "23505") {
       throw new BadRequestException(error.detail);
     }
 
     this.logger.error(error);
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 
   private handleDBExceptions(error: any) {
-    if (error.code === '23505')
-      throw new BadRequestException(error.detail);
+    if (error.code === "23505") throw new BadRequestException(error.detail);
 
     this.logger.error(error);
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 
   private formatDuration(years: number, months: number, days: number): string {
     const parts = [];
-    
+
     if (years > 0) {
-      parts.push(`${years} año${years > 1 ? 's' : ''}`);
+      parts.push(`${years} año${years > 1 ? "s" : ""}`);
     }
-    
+
     if (months > 0) {
       const remainingMonths = months % 12;
       if (remainingMonths > 0) {
-        parts.push(`${remainingMonths} mes${remainingMonths > 1 ? 'es' : ''}`);
+        parts.push(`${remainingMonths} mes${remainingMonths > 1 ? "es" : ""}`);
       }
     }
-    
+
     if (parts.length === 0) {
       if (days === 0) {
-        return 'Menos de 1 día';
+        return "Menos de 1 día";
       } else if (days < 30) {
-        return `${days} día${days > 1 ? 's' : ''}`;
+        return `${days} día${days > 1 ? "s" : ""}`;
       } else {
         const monthsFromDays = Math.floor(days / 30);
         const remainingDays = days % 30;
         if (remainingDays > 0) {
-          return `${monthsFromDays} mes${monthsFromDays > 1 ? 'es' : ''} y ${remainingDays} día${remainingDays > 1 ? 's' : ''}`;
+          return `${monthsFromDays} mes${monthsFromDays > 1 ? "es" : ""} y ${remainingDays} día${remainingDays > 1 ? "s" : ""}`;
         } else {
-          return `${monthsFromDays} mes${monthsFromDays > 1 ? 'es' : ''}`;
+          return `${monthsFromDays} mes${monthsFromDays > 1 ? "es" : ""}`;
         }
       }
     }
-    
-    return parts.join(' y ');
+
+    return parts.join(" y ");
   }
 }

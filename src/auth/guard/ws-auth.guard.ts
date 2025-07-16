@@ -1,7 +1,7 @@
-import { CanActivate, Injectable } from '@nestjs/common';
-import { WsException } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
+import { CanActivate, Injectable } from "@nestjs/common";
+import { WsException } from "@nestjs/websockets";
+import { Socket } from "socket.io";
+import { JwtService } from "@nestjs/jwt";
 
 @Injectable()
 export class WsAuthGuard implements CanActivate {
@@ -11,17 +11,17 @@ export class WsAuthGuard implements CanActivate {
     try {
       const client: Socket = context.switchToWs().getClient();
       const token = client.handshake.auth.token;
-      
+
       if (!token) {
-        throw new WsException('Token no proporcionado');
+        throw new WsException("Token no proporcionado");
       }
 
       const payload = this.jwtService.verify(token);
       client.data.user = payload;
-      
+
       return true;
     } catch (err) {
-      throw new WsException('Token inválido');
+      throw new WsException("Token inválido");
     }
   }
-} 
+}

@@ -1,18 +1,18 @@
-import { IsOptional, IsEnum, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { PaymentStatus } from '../../enums/paymentMethod.enum';
+import { IsOptional, IsEnum, IsDateString } from "class-validator";
+import { Type } from "class-transformer";
+import { ApiProperty } from "@nestjs/swagger";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { PaymentStatus } from "../../enums/paymentMethod.enum";
 
 export enum PaymentHistoryType {
-  SENT = 'sent',      // Pagos enviados (como payer)
-  RECEIVED = 'received', // Pagos recibidos (como payee)
-  ALL = 'all'         // Todos los pagos
+  SENT = "sent", // Pagos enviados (como payer)
+  RECEIVED = "received", // Pagos recibidos (como payee)
+  ALL = "all", // Todos los pagos
 }
 
 export class PaymentHistoryDto extends PaginationDto {
   @ApiProperty({
-    description: 'Tipo de historial de pagos',
+    description: "Tipo de historial de pagos",
     enum: PaymentHistoryType,
     default: PaymentHistoryType.ALL,
     required: false,
@@ -22,7 +22,7 @@ export class PaymentHistoryDto extends PaginationDto {
   type?: PaymentHistoryType = PaymentHistoryType.ALL;
 
   @ApiProperty({
-    description: 'Filtrar por estado del pago',
+    description: "Filtrar por estado del pago",
     enum: PaymentStatus,
     required: false,
   })
@@ -31,18 +31,18 @@ export class PaymentHistoryDto extends PaginationDto {
   status?: PaymentStatus;
 
   @ApiProperty({
-    description: 'Fecha de inicio para filtrar (formato YYYY-MM-DD)',
+    description: "Fecha de inicio para filtrar (formato YYYY-MM-DD)",
     required: false,
-    example: '2024-01-01'
+    example: "2024-01-01",
   })
   @IsOptional()
   @IsDateString()
   startDate?: string;
 
   @ApiProperty({
-    description: 'Fecha de fin para filtrar (formato YYYY-MM-DD)', 
+    description: "Fecha de fin para filtrar (formato YYYY-MM-DD)",
     required: false,
-    example: '2024-12-31'
+    example: "2024-12-31",
   })
   @IsOptional()
   @IsDateString()

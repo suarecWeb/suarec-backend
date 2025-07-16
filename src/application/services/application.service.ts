@@ -1,17 +1,23 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Application, ApplicationStatus } from '../entities/application.entity';
-import { CreateApplicationDto } from '../dto/create-application.dto';
-import { UpdateApplicationDto } from '../dto/update-application.dto';
-import { User } from '../../user/entities/user.entity';
-import { Publication } from '../../publication/entities/publication.entity';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Application, ApplicationStatus } from "../entities/application.entity";
+import { CreateApplicationDto } from "../dto/create-application.dto";
+import { UpdateApplicationDto } from "../dto/update-application.dto";
+import { User } from "../../user/entities/user.entity";
+import { Publication } from "../../publication/entities/publication.entity";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 
 @Injectable()
 export class ApplicationService {
-  private readonly logger = new Logger('ApplicationService');
+  private readonly logger = new Logger("ApplicationService");
 
   constructor(
     @InjectRepository(Application)
@@ -22,7 +28,9 @@ export class ApplicationService {
     private readonly publicationRepository: Repository<Publication>,
   ) {}
 
-  async create(createApplicationDto: CreateApplicationDto): Promise<Application> {
+  async create(
+    createApplicationDto: CreateApplicationDto,
+  ): Promise<Application> {
     try {
       const { userId, publicationId, message } = createApplicationDto;
 
@@ -33,31 +41,43 @@ export class ApplicationService {
       }
 
       // Verificar que la publicación existe
-      const publication = await this.publicationRepository.findOne({ 
+      const publication = await this.publicationRepository.findOne({
         where: { id: publicationId },
-        relations: ['user', 'user.company', 'user.employer']
+        relations: ["user", "user.company", "user.employer"],
       });
       if (!publication) {
-        throw new BadRequestException(`Publication with ID ${publicationId} not found`);
+        throw new BadRequestException(
+          `Publication with ID ${publicationId} not found`,
+        );
       }
 
-      console.log("!!!!!!!!!!!!! \n publicacion: " + publication + " con user y company : " + publication.user + " _ " + publication.user.company + " \n !!!!!!!!!!!!!!!!")
+      console.log(
+        "!!!!!!!!!!!!! \n publicacion: " +
+          publication +
+          " con user y company : " +
+          publication.user +
+          " _ " +
+          publication.user.company +
+          " \n !!!!!!!!!!!!!!!!",
+      );
 
       // Verificar que el usuario no esté aplicando a su propia publicación
       if (publication.user.id === userId) {
-        throw new BadRequestException('Cannot apply to your own publication');
+        throw new BadRequestException("Cannot apply to your own publication");
       }
 
       // Verificar que el usuario no haya aplicado ya a esta publicación
       const existingApplication = await this.applicationRepository.findOne({
         where: {
           user: { id: userId },
-          publication: { id: publicationId }
-        }
+          publication: { id: publicationId },
+        },
       });
 
       if (existingApplication) {
-        throw new BadRequestException('User has already applied to this publication');
+        throw new BadRequestException(
+          "User has already applied to this publication",
+        );
       }
 
       // Crear la aplicación
@@ -69,11 +89,18 @@ export class ApplicationService {
         publication,
       });
 
-      console.log("!!!!!!!!!!!!! \n aplicacion: " + application + " con user y company : " + application.user + " _ " + application.publication.user.company + " \n !!!!!!!!!!!!!!!!")
-
+      console.log(
+        "!!!!!!!!!!!!! \n aplicacion: " +
+          application +
+          " con user y company : " +
+          application.user +
+          " _ " +
+          application.publication.user.company +
+          " \n !!!!!!!!!!!!!!!!",
+      );
 
       await this.applicationRepository.save(application);
-      
+
       // Retornar con las relaciones cargadas
       return this.findOne(application.id);
     } catch (error) {
@@ -81,16 +108,24 @@ export class ApplicationService {
     }
   }
 
-  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Application>> {
+  async findAll(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Application>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.applicationRepository.findAndCount({
-        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
+        relations: [
+          "user",
+          "publication",
+          "publication.user",
+          "publication.user.company",
+          "publication.user.employer",
+        ],
         skip,
         take: limit,
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -111,13 +146,18 @@ export class ApplicationService {
     }
   }
 
-  async getCompanyApplications(companyUserId: number, paginationDto: PaginationDto): Promise<PaginationResponse<Application>> {
+  async getCompanyApplications(
+    companyUserId: number,
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Application>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
       // Verificar si el usuario existe
-      const user = await this.userRepository.findOne({ where: { id: companyUserId } });
+      const user = await this.userRepository.findOne({
+        where: { id: companyUserId },
+      });
       if (!user) {
         return {
           data: [],
@@ -133,12 +173,13 @@ export class ApplicationService {
       }
 
       // Obtener todas las aplicaciones para las publicaciones de esta empresa
-      const queryBuilder = this.applicationRepository.createQueryBuilder('application')
-        .leftJoinAndSelect('application.user', 'user')
-        .leftJoinAndSelect('application.publication', 'publication')
-        .leftJoinAndSelect('publication.user', 'publicationUser')
-        .where('publication.user.id = :companyUserId', { companyUserId })
-        .orderBy('application.created_at', 'DESC')
+      const queryBuilder = this.applicationRepository
+        .createQueryBuilder("application")
+        .leftJoinAndSelect("application.user", "user")
+        .leftJoinAndSelect("application.publication", "publication")
+        .leftJoinAndSelect("publication.user", "publicationUser")
+        .where("publication.user.id = :companyUserId", { companyUserId })
+        .orderBy("application.created_at", "DESC")
         .skip(skip)
         .take(limit);
 
@@ -161,17 +202,26 @@ export class ApplicationService {
     }
   }
 
-  async getUserApplications(userId: number, paginationDto: PaginationDto): Promise<PaginationResponse<Application>> {
+  async getUserApplications(
+    userId: number,
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Application>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { user: { id: userId } },
-        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
+        relations: [
+          "user",
+          "publication",
+          "publication.user",
+          "publication.user.company",
+          "publication.user.employer",
+        ],
         skip,
         take: limit,
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -192,17 +242,26 @@ export class ApplicationService {
     }
   }
 
-  async getPublicationApplications(publicationId: string, paginationDto: PaginationDto): Promise<PaginationResponse<Application>> {
+  async getPublicationApplications(
+    publicationId: string,
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Application>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.applicationRepository.findAndCount({
         where: { publication: { id: publicationId } },
-        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
+        relations: [
+          "user",
+          "publication",
+          "publication.user",
+          "publication.user.company",
+          "publication.user.employer",
+        ],
         skip,
         take: limit,
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -223,14 +282,22 @@ export class ApplicationService {
     }
   }
 
-  async checkUserApplication(userId: number, publicationId: string): Promise<{ hasApplied: boolean; application?: Application }> {
+  async checkUserApplication(
+    userId: number,
+    publicationId: string,
+  ): Promise<{ hasApplied: boolean; application?: Application }> {
     try {
       const application = await this.applicationRepository.findOne({
         where: {
           user: { id: userId },
-          publication: { id: publicationId }
+          publication: { id: publicationId },
         },
-        relations: ['user', 'publication', 'publication.user.company', 'publication.user.employer']
+        relations: [
+          "user",
+          "publication",
+          "publication.user.company",
+          "publication.user.employer",
+        ],
       });
 
       return {
@@ -246,7 +313,13 @@ export class ApplicationService {
     try {
       const application = await this.applicationRepository.findOne({
         where: { id },
-        relations: ['user', 'publication', 'publication.user', 'publication.user.company', 'publication.user.employer'],
+        relations: [
+          "user",
+          "publication",
+          "publication.user",
+          "publication.user.company",
+          "publication.user.employer",
+        ],
       });
 
       if (!application) {
@@ -259,7 +332,10 @@ export class ApplicationService {
     }
   }
 
-  async update(id: string, updateApplicationDto: UpdateApplicationDto): Promise<Application> {
+  async update(
+    id: string,
+    updateApplicationDto: UpdateApplicationDto,
+  ): Promise<Application> {
     try {
       const application = await this.findOne(id);
 
@@ -274,7 +350,7 @@ export class ApplicationService {
       }
 
       await this.applicationRepository.save(application);
-      
+
       // Devolver la aplicación actualizada con todas las relaciones
       return this.findOne(id);
     } catch (error) {
@@ -285,10 +361,12 @@ export class ApplicationService {
   async remove(id: string): Promise<void> {
     try {
       const application = await this.findOne(id);
-      
+
       // Solo permitir eliminar aplicaciones pendientes
       if (application.status !== ApplicationStatus.PENDING) {
-        throw new BadRequestException('Only pending applications can be deleted');
+        throw new BadRequestException(
+          "Only pending applications can be deleted",
+        );
       }
 
       await this.applicationRepository.remove(application);
@@ -299,7 +377,7 @@ export class ApplicationService {
 
   private handleDBErrors(error: any) {
     this.logger.error(error);
-    
+
     if (error.status === 400) {
       throw new BadRequestException(error.response.message);
     }
@@ -308,14 +386,16 @@ export class ApplicationService {
       throw error;
     }
 
-    if (error.code === '23505') {
-      throw new BadRequestException('Duplicate entry: ' + error.detail);
+    if (error.code === "23505") {
+      throw new BadRequestException("Duplicate entry: " + error.detail);
     }
 
-    if (error.code === '23503') {
-      throw new BadRequestException('Referenced record not found');
+    if (error.code === "23503") {
+      throw new BadRequestException("Referenced record not found");
     }
 
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 }

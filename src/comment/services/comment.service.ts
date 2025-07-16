@@ -1,17 +1,23 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Comment } from '../entities/comment.entity';
-import { CreateCommentDto } from '../dto/create-comment.dto';
-import { UpdateCommentDto } from '../dto/update-comment.dto';
-import { User } from '../../user/entities/user.entity';
-import { Publication } from '../../publication/entities/publication.entity';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Comment } from "../entities/comment.entity";
+import { CreateCommentDto } from "../dto/create-comment.dto";
+import { UpdateCommentDto } from "../dto/update-comment.dto";
+import { User } from "../../user/entities/user.entity";
+import { Publication } from "../../publication/entities/publication.entity";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 
 @Injectable()
 export class CommentService {
-  private readonly logger = new Logger('CommentService');
+  private readonly logger = new Logger("CommentService");
 
   constructor(
     @InjectRepository(Comment)
@@ -26,15 +32,19 @@ export class CommentService {
     try {
       const comment = this.commentRepository.create(createCommentDto);
 
-      const user = await this.userRepository.findOne({ where: {id: createCommentDto.userId}})
-      const publication = await this.publicationRepository.findOne({ where: {id: createCommentDto.publicationId} })
+      const user = await this.userRepository.findOne({
+        where: { id: createCommentDto.userId },
+      });
+      const publication = await this.publicationRepository.findOne({
+        where: { id: createCommentDto.publicationId },
+      });
 
       if (!user) {
-        throw new BadRequestException('User not found');
+        throw new BadRequestException("User not found");
       }
 
       if (!publication) {
-        throw new BadRequestException('Publication not found');
+        throw new BadRequestException("Publication not found");
       }
 
       comment.user = user;
@@ -47,13 +57,15 @@ export class CommentService {
     }
   }
 
-  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Comment>> {
+  async findAll(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Comment>> {
     try {
       const { page, limit } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [comments, total] = await this.commentRepository.findAndCount({
-        relations: ['publication', 'user'],
+        relations: ["publication", "user"],
         skip,
         take: limit,
       });
@@ -77,18 +89,21 @@ export class CommentService {
     }
   }
 
-  async findByPublicationId(paginationDto: PaginationDto, publicationId: string): Promise<PaginationResponse<Comment>> {
+  async findByPublicationId(
+    paginationDto: PaginationDto,
+    publicationId: string,
+  ): Promise<PaginationResponse<Comment>> {
     try {
       const { page, limit } = paginationDto;
       const skip = (page - 1) * limit;
 
       const publication = await this.publicationRepository.findOne({
-        where: { id: publicationId }
-      })
+        where: { id: publicationId },
+      });
 
       const [comments, total] = await this.commentRepository.findAndCount({
         where: { publication: publication },
-        relations: ['publication', 'user'],
+        relations: ["publication", "user"],
         skip,
         take: limit,
       });
@@ -97,7 +112,9 @@ export class CommentService {
       const totalPages = Math.ceil(total / limit);
 
       if (!publication) {
-        throw new NotFoundException(`Publication with ID ${publicationId} not found`);
+        throw new NotFoundException(
+          `Publication with ID ${publicationId} not found`,
+        );
       }
 
       return {
@@ -120,7 +137,7 @@ export class CommentService {
     try {
       const comment = await this.commentRepository.findOne({
         where: { id },
-        relations: ['publication', 'user'],
+        relations: ["publication", "user"],
       });
 
       if (!comment) {
@@ -133,7 +150,10 @@ export class CommentService {
     }
   }
 
-  async update(id: string, updateCommentDto: UpdateCommentDto): Promise<Comment> {
+  async update(
+    id: string,
+    updateCommentDto: UpdateCommentDto,
+  ): Promise<Comment> {
     try {
       const comment = await this.commentRepository.preload({
         id,
@@ -169,11 +189,13 @@ export class CommentService {
       throw error;
     }
 
-    if (error.code === '23505') {
+    if (error.code === "23505") {
       throw new BadRequestException(error.detail);
     }
 
     this.logger.error(error);
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 }

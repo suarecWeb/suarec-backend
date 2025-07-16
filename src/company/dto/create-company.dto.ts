@@ -1,4 +1,16 @@
-import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, MinLength, IsOptional, IsLatitude, IsLongitude } from 'class-validator';
+import {
+  IsDate,
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  IsOptional,
+  IsLatitude,
+  IsLongitude,
+} from "class-validator";
 
 export class CreateCompanyDto {
   @IsString()
@@ -23,7 +35,9 @@ export class CreateCompanyDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+\d{1,3}\s?\d{1,14}$/, { message: 'Cellphone number is not valid' })
+  @Matches(/^\+\d{1,3}\s?\d{1,14}$/, {
+    message: "Cellphone number is not valid",
+  })
   cellphone: string;
 
   @IsNumber()
@@ -54,6 +68,8 @@ export class CreateCompanyDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'checkInTime must be in HH:MM format' })
+  @Matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: "checkInTime must be in HH:MM format",
+  })
   checkInTime?: string;
 }
