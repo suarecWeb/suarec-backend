@@ -1,11 +1,11 @@
 // src/work-contract/work-contract.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { WorkContractService } from './services/work-contract.service';
-import { WorkContractController } from './work-contract.controller';
-import { WorkContract } from './entities/work-contract.entity';
-import { User } from '../user/entities/user.entity';
-import { Publication } from '../publication/entities/publication.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { WorkContractService } from "./services/work-contract.service";
+import { WorkContractController } from "./work-contract.controller";
+import { WorkContract } from "./entities/work-contract.entity";
+import { User } from "../user/entities/user.entity";
+import { Publication } from "../publication/entities/publication.entity";
 
 @Module({
   imports: [
