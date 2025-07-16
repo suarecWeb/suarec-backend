@@ -1,14 +1,5 @@
-import {
-  IsString,
-  IsOptional,
-  IsArray,
-  ValidateNested,
-  IsEmail,
-  IsDate,
-  IsUUID,
-  ValidateIf,
-} from "class-validator";
-import { Type } from "class-transformer";
+import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, IsEmail, IsDate, IsUUID, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
 
 // DTOs específicos para actualización que permiten el campo id
 export class UpdateEducationDto {
@@ -19,23 +10,23 @@ export class UpdateEducationDto {
   @IsString()
   @IsOptional()
   institution?: string;
-
+  
   @IsString()
   @IsOptional()
   degree?: string;
-
+  
   @IsString()
   @IsOptional()
   fieldOfStudy?: string;
-
+  
   @IsString()
   @IsOptional()
   startDate?: string;
-
+  
   @IsString()
   @IsOptional()
   endDate?: string;
-
+  
   @IsString()
   @IsOptional()
   description?: string;
@@ -120,7 +111,7 @@ export class UpdateUserDto {
   // Relación con la empresa como empleado (manyToOne)
   @IsString()
   @IsOptional()
-  @IsUUID("all", { message: "Employer ID must be a valid UUID" })
+  @IsUUID('all', { message: 'Employer ID must be a valid UUID' })
   employerId?: string;
 
   @IsString()
@@ -154,7 +145,7 @@ export class UpdateUserDto {
   @IsOptional()
   bio?: string;
 
-  @ValidateIf((o) => o.roles?.includes("PERSON"))
+  @ValidateIf(o => o.roles?.includes('PERSON'))
   @IsString()
   @IsOptional()
   cedula?: string;

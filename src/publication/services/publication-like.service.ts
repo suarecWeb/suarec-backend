@@ -1,71 +1,62 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { PublicationLike } from "../entities/publication-like.entity";
-import { Publication } from "../entities/publication.entity";
-import { CreatePublicationLikeDto } from "../dto/create-publication-like.dto";
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PublicationLike } from '../entities/publication-like.entity';
+import { Publication } from '../entities/publication.entity';
+import { CreatePublicationLikeDto } from '../dto/create-publication-like.dto';
 
 @Injectable()
 export class PublicationLikeService {
   constructor(
     @InjectRepository(PublicationLike)
-    private publicationLikeRepository: Repository<PublicationLike>, // eslint-disable-line no-unused-vars
+    private publicationLikeRepository: Repository<PublicationLike>,
     @InjectRepository(Publication)
-    private publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
+    private publicationRepository: Repository<Publication>,
   ) {}
 
   // Dar like a una publicación
-  async likePublication(
-    createLikeDto: CreatePublicationLikeDto,
-  ): Promise<PublicationLike> {
+  async likePublication(createLikeDto: CreatePublicationLikeDto): Promise<PublicationLike> {
     // Verificar que la publicación existe
     const publication = await this.publicationRepository.findOne({
-      where: { id: createLikeDto.publicationId },
+      where: { id: createLikeDto.publicationId }
     });
 
     if (!publication) {
-      throw new NotFoundException("Publicación no encontrada");
+      throw new NotFoundException('Publicación no encontrada');
     }
 
     // Verificar si el usuario ya dio like
     const existingLike = await this.publicationLikeRepository.findOne({
       where: {
         userId: createLikeDto.userId,
-        publicationId: createLikeDto.publicationId,
-      },
+        publicationId: createLikeDto.publicationId
+      }
     });
 
     if (existingLike) {
-      throw new ConflictException("El usuario ya dio like a esta publicación");
+      throw new ConflictException('El usuario ya dio like a esta publicación');
     }
 
     // Crear el like
     const like = this.publicationLikeRepository.create({
       userId: createLikeDto.userId,
-      publicationId: createLikeDto.publicationId,
+      publicationId: createLikeDto.publicationId
     });
 
     return await this.publicationLikeRepository.save(like);
   }
 
   // Quitar like de una publicación
-  async unlikePublication(
-    userId: number,
-    publicationId: string,
-  ): Promise<void> {
+  async unlikePublication(userId: number, publicationId: string): Promise<void> {
     const like = await this.publicationLikeRepository.findOne({
       where: {
         userId,
-        publicationId,
-      },
+        publicationId
+      }
     });
 
     if (!like) {
-      throw new NotFoundException("Like no encontrado");
+      throw new NotFoundException('Like no encontrado');
     }
 
     await this.publicationLikeRepository.remove(like);
@@ -75,14 +66,14 @@ export class PublicationLikeService {
   async getPublicationLikes(publicationId: string): Promise<PublicationLike[]> {
     return await this.publicationLikeRepository.find({
       where: { publicationId },
-      relations: ["user"],
+      relations: ['user']
     });
   }
 
   // Contar likes de una publicación
   async getPublicationLikesCount(publicationId: string): Promise<number> {
     return await this.publicationLikeRepository.count({
-      where: { publicationId },
+      where: { publicationId }
     });
   }
 
@@ -91,8 +82,8 @@ export class PublicationLikeService {
     const like = await this.publicationLikeRepository.findOne({
       where: {
         userId,
-        publicationId,
-      },
+        publicationId
+      }
     });
 
     return !!like;
@@ -102,7 +93,7 @@ export class PublicationLikeService {
   async getUserLikes(userId: number): Promise<PublicationLike[]> {
     return await this.publicationLikeRepository.find({
       where: { userId },
-      relations: ["publication"],
+      relations: ['publication']
     });
   }
-}
+} 

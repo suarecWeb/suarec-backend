@@ -1,34 +1,27 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from "typeorm";
-import { User } from "../../user/entities/user.entity";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { User } from '../../user/entities/user.entity';
 
-@Entity("attendance")
+@Entity('attendance')
 export class Attendance {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.attendances)
+  @ManyToOne(() => User, user => user.attendances)
   employee: User;
 
-  @Column({ type: "date" })
+  @Column({ type: 'date' })
   date: Date;
 
-  @Column({ type: "time" })
+  @Column({ type: 'time' })
   checkInTime: string;
 
-  @Column({ type: "boolean", default: false })
+  @Column({ type: 'boolean', default: false })
   isLate: boolean;
 
-  @Column({ type: "boolean", default: false })
+  @Column({ type: 'boolean', default: false })
   isAbsent: boolean;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: 'text', nullable: true })
   notes: string;
 
   @CreateDateColumn()
@@ -36,4 +29,4 @@ export class Attendance {
 
   @UpdateDateColumn()
   updatedAt: Date;
-}
+} 

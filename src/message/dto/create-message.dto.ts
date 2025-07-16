@@ -1,18 +1,18 @@
 // src/message/dto/create-message.dto.ts
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMessageDto {
   @ApiProperty({
-    description: "El contenido del mensaje",
-    example: "Hola, ¿cómo estás?",
+    description: 'El contenido del mensaje',
+    example: 'Hola, ¿cómo estás?',
   })
   @IsString()
   @IsNotEmpty()
   content: string;
 
   @ApiProperty({
-    description: "ID del usuario remitente",
+    description: 'ID del usuario remitente',
     example: 1,
   })
   @IsNumber()
@@ -20,7 +20,7 @@ export class CreateMessageDto {
   senderId: number;
 
   @ApiProperty({
-    description: "ID del usuario destinatario",
+    description: 'ID del usuario destinatario',
     example: 2,
   })
   @IsNumber()

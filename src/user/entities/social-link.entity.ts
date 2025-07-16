@@ -1,24 +1,18 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from "typeorm";
-import { User } from "./user.entity";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
 
-@Entity("social_link")
+@Entity('social_link')
 export class SocialLink {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column("text")
+  @Column('text')
   type: string;
 
-  @Column("text")
+  @Column('text')
   url: string;
 
-  @ManyToOne(() => User, (user) => user.socialLinks, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "user_id" })
+  @ManyToOne(() => User, (user) => user.socialLinks, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
-}
+} 

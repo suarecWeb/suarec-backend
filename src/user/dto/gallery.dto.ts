@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsArray } from "class-validator";
+import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 
 export class CreateGalleryImageDto {
   @IsString()
@@ -47,4 +47,4 @@ export class GalleryImageResponseDto {
   description?: string;
   order_index: number;
   created_at: Date;
-}
+} 

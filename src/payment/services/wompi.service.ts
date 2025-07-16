@@ -1,8 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import axios from "axios";
-import { WompiPaymentType } from "../../enums/paymentMethod.enum";
-import * as crypto from "crypto";
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import { WompiPaymentType } from '../../enums/paymentMethod.enum';
+import * as crypto from 'crypto';
 
 export interface WompiTransactionRequest {
   amount_in_cents: number;
@@ -60,28 +60,22 @@ export class WompiService {
   private readonly privateKey: string;
 
   constructor(private configService: ConfigService) {
-    // eslint-disable-line no-unused-vars
-    this.baseUrl = this.configService.get<string>(
-      "WOMPI_BASE_URL",
-      "https://production.wompi.co/v1",
-    );
-    this.publicKey = this.configService.get<string>("WOMPI_PUBLIC_KEY");
-    this.privateKey = this.configService.get<string>("WOMPI_PRIVATE_KEY");
+    this.baseUrl = this.configService.get<string>('WOMPI_BASE_URL', 'https://production.wompi.co/v1');
+    this.publicKey = this.configService.get<string>('WOMPI_PUBLIC_KEY');
+    this.privateKey = this.configService.get<string>('WOMPI_PRIVATE_KEY');
 
     if (!this.publicKey || !this.privateKey) {
-      this.logger.warn(
-        "Wompi keys not configured. Payment processing will be disabled.",
-      );
+      this.logger.warn('Wompi keys not configured. Payment processing will be disabled.');
     }
   }
 
   // Add email cleaning method
   private cleanEmailForPayment(email: string): string {
-    if (!email || typeof email !== "string") {
+    if (!email || typeof email !== 'string') {
       return email;
     }
     // Remove everything from + until @ (but not including @)
-    const cleanedEmail = email.replace(/\+[^@]*(?=@)/g, "");
+    const cleanedEmail = email.replace(/\+[^@]*(?=@)/g, '');
     this.logger.log(`Email cleaned: ${email} -> ${cleanedEmail}`);
     return cleanedEmail;
   }
@@ -95,24 +89,24 @@ export class WompiService {
     paymentType?: WompiPaymentType,
     installments?: number,
     acceptance_token?: string,
-    accept_personal_auth?: string,
+    accept_personal_auth?: string
   ): Promise<WompiTransactionResponse> {
     try {
       if (!this.privateKey) {
-        throw new Error("Wompi private key not configured");
+        throw new Error('Wompi private key not configured');
       }
 
       // Validate required fields
       if (!customerEmail) {
-        throw new Error("Customer email is required");
+        throw new Error('Customer email is required');
       }
 
       if (!acceptance_token) {
-        throw new Error("Acceptance token is required");
+        throw new Error('Acceptance token is required');
       }
 
       if (!accept_personal_auth) {
-        throw new Error("Personal data authorization token is required");
+        throw new Error('Personal data authorization token is required');
       }
 
       // Clean the email to remove + aliases
@@ -144,63 +138,52 @@ export class WompiService {
         }
       }
 
-      this.logger.log(
-        `Creating Wompi transaction: ${JSON.stringify(requestData)}`,
-      );
+      this.logger.log(`Creating Wompi transaction: ${JSON.stringify(requestData)}`);
 
       const response = await axios.post(
         `${this.baseUrl}/transactions`,
         requestData,
         {
           headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.privateKey}`,
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.privateKey}`,
           },
-        },
+        }
       );
 
-      this.logger.log(
-        `Wompi transaction created successfully: ${response.data.data.id}`,
-      );
+      this.logger.log(`Wompi transaction created successfully: ${response.data.data.id}`);
       return response.data;
     } catch (error) {
       this.logger.error(`Error creating Wompi transaction: ${error.message}`);
-
+      
       // Log the response for debugging
       if (error.response) {
         this.logger.error(`Wompi API Error Status: ${error.response.status}`);
-        this.logger.error(
-          `Wompi API Error Response: ${JSON.stringify(error.response.data)}`,
-        );
+        this.logger.error(`Wompi API Error Response: ${JSON.stringify(error.response.data)}`);
       }
-
+      
       throw new Error(`Failed to create Wompi transaction: ${error.message}`);
     }
   }
 
-  async getTransaction(
-    transactionId: string,
-  ): Promise<WompiTransactionResponse> {
+  async getTransaction(transactionId: string): Promise<WompiTransactionResponse> {
     try {
       if (!this.privateKey) {
-        throw new Error("Wompi private key not configured");
+        throw new Error('Wompi private key not configured');
       }
 
       const response = await axios.get(
         `${this.baseUrl}/transactions/${transactionId}`,
         {
           headers: {
-            Authorization: `Bearer ${this.privateKey}`,
+            'Authorization': `Bearer ${this.privateKey}`,
           },
-        },
+        }
       );
 
       return response.data;
     } catch (error) {
-      this.logger.error(
-        `Error getting Wompi transaction: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error getting Wompi transaction: ${error.message}`, error.stack);
       throw new Error(`Failed to get Wompi transaction: ${error.message}`);
     }
   }
@@ -209,30 +192,39 @@ export class WompiService {
     try {
       const secret = process.env.WOMPI_EVENTS_SECRET;
       if (!secret) {
+        console.error('WOMPI_EVENTS_SECRET is not set');
         return false;
       }
 
+      console.log('🔍 Verificando firma del webhook...');
+      console.log('Event body keys:', Object.keys(eventBody));
+      
       // Verificar estructura del webhook
       const { signature, timestamp, data } = eventBody;
-
+      
       if (!signature || !timestamp || !data) {
+        console.error('❌ Webhook structure invalid - missing signature, timestamp, or data');
+        return false;
+      }
+      
+      if (!signature.properties || !signature.checksum) {
+        console.error('❌ Signature structure invalid - missing properties or checksum');
         return false;
       }
 
-      if (!signature.properties || !signature.checksum) {
-        return false;
-      }
+      console.log('Signature properties:', signature.properties);
+      console.log('Timestamp:', timestamp);
+      console.log('Received checksum:', signature.checksum);
 
       // 1. Concatenar los valores de las propiedades en orden
-      let concat = "";
+      let concat = '';
       for (const prop of signature.properties) {
         // Soporta propiedades anidadas tipo "transaction.id"
-        const value = prop
-          .split(".")
-          .reduce((obj, key) => obj && obj[key], data);
+        const value = prop.split('.').reduce((obj, key) => obj && obj[key], data);
         if (value !== undefined && value !== null) {
           concat += value;
         }
+        console.log(`Property: ${prop}, Value: ${value}`);
       }
 
       // 2. Concatenar el timestamp
@@ -242,40 +234,41 @@ export class WompiService {
       concat += secret;
 
       // 4. Calcular el hash SHA256
-      const calculatedChecksum = crypto
-        .createHash("sha256")
-        .update(concat)
-        .digest("hex");
+      const calculatedChecksum = crypto.createHash('sha256').update(concat).digest('hex');
+
+      console.log('Calculated checksum:', calculatedChecksum);
+      console.log('Received checksum:', signature.checksum);
 
       // 5. Comparar con el checksum recibido (case insensitive)
-      const isValid =
-        calculatedChecksum.toLowerCase() === signature.checksum.toLowerCase();
+      const isValid = calculatedChecksum.toLowerCase() === signature.checksum.toLowerCase();
+      console.log('Signature valid:', isValid);
 
       return isValid;
     } catch (error) {
+      console.error('❌ Error verifying webhook signature:', error);
       return false;
     }
   }
 
   private mapPaymentType(paymentType: WompiPaymentType): string {
     const typeMap = {
-      [WompiPaymentType.CARD]: "CARD",
-      [WompiPaymentType.NEQUI]: "NEQUI",
-      [WompiPaymentType.BANCOLOMBIA_TRANSFER]: "BANCOLOMBIA_TRANSFER",
-      [WompiPaymentType.DAVIPLATA]: "DAVIPLATA",
+      [WompiPaymentType.CARD]: 'CARD',
+      [WompiPaymentType.NEQUI]: 'NEQUI',
+      [WompiPaymentType.BANCOLOMBIA_TRANSFER]: 'BANCOLOMBIA_TRANSFER',
+      [WompiPaymentType.DAVIPLATA]: 'DAVIPLATA',
     };
 
-    return typeMap[paymentType] || "CARD";
+    return typeMap[paymentType] || 'CARD';
   }
 
   private generateSignature(body: string): string {
     // Implement proper signature generation based on Wompi documentation
     // This is a placeholder - you should use the actual algorithm
-    const crypto = require("crypto");
+    const crypto = require('crypto');
     return crypto
-      .createHmac("sha256", this.privateKey)
+      .createHmac('sha256', this.privateKey)
       .update(body)
-      .digest("hex");
+      .digest('hex');
   }
 
   isConfigured(): boolean {
@@ -300,10 +293,15 @@ export class WompiService {
     collect_shipping?: boolean;
   }) {
     const url = `${this.baseUrl}/payment_links`;
-    if (!this.privateKey) {
-      throw new Error("Wompi private key not configured");
-    }
-
+    
+    // Extraer el transaction_id de la URL de éxito
+    const urlParts = redirect_url.split('?');
+    const transactionId = urlParts[1]?.split('=')[1];
+    
+    console.log('🔗 URLs configuradas para el pago:');
+    console.log('  - Success URL:', redirect_url);
+    console.log('  - Transaction ID:', transactionId);
+    
     const payload: any = {
       name,
       description,
@@ -313,15 +311,15 @@ export class WompiService {
       amount_in_cents: Math.round(amount * 100),
       redirect_url: redirect_url, // URL de éxito
       // Configurar tiempo de expiración
-      expire_in: "7200", // 2 horas de expiración
+      expire_in: '7200', // 2 horas de expiración
     };
-
+    
     const response = await axios.post(url, payload, {
       headers: {
         Authorization: `Bearer ${this.privateKey}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
     return response.data.data;
   }
-}
+} 

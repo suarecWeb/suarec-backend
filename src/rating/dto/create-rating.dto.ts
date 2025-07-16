@@ -1,24 +1,16 @@
 // src/rating/dto/create-rating.dto.ts
-import {
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-  Max,
-  IsEnum,
-} from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, Max, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export enum RatingCategory {
-  SERVICE = "SERVICE", // eslint-disable-line no-unused-vars
-  EMPLOYER = "EMPLOYER", // eslint-disable-line no-unused-vars
-  EMPLOYEE = "EMPLOYEE", // eslint-disable-line no-unused-vars
+  SERVICE = 'SERVICE',
+  EMPLOYER = 'EMPLOYER',
+  EMPLOYEE = 'EMPLOYEE'
 }
 
 export class CreateRatingDto {
   @ApiProperty({
-    description: "ID del usuario que da la calificación",
+    description: 'ID del usuario que da la calificación',
     example: 1,
   })
   @IsNumber()
@@ -26,7 +18,7 @@ export class CreateRatingDto {
   reviewerId: number;
 
   @ApiProperty({
-    description: "ID del usuario que recibe la calificación",
+    description: 'ID del usuario que recibe la calificación',
     example: 2,
   })
   @IsNumber()
@@ -34,7 +26,7 @@ export class CreateRatingDto {
   revieweeId: number;
 
   @ApiProperty({
-    description: "Número de estrellas (1-5)",
+    description: 'Número de estrellas (1-5)',
     example: 5,
     minimum: 1,
     maximum: 5,
@@ -46,8 +38,8 @@ export class CreateRatingDto {
   stars: number;
 
   @ApiProperty({
-    description: "Comentario sobre la calificación",
-    example: "Excelente trabajo, muy profesional",
+    description: 'Comentario sobre la calificación',
+    example: 'Excelente trabajo, muy profesional',
     required: false,
   })
   @IsString()
@@ -55,7 +47,7 @@ export class CreateRatingDto {
   comment?: string;
 
   @ApiProperty({
-    description: "Categoría de la calificación",
+    description: 'Categoría de la calificación',
     enum: RatingCategory,
     example: RatingCategory.SERVICE,
   })
@@ -64,8 +56,8 @@ export class CreateRatingDto {
   category: RatingCategory;
 
   @ApiProperty({
-    description: "ID del contrato de trabajo relacionado",
-    example: "uuid-contract-id",
+    description: 'ID del contrato de trabajo relacionado',
+    example: 'uuid-contract-id',
     required: false,
   })
   @IsString()

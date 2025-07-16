@@ -1,51 +1,42 @@
-import {
-  Column,
-  Entity,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from "typeorm";
-import { User } from "./user.entity";
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { User } from './user.entity';
 
-@Entity("experiences")
+@Entity('experiences')
 export class Experience {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column("text", { nullable: false })
+  @Column('text', { nullable: false })
   title: string;
 
-  @Column("text", { nullable: false })
+  @Column('text', { nullable: false })
   company: string;
 
-  @Column("text", { nullable: true })
+  @Column('text', { nullable: true })
   location: string;
 
-  @Column("date", {
+  @Column('date', { 
     nullable: false,
     transformer: {
       to: (value: Date) => value,
-      from: (value: string | Date) =>
-        value instanceof Date ? value : new Date(value),
-    },
+      from: (value: string | Date) => value instanceof Date ? value : new Date(value)
+    }
   })
   startDate: Date;
 
-  @Column("date", {
+  @Column('date', { 
     nullable: true,
     transformer: {
       to: (value: Date | null) => value,
-      from: (value: string | Date | null) =>
-        value instanceof Date ? value : value ? new Date(value) : null,
-    },
+      from: (value: string | Date | null) => value instanceof Date ? value : value ? new Date(value) : null
+    }
   })
   endDate: Date;
 
-  @Column("boolean", { default: false })
+  @Column('boolean', { default: false })
   currentPosition: boolean;
 
-  @Column("text", { nullable: true })
+  @Column('text', { nullable: true })
   description: string;
 
   @CreateDateColumn()
@@ -54,6 +45,6 @@ export class Experience {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @ManyToOne(() => User, (user) => user.experiences, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.experiences, { onDelete: 'CASCADE' })
   user: User;
-}
+} 
