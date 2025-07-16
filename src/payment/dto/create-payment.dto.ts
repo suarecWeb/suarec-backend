@@ -1,10 +1,21 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum, IsUUID, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { PaymentMethod, WompiPaymentType } from '../../enums/paymentMethod.enum';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsUUID,
+  Min,
+} from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import {
+  PaymentMethod,
+  WompiPaymentType,
+} from "../../enums/paymentMethod.enum";
 
 export class CreatePaymentDto {
   @ApiProperty({
-    description: 'Monto del pago',
+    description: "Monto del pago",
     example: 150000,
   })
   @IsNumber()
@@ -13,15 +24,15 @@ export class CreatePaymentDto {
   amount: number;
 
   @ApiProperty({
-    description: 'Moneda del pago',
-    example: 'COP',
+    description: "Moneda del pago",
+    example: "COP",
   })
   @IsString()
   @IsNotEmpty()
   currency: string;
 
   @ApiProperty({
-    description: 'Método de pago',
+    description: "Método de pago",
     enum: PaymentMethod,
     example: PaymentMethod.Wompi,
   })
@@ -30,7 +41,7 @@ export class CreatePaymentDto {
   payment_method: PaymentMethod;
 
   @ApiProperty({
-    description: 'Tipo de pago Wompi (solo si payment_method es WOMPI)',
+    description: "Tipo de pago Wompi (solo si payment_method es WOMPI)",
     enum: WompiPaymentType,
     required: false,
   })
@@ -39,15 +50,15 @@ export class CreatePaymentDto {
   wompi_payment_type?: WompiPaymentType;
 
   @ApiProperty({
-    description: 'ID del contrato de trabajo',
-    example: 'uuid-del-contrato',
+    description: "ID del contrato de trabajo",
+    example: "uuid-del-contrato",
   })
   @IsUUID()
   @IsNotEmpty()
   contract_id: string;
 
   @ApiProperty({
-    description: 'ID del usuario que recibe el pago',
+    description: "ID del usuario que recibe el pago",
     example: 1,
   })
   @IsNumber()
@@ -55,8 +66,8 @@ export class CreatePaymentDto {
   payee_id: number;
 
   @ApiProperty({
-    description: 'Descripción del pago',
-    example: 'Pago por servicios de plomería',
+    description: "Descripción del pago",
+    example: "Pago por servicios de plomería",
     required: false,
   })
   @IsString()
@@ -64,8 +75,8 @@ export class CreatePaymentDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Referencia personalizada',
-    example: 'REF-001',
+    description: "Referencia personalizada",
+    example: "REF-001",
     required: false,
   })
   @IsString()
@@ -73,7 +84,7 @@ export class CreatePaymentDto {
   reference?: string;
 
   @ApiProperty({
-    description: 'Token de aceptación de términos y condiciones de Wompi',
+    description: "Token de aceptación de términos y condiciones de Wompi",
     required: false,
   })
   @IsString()
@@ -81,10 +92,11 @@ export class CreatePaymentDto {
   acceptance_token?: string;
 
   @ApiProperty({
-    description: 'Token de autorización para tratamiento de datos personales de Wompi',
+    description:
+      "Token de autorización para tratamiento de datos personales de Wompi",
     required: false,
   })
   @IsString()
   @IsOptional()
   accept_personal_auth?: string;
-} 
+}

@@ -1,21 +1,28 @@
 // src/email-verification/services/email-verification.service.ts
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { EmailVerification } from '../entities/email-verification.entity';
-import { User } from '../../user/entities/user.entity';
-import * as crypto from 'crypto';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { EmailVerification } from "../entities/email-verification.entity";
+import { User } from "../../user/entities/user.entity";
+import { ApplicationStatus } from "../../application/entities/application.entity";
+import * as crypto from "crypto";
 
 @Injectable()
 export class EmailVerificationService {
-  private readonly logger = new Logger('EmailVerificationService');
+  private readonly logger = new Logger("EmailVerificationService");
 
   constructor(
     @InjectRepository(EmailVerification)
-    private readonly emailVerificationRepository: Repository<EmailVerification>,
+    private readonly emailVerificationRepository: Repository<EmailVerification>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-  ) { }
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
+  ) {}
 
   async sendVerificationEmail(userId: number, email: string): Promise<void> {
     try {
@@ -26,7 +33,7 @@ export class EmailVerificationService {
       }
 
       // Generar token único
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = crypto.randomBytes(32).toString("hex");
 
       // Crear registro de verificación con expiración de 24 horas
       const expiresAt = new Date();
@@ -46,27 +53,31 @@ export class EmailVerificationService {
 
       // Enviar email usando Brevo
       await this.sendEmailWithBrevo(email, token, user.name);
-
     } catch (error) {
       this.handleDBErrors(error);
     }
   }
 
-  async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+  async verifyEmail(
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const verification = await this.emailVerificationRepository.findOne({
         where: { token },
-        relations: ['user'],
+        relations: ["user"],
       });
 
       if (!verification) {
-        return { success: false, message: 'Token de verificación inválido' };
+        return { success: false, message: "Token de verificación inválido" };
       }
 
       // Verificar si el token ha expirado
       if (new Date() > verification.expires_at) {
         await this.emailVerificationRepository.remove(verification);
-        return { success: false, message: 'El token de verificación ha expirado' };
+        return {
+          success: false,
+          message: "El token de verificación ha expirado",
+        };
       }
 
       // Marcar email como verificado
@@ -76,10 +87,13 @@ export class EmailVerificationService {
       // Actualizar el usuario para marcar el email como verificado
       await this.userRepository.update(
         { id: verification.user.id },
-        { email_verified: true, email_verified_at: new Date() }
+        { email_verified: true, email_verified_at: new Date() },
       );
 
-      return { success: true, message: 'Correo electrónico verificado exitosamente' };
+      return {
+        success: true,
+        message: "Correo electrónico verificado exitosamente",
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -89,11 +103,11 @@ export class EmailVerificationService {
     try {
       const user = await this.userRepository.findOne({ where: { email } });
       if (!user) {
-        throw new BadRequestException('Usuario no encontrado con ese email');
+        throw new BadRequestException("Usuario no encontrado con ese email");
       }
 
       if (user.email_verified) {
-        throw new BadRequestException('El email ya está verificado');
+        throw new BadRequestException("El email ya está verificado");
       }
 
       await this.sendVerificationEmail(user.id, email);
@@ -106,29 +120,37 @@ export class EmailVerificationService {
     try {
       return await this.userRepository.findOne({ where: { email } });
     } catch (error) {
-      this.logger.error('Error getting user by email:', error);
+      this.logger.error("Error getting user by email:", error);
       return null;
     }
   }
 
-  private async sendEmailWithBrevo(email: string, token: string, userName: string): Promise<void> {
+  private async sendEmailWithBrevo(
+    email: string,
+    token: string,
+    userName: string,
+  ): Promise<void> {
     try {
       // Validar que la API key esté configurada
       if (!process.env.BREVO_API) {
-        this.logger.error('BREVO_API environment variable is not set');
-        throw new InternalServerErrorException('Configuración de email no válida');
+        this.logger.error("BREVO_API environment variable is not set");
+        throw new InternalServerErrorException(
+          "Configuración de email no válida",
+        );
       }
 
       this.logger.log(`Attempting to send email to ${email} with Brevo API`);
-      this.logger.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      this.logger.log(
+        `Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`,
+      );
 
-      const brevo = require('@getbrevo/brevo');
-      let apiInstance = new brevo.TransactionalEmailsApi();
+      const brevo = require("@getbrevo/brevo");
+      const apiInstance = new brevo.TransactionalEmailsApi();
 
-      let apiKey = apiInstance.authentications['apiKey'];
+      const apiKey = apiInstance.authentications["apiKey"];
       apiKey.apiKey = process.env.BREVO_API;
 
-      let sendSmtpEmail = new brevo.SendSmtpEmail();
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
 
       sendSmtpEmail.subject = "Verifica tu cuenta en SUAREC";
       sendSmtpEmail.htmlContent = `
@@ -150,7 +172,7 @@ export class EmailVerificationService {
                 </p>
                 
                 <div style="margin: 40px 0;">
-                  <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${token}" 
+                  <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/verify-email?token=${token}" 
                      style="background: linear-gradient(135deg, #097EEC 0%, #2171BC 100%); 
                             color: white; 
                             padding: 15px 30px; 
@@ -168,7 +190,7 @@ export class EmailVerificationService {
                   Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:
                 </p>
                 <p style="color: #097EEC; font-size: 12px; word-break: break-all; margin: 10px 0;">
-                  ${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${token}
+                  ${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/verify-email?token=${token}
                 </p>
                 
                 <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -195,46 +217,52 @@ export class EmailVerificationService {
       // Verificar que el email del remitente esté verificado en Brevo
       // IMPORTANTE: Este email debe estar verificado en tu cuenta de Brevo
       // Solo tienes verificado: dyez1110@gmail.com
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || "contactosuarec@gmail.com";
-      const replyToEmail = process.env.BREVO_REPLY_TO_EMAIL || "contactosuarec@gmail.com";
+      const senderEmail =
+        process.env.BREVO_SENDER_EMAIL || "contactosuarec@gmail.com";
+      const replyToEmail =
+        process.env.BREVO_REPLY_TO_EMAIL || "contactosuarec@gmail.com";
 
       this.logger.log(`Sender email: ${senderEmail}`);
       this.logger.log(`Reply to email: ${replyToEmail}`);
       this.logger.log(`Recipient email: ${email}`);
       this.logger.log(`Recipient name: ${userName}`);
 
-      sendSmtpEmail.sender = { "name": "SUAREC", "email": senderEmail };
-      sendSmtpEmail.to = [{ "email": email, "name": userName }];
-      sendSmtpEmail.replyTo = { "email": replyToEmail };
+      sendSmtpEmail.sender = { name: "SUAREC", email: senderEmail };
+      sendSmtpEmail.to = [{ email: email, name: userName }];
+      sendSmtpEmail.replyTo = { email: replyToEmail };
 
       this.logger.log(`Sending email with Brevo API to ${email}`);
       const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
 
       this.logger.log(`Brevo API response: ${JSON.stringify(response)}`);
-      this.logger.log(`Message ID: ${response.messageId || response.body?.messageId}`);
+      this.logger.log(
+        `Message ID: ${response.messageId || response.body?.messageId}`,
+      );
       this.logger.log(`Verification email sent to ${email}`);
     } catch (error) {
-      this.logger.error('Error sending verification email:', error);
+      this.logger.error("Error sending verification email:", error);
 
       // Log more detailed error information
       if (error.response) {
-        this.logger.error('Brevo API Error Response:', {
+        this.logger.error("Brevo API Error Response:", {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data,
-          headers: error.response.headers
+          headers: error.response.headers,
         });
       }
 
       if (error.message) {
-        this.logger.error('Error message:', error.message);
+        this.logger.error("Error message:", error.message);
       }
 
       if (error.code) {
-        this.logger.error('Error code:', error.code);
+        this.logger.error("Error code:", error.code);
       }
 
-      throw new InternalServerErrorException('Error al enviar email de verificación');
+      throw new InternalServerErrorException(
+        "Error al enviar email de verificación",
+      );
     }
   }
 
@@ -243,58 +271,70 @@ export class EmailVerificationService {
     candidateName: string,
     companyName: string,
     jobTitle: string,
-    status: 'INTERVIEW' | 'ACCEPTED' | 'REJECTED',
+    status:
+      | ApplicationStatus.INTERVIEW
+      | ApplicationStatus.ACCEPTED
+      | ApplicationStatus.REJECTED,
     customMessage?: string,
-    customDescription?: string
+    customDescription?: string,
   ): Promise<void> {
     try {
       // Validar que la API key esté configurada
       if (!process.env.BREVO_API) {
-        this.logger.error('BREVO_API environment variable is not set');
-        throw new InternalServerErrorException('Configuración de email no válida');
+        this.logger.error("BREVO_API environment variable is not set");
+        throw new InternalServerErrorException(
+          "Configuración de email no válida",
+        );
       }
 
-      this.logger.log(`Attempting to send application status email to ${email} with Brevo API`);
-      this.logger.log(`Status: ${status}, Job: ${jobTitle}, Company: ${companyName}`);
+      this.logger.log(
+        `Attempting to send application status email to ${email} with Brevo API`,
+      );
+      this.logger.log(
+        `Status: ${status}, Job: ${jobTitle}, Company: ${companyName}`,
+      );
 
-      const brevo = require('@getbrevo/brevo');
-      let apiInstance = new brevo.TransactionalEmailsApi();
+      const brevo = require("@getbrevo/brevo");
+      const apiInstance = new brevo.TransactionalEmailsApi();
 
-      let apiKey = apiInstance.authentications['apiKey'];
+      const apiKey = apiInstance.authentications["apiKey"];
       apiKey.apiKey = process.env.BREVO_API;
 
-      let sendSmtpEmail = new brevo.SendSmtpEmail();
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
 
       // Configurar el contenido según el estado
       const statusConfig = {
         INTERVIEW: {
           subject: `Actualización de tu aplicación - ${companyName} - ${jobTitle}`,
-          statusText: '!Has sido invitado a una entrevista!',
-          statusColor: '#2563eb', // Azul
-          buttonText: 'Ver detalles en SUAREC',
-          buttonColor: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-          defaultDescription: 'Tu perfil nos ha llamado la atención y queremos conocerte mejor.'
+          statusText: "!Has sido invitado a una entrevista!",
+          statusColor: "#2563eb", // Azul
+          buttonText: "Ver detalles en SUAREC",
+          buttonColor: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+          defaultDescription:
+            "Tu perfil nos ha llamado la atención y queremos conocerte mejor.",
         },
         ACCEPTED: {
           subject: `Actualización de tu aplicación - ${companyName} - ${jobTitle}`,
-          statusText: '¡Has sido contratado!',
-          statusColor: '#16a34a', // Verde
-          buttonText: 'Iniciar conversación',
-          buttonColor: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-          defaultDescription: 'Nos complace informarte que has sido seleccionado para el puesto.'
+          statusText: "¡Has sido contratado!",
+          statusColor: "#16a34a", // Verde
+          buttonText: "Iniciar conversación",
+          buttonColor: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+          defaultDescription:
+            "Nos complace informarte que has sido seleccionado para el puesto.",
         },
         REJECTED: {
           subject: `Actualización de tu aplicación - ${companyName} - ${jobTitle}`,
-          statusText: 'Decisión sobre tu aplicación',
-          statusColor: '#dc2626', // Rojo
-          buttonText: 'Ver más oportunidades',
-          buttonColor: 'linear-gradient(135deg, #097EEC 0%, #2171BC 100%)',
-          defaultDescription: 'Gracias por tu interés en esta posición. Aunque en esta ocasión no continuaremos con tu proceso, valoramos mucho tu participación.'
-        }
+          statusText: "Decisión sobre tu aplicación",
+          statusColor: "#dc2626", // Rojo
+          buttonText: "Ver más oportunidades",
+          buttonColor: "linear-gradient(135deg, #097EEC 0%, #2171BC 100%)",
+          defaultDescription:
+            "Gracias por tu interés en esta posición. Aunque en esta ocasión no continuaremos con tu proceso, valoramos mucho tu participación.",
+        },
       };
 
       const config = statusConfig[status];
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
       // Usar descripción personalizada o la por defecto
       const description = customDescription || config.defaultDescription;
@@ -330,14 +370,18 @@ export class EmailVerificationService {
               </div>
               
               <!-- Custom Message -->
-              ${customMessage ? `
+              ${
+                customMessage
+                  ? `
                 <div style="background-color: #fef7ff; border: 1px solid #e879f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
                   <h4 style="color: #86198f; margin: 0 0 10px 0; font-size: 16px;">💬 Mensaje adicional de ${companyName}:</h4>
                   <p style="color: #701a75; font-size: 15px; line-height: 1.5; margin: 0; font-style: italic;">
                     "${customMessage}"
                   </p>
                 </div>
-              ` : description}
+              `
+                  : description
+              }
               
               <!-- Action Button -->
               <div style="text-align: center; margin: 40px 0;">
@@ -356,7 +400,9 @@ export class EmailVerificationService {
                 </a>
               </div>
               
-              ${status === 'INTERVIEW' ? `
+              ${
+                status === ApplicationStatus.INTERVIEW
+                  ? `
                 <!-- Interview Tips -->
                 <div style="background-color: #eff6ff; border-radius: 8px; padding: 20px; margin: 30px 0;">
                   <h4 style="color: #1e40af; margin: 0 0 15px 0; font-size: 16px;">💡 Consejos para tu entrevista:</h4>
@@ -367,9 +413,13 @@ export class EmailVerificationService {
                     <li>Ten ejemplos específicos de tu experiencia</li>
                   </ul>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
-              ${status === 'ACCEPTED' ? `
+              ${
+                status === "ACCEPTED"
+                  ? `
                 <!-- Next Steps -->
                 <div style="background-color: #f0fdf4; border-radius: 8px; padding: 20px; margin: 30px 0;">
                   <h4 style="color: #166534; margin: 0 0 15px 0; font-size: 16px;">🚀 Próximos pasos:</h4>
@@ -380,9 +430,13 @@ export class EmailVerificationService {
                     <li>¡Celebra este logro! 🎉</li>
                   </ul>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
-              ${status === 'REJECTED' ? `
+              ${
+                status === ApplicationStatus.REJECTED
+                  ? `
                 <!-- Encouragement -->
                 <div style="background-color: #fef2f2; border-radius: 8px; padding: 20px; margin: 30px 0;">
                   <h4 style="color: #dc2626; margin: 0 0 15px 0; font-size: 16px;">🌟 No te desanimes:</h4>
@@ -393,7 +447,9 @@ export class EmailVerificationService {
                     <li>Considera el feedback para mejorar</li>
                   </ul>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
               <!-- Contact Info -->
               <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
@@ -432,47 +488,56 @@ export class EmailVerificationService {
     `;
 
       // Configurar remitente y destinatario
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || "dyez1110@gmail.com";
-      const replyToEmail = process.env.BREVO_REPLY_TO_EMAIL || "dyez1110@gmail.com";
+      const senderEmail =
+        process.env.BREVO_SENDER_EMAIL || "dyez1110@gmail.com";
+      const replyToEmail =
+        process.env.BREVO_REPLY_TO_EMAIL || "dyez1110@gmail.com";
 
       this.logger.log(`Sender email: ${senderEmail}`);
       this.logger.log(`Reply to email: ${replyToEmail}`);
       this.logger.log(`Recipient email: ${email}`);
       this.logger.log(`Recipient name: ${candidateName}`);
 
-      sendSmtpEmail.sender = { "name": "SUAREC", "email": senderEmail };
-      sendSmtpEmail.to = [{ "email": email, "name": candidateName }];
-      sendSmtpEmail.replyTo = { "email": replyToEmail };
+      sendSmtpEmail.sender = { name: "SUAREC", email: senderEmail };
+      sendSmtpEmail.to = [{ email: email, name: candidateName }];
+      sendSmtpEmail.replyTo = { email: replyToEmail };
 
-      this.logger.log(`Sending application status email with Brevo API to ${email}`);
+      this.logger.log(
+        `Sending application status email with Brevo API to ${email}`,
+      );
       const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
 
       this.logger.log(`Brevo API response: ${JSON.stringify(response)}`);
-      this.logger.log(`Message ID: ${response.messageId || response.body?.messageId}`);
-      this.logger.log(`Application status email sent to ${email} for status: ${status}`);
-
+      this.logger.log(
+        `Message ID: ${response.messageId || response.body?.messageId}`,
+      );
+      this.logger.log(
+        `Application status email sent to ${email} for status: ${status}`,
+      );
     } catch (error) {
-      this.logger.error('Error sending application status email:', error);
+      this.logger.error("Error sending application status email:", error);
 
       // Log more detailed error information
       if (error.response) {
-        this.logger.error('Brevo API Error Response:', {
+        this.logger.error("Brevo API Error Response:", {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data,
-          headers: error.response.headers
+          headers: error.response.headers,
         });
       }
 
       if (error.message) {
-        this.logger.error('Error message:', error.message);
+        this.logger.error("Error message:", error.message);
       }
 
       if (error.code) {
-        this.logger.error('Error code:', error.code);
+        this.logger.error("Error code:", error.code);
       }
 
-      throw new InternalServerErrorException('Error al enviar email de notificación de aplicación');
+      throw new InternalServerErrorException(
+        "Error al enviar email de notificación de aplicación",
+      );
     }
   }
 
@@ -487,10 +552,12 @@ export class EmailVerificationService {
       throw error;
     }
 
-    if (error.code === '23505') {
-      throw new BadRequestException('Duplicate entry: ' + error.detail);
+    if (error.code === "23505") {
+      throw new BadRequestException("Duplicate entry: " + error.detail);
     }
 
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 }
