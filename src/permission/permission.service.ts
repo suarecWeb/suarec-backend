@@ -1,25 +1,19 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  InternalServerErrorException,
-  Logger,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { CreatePermissionDto } from "./dto/create-permission.dto";
-import { UpdatePermissionDto } from "./dto/update-permission.dto";
-import { Permission } from "./entities/permission.entity";
-import { PaginationDto } from "../common/dto/pagination.dto";
-import { PaginationResponse } from "../common/interfaces/paginated-response.interface";
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { Permission } from './entities/permission.entity';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginationResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class PermissionService {
-  private readonly logger = new Logger("PermissionService");
+  private readonly logger = new Logger('PermissionService');
 
   constructor(
     @InjectRepository(Permission)
-    private permissionRepository: Repository<Permission>, // eslint-disable-line no-unused-vars
+    private permissionRepository: Repository<Permission>,
   ) {}
 
   async create(createPermissionDto: CreatePermissionDto) {
@@ -31,9 +25,7 @@ export class PermissionService {
     }
   }
 
-  async findAll(
-    paginationDto: PaginationDto,
-  ): Promise<PaginationResponse<Permission>> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Permission>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
@@ -64,9 +56,7 @@ export class PermissionService {
 
   async findOne(id: number) {
     try {
-      const permission = await this.permissionRepository.findOne({
-        where: { id },
-      });
+      const permission = await this.permissionRepository.findOne({ where: { id } });
       if (!permission) {
         throw new NotFoundException(`Permission with ID ${id} not found`);
       }
@@ -78,10 +68,7 @@ export class PermissionService {
 
   async update(id: number, updatePermissionDto: UpdatePermissionDto) {
     try {
-      const permission = await this.permissionRepository.preload({
-        id,
-        ...updatePermissionDto,
-      });
+      const permission = await this.permissionRepository.preload({ id, ...updatePermissionDto });
       if (!permission) {
         throw new NotFoundException(`Permission with ID ${id} not found`);
       }
@@ -109,13 +96,11 @@ export class PermissionService {
       throw error;
     }
 
-    if (error.code === "23505") {
+    if (error.code === '23505') {
       throw new BadRequestException(error.detail);
     }
 
     this.logger.error(error);
-    throw new InternalServerErrorException(
-      "Unexpected error, check server logs",
-    );
+    throw new InternalServerErrorException('Unexpected error, check server logs');
   }
 }

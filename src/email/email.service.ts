@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
-import * as nodemailer from "nodemailer";
+import { Injectable } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
@@ -8,7 +8,7 @@ export class EmailService {
   constructor() {
     // Configurar el transporter de email (puedes usar Gmail, SendGrid, etc.)
     this.transporter = nodemailer.createTransport({
-      service: "gmail", // Cambiar según tu proveedor
+      service: 'gmail', // Cambiar según tu proveedor
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
@@ -16,11 +16,7 @@ export class EmailService {
     });
   }
 
-  async sendContractNotification(
-    to: string,
-    subject: string,
-    message: string,
-  ): Promise<void> {
+  async sendContractNotification(to: string, subject: string, message: string): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -38,15 +34,12 @@ export class EmailService {
         `,
       });
     } catch (error) {
+      console.error('Error sending email:', error);
       // No lanzar error para no interrumpir el flujo principal
     }
   }
 
-  async sendBidNotification(
-    to: string,
-    subject: string,
-    message: string,
-  ): Promise<void> {
+  async sendBidNotification(to: string, subject: string, message: string): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -64,15 +57,11 @@ export class EmailService {
         `,
       });
     } catch (error) {
-      // Error sending email
+      console.error('Error sending email:', error);
     }
   }
 
-  async sendAcceptanceNotification(
-    to: string,
-    subject: string,
-    message: string,
-  ): Promise<void> {
+  async sendAcceptanceNotification(to: string, subject: string, message: string): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -90,7 +79,7 @@ export class EmailService {
         `,
       });
     } catch (error) {
-      // Error sending email
+      console.error('Error sending email:', error);
     }
   }
-}
+} 
