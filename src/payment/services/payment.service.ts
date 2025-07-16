@@ -138,25 +138,29 @@ export class PaymentService {
 
       console.log("💾 Guardando en BD:"); // eslint-disable-line no-console
       console.log(
+        // eslint-disable-line no-console
         "  - wompi_payment_link:",
         paymentTransaction.wompi_payment_link,
-      ); // eslint-disable-line no-console
+      );
       console.log(
+        // eslint-disable-line no-console
         "  - wompi_payment_link_id:",
         paymentTransaction.wompi_payment_link_id,
-      ); // eslint-disable-line no-console
+      );
       console.log(
+        // eslint-disable-line no-console
         "  - wompi_transaction_id:",
         paymentTransaction.wompi_transaction_id,
-      ); // eslint-disable-line no-console
+      );
 
       const savedTransaction =
         await this.paymentTransactionRepository.save(paymentTransaction);
       console.log("✅ Transacción guardada con ID:", savedTransaction.id); // eslint-disable-line no-console
       console.log(
+        // eslint-disable-line no-console
         "✅ wompi_payment_link_id guardado:",
         savedTransaction.wompi_payment_link_id,
-      ); // eslint-disable-line no-console
+      );
     }
 
     return this.findOne(paymentTransaction.id);
@@ -299,22 +303,24 @@ export class PaymentService {
         transactionStatus = data.transaction.status;
         console.log("📋 Webhook structure: transaction nested"); // eslint-disable-line no-console
         console.log(
+          // eslint-disable-line no-console
           "Payment Link ID:",
           paymentLinkId,
           "Status:",
           transactionStatus,
-        ); // eslint-disable-line no-console
+        );
       } else if (data.payment_link_id) {
         // Estructura directa
         paymentLinkId = data.payment_link_id;
         transactionStatus = data.status;
         console.log("📋 Webhook structure: direct"); // eslint-disable-line no-console
         console.log(
+          // eslint-disable-line no-console
           "Payment Link ID:",
           paymentLinkId,
           "Status:",
           transactionStatus,
-        ); // eslint-disable-line no-console
+        );
       } else {
         // Estructura alternativa usando ID
         paymentLinkId = data.id;
@@ -326,17 +332,19 @@ export class PaymentService {
       if (!paymentLinkId) {
         console.error("❌ No se pudo extraer payment_link_id del webhook"); // eslint-disable-line no-console
         console.log(
+          // eslint-disable-line no-console
           "📋 Estructura completa del data:",
           JSON.stringify(data, null, 2),
-        ); // eslint-disable-line no-console
+        );
         throw new Error("Payment link ID not found in webhook data");
       }
 
       // Buscar por Payment Link ID
       console.log(
+        // eslint-disable-line no-console
         "🔍 Buscando transacción por wompi_payment_link_id:",
         paymentLinkId,
-      ); // eslint-disable-line no-console
+      );
       const paymentTransaction =
         await this.paymentTransactionRepository.findOne({
           where: { wompi_payment_link_id: paymentLinkId },
@@ -348,9 +356,10 @@ export class PaymentService {
 
         // Buscar por transaction ID como alternativa
         console.log(
+          // eslint-disable-line no-console
           "🔍 Buscando transacción por wompi_transaction_id:",
           paymentLinkId,
-        ); // eslint-disable-line no-console
+        );
         const altTransaction = await this.paymentTransactionRepository.findOne({
           where: { wompi_transaction_id: paymentLinkId },
           relations: ["contract"],
@@ -358,8 +367,9 @@ export class PaymentService {
 
         if (!altTransaction) {
           console.log(
+            // eslint-disable-line no-console
             "❌ Transacción NO encontrada por wompi_transaction_id tampoco",
-          ); // eslint-disable-line no-console
+          );
 
           // Buscar TODAS las transacciones para debug
           console.log("🔍 Buscando TODAS las transacciones para debug..."); // eslint-disable-line no-console
@@ -387,9 +397,10 @@ export class PaymentService {
       }
 
       console.log(
+        // eslint-disable-line no-console
         "✅ Transacción encontrada por wompi_payment_link_id:",
         paymentTransaction.id,
-      ); // eslint-disable-line no-console
+      );
       console.log("🎯 Evento del webhook:", event); // eslint-disable-line no-console
       console.log("📊 Estado de Wompi:", transactionStatus); // eslint-disable-line no-console
 
@@ -451,8 +462,9 @@ export class PaymentService {
       case "ERROR":
         newStatus = PaymentStatus.FAILED;
         console.log(
+          // eslint-disable-line no-console
           `🔴 Estado de error detectado: ${wompiStatus} → ${newStatus}`,
-        ); // eslint-disable-line no-console
+        );
         break;
       case "PENDING":
         newStatus = PaymentStatus.PROCESSING;
