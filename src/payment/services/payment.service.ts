@@ -115,10 +115,8 @@ export class PaymentService {
     if (paymentData.payment_method === PaymentMethod.Wompi) {
       console.log("=== CREANDO PAYMENT LINK ==="); // eslint-disable-line no-console
 
-      // Usar el endpoint del backend que ya maneja las redirecciones correctamente
-      const backendUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://suarec-backend-production-de98.up.railway.app';
+      
       const paymentLink = await this.wompiService.createPaymentLink({
         name: contract.publication?.title || "Pago de servicio",
         description: paymentData.description || "Pago de servicio",
