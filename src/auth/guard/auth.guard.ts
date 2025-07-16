@@ -7,15 +7,14 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { ConfigService } from "@nestjs/config";
-import jwt from "jsonwebtoken";
 import { Reflector } from "@nestjs/core";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService,
-    private configService: ConfigService,
-    private reflector: Reflector,
+    private jwtService: JwtService, // eslint-disable-line no-unused-vars
+    private configService: ConfigService, // eslint-disable-line no-unused-vars
+    private reflector: Reflector, // eslint-disable-line no-unused-vars
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,7 +47,6 @@ export class AuthGuard implements CanActivate {
       // Asigna el payload completo al request para usarlo en los handlers
       request["user"] = payload;
     } catch (error) {
-      console.error("JWT Verification Error:", error.message);
       throw new UnauthorizedException("Invalid or expired token");
     }
 

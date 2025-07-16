@@ -19,7 +19,6 @@ import { Company } from "../company/entities/company.entity";
 import { Education } from "./entities/education.entity";
 import { Reference } from "./entities/reference.entity";
 import { SocialLink } from "./entities/social-link.entity";
-import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
 
 @Injectable()
 export class UserService {
@@ -27,25 +26,25 @@ export class UserService {
 
   constructor(
     @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
+    private readonly usersRepository: Repository<User>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private readonly roleRepository: Repository<Role>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(Permission)
-    private readonly permissionRepository: Repository<Permission>,
+    private readonly permissionRepository: Repository<Permission>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
+    private readonly companyRepository: Repository<Company>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(Education)
-    private readonly educationRepository: Repository<Education>,
+    private readonly educationRepository: Repository<Education>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(Reference)
-    private readonly referenceRepository: Repository<Reference>,
+    private readonly referenceRepository: Repository<Reference>, // eslint-disable-line no-unused-vars
 
     @InjectRepository(SocialLink)
-    private readonly socialLinkRepository: Repository<SocialLink>,
+    private readonly socialLinkRepository: Repository<SocialLink>, // eslint-disable-line no-unused-vars
   ) {}
 
   async onModuleInit() {
@@ -250,9 +249,9 @@ export class UserService {
         roles: roleNames,
         employerId,
         companyId,
-        education,
-        references,
-        socialLinks,
+        education, // eslint-disable-line no-unused-vars
+        references, // eslint-disable-line no-unused-vars
+        socialLinks, // eslint-disable-line no-unused-vars
         ...userData
       } = createUserDto;
 
@@ -657,8 +656,6 @@ export class UserService {
 
   async getUserStats(userId: number) {
     try {
-      const user = await this.findOne(userId);
-
       // Usar Repository para hacer las consultas de manera más directa
       const contractRepository =
         this.usersRepository.manager.getRepository("Contract");

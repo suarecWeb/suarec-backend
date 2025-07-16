@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Attendance } from "./entities/attendance.entity";
@@ -11,9 +11,9 @@ export class AttendanceCron {
 
   constructor(
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Attendance)
-    private attendanceRepository: Repository<Attendance>,
+    private attendanceRepository: Repository<Attendance>, // eslint-disable-line no-unused-vars
   ) {}
 
   @Cron("59 23 * * *")

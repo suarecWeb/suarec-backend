@@ -33,16 +33,12 @@ import {
 @Controller("ratings")
 @UseGuards(AuthGuard, RolesGuard)
 export class RatingController {
-  constructor(private readonly ratingService: RatingService) {}
+  constructor(private readonly ratingService: RatingService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @ApiOperation({ summary: "Create a new rating" })
   @ApiResponse({ status: 201, description: "Rating created successfully" })
-  async create(
-    @Body() createRatingDto: CreateRatingDto,
-    @Req() req: ExpressRequest,
-  ): Promise<Rating> {
-    console.log("Usuario autenticado:", req.user);
+  async create(@Body() createRatingDto: CreateRatingDto): Promise<Rating> {
     return this.ratingService.create(createRatingDto);
   }
 
@@ -52,10 +48,7 @@ export class RatingController {
   @ApiQuery({ type: PaginationDto })
   findAll(
     @Query() paginationDto: PaginationDto,
-    @Req() req: ExpressRequest,
   ): Promise<PaginationResponse<Rating>> {
-    console.log("Cookies en la solicitud:", req.cookies);
-    console.log("Headers en la solicitud:", req.headers);
     return this.ratingService.findAll(paginationDto);
   }
 
@@ -66,32 +59,25 @@ export class RatingController {
   findByUser(
     @Param("userId") userId: string,
     @Query() paginationDto: PaginationDto,
-    @Req() req: ExpressRequest,
   ): Promise<PaginationResponse<Rating>> {
-    console.log("Usuario autenticado:", req.user);
     return this.ratingService.findByUser(+userId, paginationDto);
   }
 
   @Get("user/:userId/stats")
   @ApiOperation({ summary: "Get rating statistics for a user" })
   @ApiParam({ name: "userId", description: "User ID" })
-  async getUserRatingStats(
-    @Param("userId") userId: string,
-    @Req() req: ExpressRequest,
-  ): Promise<{
+  async getUserRatingStats(@Param("userId") userId: string): Promise<{
     averageRating: number;
     totalRatings: number;
     ratingDistribution: { [key: number]: number };
     categoryStats: { [category: string]: { average: number; count: number } };
   }> {
-    console.log("Usuario autenticado:", req.user);
     return this.ratingService.getUserRatingStats(+userId);
   }
 
   @Get("ready-to-rate")
   @ApiOperation({ summary: "Get contracts ready for rating" })
   async getContractsReadyForRating(@Req() req: ExpressRequest): Promise<any[]> {
-    console.log("Usuario autenticado:", req.user);
     const userId = (req.user as any).id;
     return this.ratingService.getContractsReadyForRating(userId);
   }
@@ -99,11 +85,7 @@ export class RatingController {
   @Get(":id")
   @ApiOperation({ summary: "Get a rating by id" })
   @ApiParam({ name: "id", description: "Rating ID" })
-  findOne(
-    @Param("id") id: string,
-    @Req() req: ExpressRequest,
-  ): Promise<Rating> {
-    console.log("Usuario autenticado:", req.user);
+  findOne(@Param("id") id: string): Promise<Rating> {
     return this.ratingService.findOne(id);
   }
 
@@ -113,20 +95,14 @@ export class RatingController {
   update(
     @Param("id") id: string,
     @Body() updateRatingDto: UpdateRatingDto,
-    @Req() req: ExpressRequest,
   ): Promise<Rating> {
-    console.log("Usuario autenticado:", req.user);
     return this.ratingService.update(id, updateRatingDto);
   }
 
   @Delete(":id")
   @ApiOperation({ summary: "Delete a rating" })
   @ApiParam({ name: "id", description: "Rating ID" })
-  async remove(
-    @Param("id") id: string,
-    @Req() req: ExpressRequest,
-  ): Promise<{ message: string }> {
-    console.log("Usuario autenticado:", req.user);
+  async remove(@Param("id") id: string): Promise<{ message: string }> {
     await this.ratingService.remove(id);
     return { message: "Rating deleted successfully" };
   }

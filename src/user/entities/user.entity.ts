@@ -19,7 +19,6 @@ import { Application } from "../../application/entities/application.entity";
 import { Attendance } from "../../attendance/entities/attendance.entity";
 import { Rating } from "../../rating/entities/rating.entity";
 import { WorkContract } from "../../work-contract/entities/work-contract.entity";
-import { Notification } from "../../notification/entities/notification.entity";
 import { EmailVerification } from "../../email-verification/entities/email-verification.entity";
 import { Experience } from "./experience.entity";
 import { Education } from "./education.entity";

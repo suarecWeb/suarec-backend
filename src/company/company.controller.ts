@@ -24,8 +24,8 @@ import {
 @Controller("companies")
 export class CompanyController {
   constructor(
-    private readonly companyService: CompanyService,
-    private readonly galleryService: CompanyGalleryService,
+    private readonly companyService: CompanyService, // eslint-disable-line no-unused-vars
+    private readonly galleryService: CompanyGalleryService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Post()

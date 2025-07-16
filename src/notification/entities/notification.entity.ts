@@ -9,13 +9,13 @@ import {
 import { User } from "../../user/entities/user.entity";
 
 export enum NotificationType {
-  NEW_MESSAGE = "NEW_MESSAGE",
-  APPLICATION_STATUS = "APPLICATION_STATUS",
-  CONTRACT_UPDATE = "CONTRACT_UPDATE",
-  NEW_RATING = "NEW_RATING",
-  PAYMENT_RECEIVED = "PAYMENT_RECEIVED",
-  WORK_REMINDER = "WORK_REMINDER",
-  SYSTEM_UPDATE = "SYSTEM_UPDATE",
+  NEW_MESSAGE = "NEW_MESSAGE", // eslint-disable-line no-unused-vars
+  APPLICATION_STATUS = "APPLICATION_STATUS", // eslint-disable-line no-unused-vars
+  CONTRACT_UPDATE = "CONTRACT_UPDATE", // eslint-disable-line no-unused-vars
+  NEW_RATING = "NEW_RATING", // eslint-disable-line no-unused-vars
+  PAYMENT_RECEIVED = "PAYMENT_RECEIVED", // eslint-disable-line no-unused-vars
+  WORK_REMINDER = "WORK_REMINDER", // eslint-disable-line no-unused-vars
+  SYSTEM_UPDATE = "SYSTEM_UPDATE", // eslint-disable-line no-unused-vars
 }
 
 @Entity("notifications")

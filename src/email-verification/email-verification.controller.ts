@@ -1,17 +1,7 @@
 // src/email-verification/email-verification.controller.ts
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Delete,
-  Req,
-  UseGuards,
-  Query,
-} from "@nestjs/common";
-import { Request as ExpressRequest } from "express";
+import { Controller, Get, Post, Body, Param, UseGuards } from "@nestjs/common";
 import { EmailVerificationService } from "./services/email-verification.service";
+import { ApplicationStatus } from "../application/entities/application.entity";
 import { Public } from "../auth/decorators/public.decorator";
 import { RolesGuard } from "../auth/guard/roles.guard";
 import { Roles } from "../auth/decorators/role.decorator";
@@ -29,7 +19,7 @@ import {
 @UseGuards(RolesGuard)
 export class EmailVerificationController {
   constructor(
-    private readonly emailVerificationService: EmailVerificationService,
+    private readonly emailVerificationService: EmailVerificationService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Public()
@@ -104,11 +94,10 @@ export class EmailVerificationController {
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: "Get email verification status for a user" })
   @ApiParam({ name: "userId", description: "User ID" })
-  async getUserVerificationStatus(
-    @Param("userId") userId: string,
-    @Req() req: ExpressRequest,
-  ): Promise<{ verified: boolean; email?: string }> {
-    console.log("Usuario autenticado:", req.user);
+  async getUserVerificationStatus(): Promise<{
+    verified: boolean;
+    email?: string;
+  }> {
     // Aquí podrías implementar una función en el service para obtener el estado
     // Por ahora retornamos un placeholder
     return { verified: false };
@@ -159,7 +148,11 @@ export class EmailVerificationController {
         jobTitle: { type: "string", description: "Job position title" },
         status: {
           type: "string",
-          enum: ["INTERVIEW", "ACCEPTED", "REJECTED"],
+          enum: [
+            ApplicationStatus.INTERVIEW,
+            ApplicationStatus.ACCEPTED,
+            ApplicationStatus.REJECTED,
+          ],
           description: "Application status",
         },
         customMessage: {
@@ -179,7 +172,11 @@ export class EmailVerificationController {
     @Body("candidateName") candidateName: string,
     @Body("companyName") companyName: string,
     @Body("jobTitle") jobTitle: string,
-    @Body("status") status: "INTERVIEW" | "ACCEPTED" | "REJECTED",
+    @Body("status")
+    status:
+      | ApplicationStatus.INTERVIEW
+      | ApplicationStatus.ACCEPTED
+      | ApplicationStatus.REJECTED,
     @Body("customMessage") customMessage?: string,
     @Body("customDescription") customDescription?: string,
   ): Promise<{ message: string }> {

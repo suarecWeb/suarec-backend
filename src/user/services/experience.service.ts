@@ -9,9 +9,9 @@ import { User } from "../entities/user.entity";
 export class ExperienceService {
   constructor(
     @InjectRepository(Experience)
-    private readonly experienceRepository: Repository<Experience>,
+    private readonly experienceRepository: Repository<Experience>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(

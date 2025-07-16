@@ -6,13 +6,11 @@ import {
   Param,
   Put,
   Delete,
-  Req,
   UseGuards,
   Query,
   Patch,
   Request,
 } from "@nestjs/common";
-import { Request as ExpressRequest } from "express";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -42,8 +40,8 @@ import {
 @UseGuards(RolesGuard)
 export class UserController {
   constructor(
-    private readonly userService: UserService,
-    private readonly galleryService: GalleryService,
+    private readonly userService: UserService, // eslint-disable-line no-unused-vars
+    private readonly galleryService: GalleryService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Public()
@@ -60,10 +58,7 @@ export class UserController {
   @ApiQuery({ type: PaginationDto })
   findAll(
     @Query() paginationDto: PaginationDto,
-    @Req() req: ExpressRequest,
   ): Promise<PaginationResponse<User>> {
-    console.log("Cookies en la solicitud:", req.cookies);
-    console.log("Headers en la solicitud:", req.headers);
     return this.userService.findAll(paginationDto);
   }
 
@@ -90,8 +85,7 @@ export class UserController {
 
   @Get(":id")
   @ApiOperation({ summary: "Get a user by id" })
-  findOne(@Param("id") id: number, @Req() req: ExpressRequest) {
-    console.log("Usuario autenticado:", req.user);
+  findOne(@Param("id") id: number): Promise<User> {
     return this.userService.findOne(+id);
   }
 
@@ -103,19 +97,13 @@ export class UserController {
 
   @Put(":id")
   @ApiOperation({ summary: "Update a user" })
-  update(
-    @Param("id") id: string,
-    @Body() updateUserDto: UpdateUserDto,
-    @Req() req: ExpressRequest,
-  ) {
-    console.log("Usuario autenticado:", req.user);
+  update(@Param("id") id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(+id, updateUserDto);
   }
 
   @Delete(":id")
   @ApiOperation({ summary: "Delete a user" })
-  remove(@Param("id") id: string, @Req() req: ExpressRequest) {
-    console.log("Usuario autenticado:", req.user);
+  remove(@Param("id") id: string) {
     return this.userService.remove(+id);
   }
 
@@ -125,10 +113,7 @@ export class UserController {
   @ApiQuery({ type: PaginationDto })
   findAllCompanies(
     @Query() paginationDto: PaginationDto,
-    @Req() req: ExpressRequest,
   ): Promise<PaginationResponse<User>> {
-    console.log("Cookies en la solicitud:", req.cookies);
-    console.log("Headers en la solicitud:", req.headers);
     return this.userService.findAllCompanies(paginationDto);
   }
 

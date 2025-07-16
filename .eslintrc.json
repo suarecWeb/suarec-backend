@@ -13,8 +13,13 @@
     "sourceType": "module"
   },
   "rules": {
-    "no-unused-vars": "off",
-    "no-console": "off",
-    "no-case-declarations": "off"
-  }
+    "no-unused-vars": "error",
+    "no-console": "error",
+    "no-case-declarations": "error",
+    "no-undef": "error",
+    "prefer-const": "error",
+    "no-var": "error",
+    "eqeqeq": "error"
+  },
+  "ignorePatterns": ["dist/", "node_modules/", "*.js"]
 }

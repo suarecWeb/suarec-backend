@@ -8,12 +8,7 @@ import {
   UseGuards,
   Request,
   Response,
-  HttpCode,
-  HttpStatus,
-  UnauthorizedException,
   Query,
-  Redirect,
-  Patch,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -25,12 +20,10 @@ import {
 import { PaymentService } from "../services/payment.service";
 import { CreatePaymentDto } from "../dto/create-payment.dto";
 import { UpdatePaymentDto } from "../dto/update-payment.dto";
-import { UpdatePaymentStatusDto } from "../dto/update-payment-status.dto";
 import { PaymentHistoryDto } from "../dto/payment-history.dto";
 import { AdminPaymentFilterDto } from "../dto/admin-payment-filter.dto";
 import { PaymentTransaction } from "../entities/payment-transaction.entity";
 import { AuthGuard } from "../../auth/guard/auth.guard";
-import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
 import { Public } from "../../auth/decorators/public.decorator";
 import { PaymentMethod, PaymentStatus } from "../../enums/paymentMethod.enum";
@@ -40,7 +33,7 @@ import { PaginationResponse } from "../../common/interfaces/paginated-response.i
 @Controller("payments")
 @UseGuards(AuthGuard)
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(private readonly paymentService: PaymentService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @ApiOperation({ summary: "Create a new payment transaction" })
@@ -193,7 +186,7 @@ export class PaymentController {
   async testWebhook(
     @Param("transactionId") transactionId: string,
   ): Promise<any> {
-    console.log("🧪 PROBANDO WEBHOOK PARA TRANSACCIÓN:", transactionId);
+    console.log("🧪 PROBANDO WEBHOOK PARA TRANSACCIÓN:", transactionId); // eslint-disable-line no-console
 
     // Buscar la transacción
     const transaction = await this.paymentService.findOne(transactionId);
@@ -201,7 +194,7 @@ export class PaymentController {
       id: transaction.id,
       wompi_payment_link_id: transaction.wompi_payment_link_id,
       status: transaction.status,
-    });
+    }); // eslint-disable-line no-console
 
     // Simular webhook de Wompi
     const mockWebhook = {
@@ -212,11 +205,11 @@ export class PaymentController {
       },
     };
 
-    console.log("Webhook simulado:", JSON.stringify(mockWebhook, null, 2));
+    console.log("Webhook simulado:", JSON.stringify(mockWebhook, null, 2)); // eslint-disable-line no-console
 
     try {
       await this.paymentService.processWompiWebhook(mockWebhook);
-      console.log("✅ Webhook simulado procesado exitosamente");
+      console.log("✅ Webhook simulado procesado exitosamente"); // eslint-disable-line no-console
 
       // Verificar el estado actualizado
       const updatedTransaction =
@@ -228,7 +221,7 @@ export class PaymentController {
         wompi_payment_link_id: transaction.wompi_payment_link_id,
       };
     } catch (error) {
-      console.error("❌ Error en webhook simulado:", error);
+      console.error("❌ Error en webhook simulado:", error); // eslint-disable-line no-console
       return { success: false, error: error.message };
     }
   }
@@ -237,7 +230,7 @@ export class PaymentController {
   @Public()
   @ApiOperation({ summary: "Fix missing transaction for webhook test_2m6w0h" })
   async fixMissingTransaction(): Promise<any> {
-    console.log("🔧 Creando transacción faltante para test_2m6w0h");
+    console.log("🔧 Creando transacción faltante para test_2m6w0h"); // eslint-disable-line no-console
 
     try {
       // Crear una transacción manual para el pago que ya se procesó
@@ -262,7 +255,7 @@ export class PaymentController {
         status: PaymentStatus.PENDING,
       });
 
-      console.log("✅ Transacción creada:", transaction.id);
+      console.log("✅ Transacción creada:", transaction.id); // eslint-disable-line no-console
 
       return {
         success: true,
@@ -270,7 +263,7 @@ export class PaymentController {
         wompi_payment_link_id: "test_2m6w0h",
       };
     } catch (error) {
-      console.error("❌ Error creando transacción:", error);
+      console.error("❌ Error creando transacción:", error); // eslint-disable-line no-console
       return { success: false, error: error.message };
     }
   }
@@ -283,7 +276,7 @@ export class PaymentController {
   async updateExistingTransaction(): Promise<any> {
     console.log(
       "🔧 Actualizando transacción existente con wompi_payment_link_id faltante",
-    );
+    ); // eslint-disable-line no-console
 
     try {
       // Buscar la transacción que tiene el payment_link pero no el payment_link_id
@@ -298,14 +291,14 @@ export class PaymentController {
         return { success: false, error: "Transacción no encontrada" };
       }
 
-      console.log("✅ Transacción encontrada:", targetTransaction.id);
+      console.log("✅ Transacción encontrada:", targetTransaction.id); // eslint-disable-line no-console
 
       // Actualizar con el payment_link_id
       await this.paymentService.update(targetTransaction.id, {
         wompi_payment_link_id: "test_2m6w0h",
       });
 
-      console.log("✅ Transacción actualizada con wompi_payment_link_id");
+      console.log("✅ Transacción actualizada con wompi_payment_link_id"); // eslint-disable-line no-console
 
       return {
         success: true,
@@ -313,7 +306,7 @@ export class PaymentController {
         wompi_payment_link_id: "test_2m6w0h",
       };
     } catch (error) {
-      console.error("❌ Error actualizando transacción:", error);
+      console.error("❌ Error actualizando transacción:", error); // eslint-disable-line no-console
       return { success: false, error: error.message };
     }
   }
@@ -327,7 +320,6 @@ export class PaymentController {
   })
   async handlePaymentRedirect(
     @Param("transactionId") transactionId: string,
-    @Query("status") status?: string,
   ): Promise<{ url: string }> {
     try {
       // Buscar la transacción para obtener el estado actual
@@ -341,7 +333,7 @@ export class PaymentController {
 
       console.log(
         `🔄 Redirigiendo transacción ${transactionId} (${transaction.status}) a: ${redirectUrl}`,
-      );
+      ); // eslint-disable-line no-console
 
       // Retornar URL para redirección manual o usar @Redirect
       return { url: redirectUrl };
@@ -350,7 +342,7 @@ export class PaymentController {
       const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
       console.log(
         `❌ Error en redirección para ${transactionId}, enviando a: ${fallbackUrl}`,
-      );
+      ); // eslint-disable-line no-console
       return { url: fallbackUrl };
     }
   }
@@ -377,7 +369,7 @@ export class PaymentController {
 
       console.log(
         `🔄 Redirección directa para ${transactionId} (${transaction.status}) a: ${redirectUrl}`,
-      );
+      ); // eslint-disable-line no-console
 
       // Hacer redirección HTTP real
       return res.redirect(302, redirectUrl);
@@ -386,7 +378,7 @@ export class PaymentController {
       const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
       console.log(
         `❌ Error en redirección directa para ${transactionId}, enviando a: ${fallbackUrl}`,
-      );
+      ); // eslint-disable-line no-console
       return res.redirect(302, fallbackUrl);
     }
   }

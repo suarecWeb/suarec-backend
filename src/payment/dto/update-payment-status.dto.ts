@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsNotEmpty } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { PaymentStatus } from "../../enums/paymentMethod.enum";
 

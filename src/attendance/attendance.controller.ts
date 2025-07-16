@@ -17,7 +17,7 @@ import { Roles } from "../auth/decorators/role.decorator";
 @Controller("attendance")
 @UseGuards(AuthGuard, RolesGuard)
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) {} // eslint-disable-line no-unused-vars
 
   @Post("register")
   @Roles("ADMIN", "BUSINESS")

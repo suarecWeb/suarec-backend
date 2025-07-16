@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, HttpStatus } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { PaymentService } from "../services/payment.service";
 import { Public } from "../../auth/decorators/public.decorator";
@@ -14,7 +7,7 @@ import * as crypto from "crypto";
 @ApiTags("webhooks")
 @Controller("webhooks")
 export class WebhookController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(private readonly paymentService: PaymentService) {} // eslint-disable-line no-unused-vars
 
   @Post("wompi")
   @Public()
@@ -26,14 +19,9 @@ export class WebhookController {
     @Body() webhookData: any,
   ): Promise<{ success: boolean; error?: string }> {
     const requestId = `webhook-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🚨 WEBHOOK WOMPI RECIBIDO [${requestId}] 🚨`);
-    console.log("Body recibido:", JSON.stringify(webhookData, null, 2));
 
     // Validar estructura básica del webhook
     if (!webhookData || !webhookData.event || !webhookData.data) {
-      console.error(
-        `❌ [${requestId}] Webhook structure invalid - missing event or data`,
-      );
       return { success: false, error: "Invalid webhook structure" };
     }
 
@@ -43,9 +31,8 @@ export class WebhookController {
       const isDevelopment = process.env.NODE_ENV === "development";
 
       console.log(
-        `🔧 [${requestId}] Environment: ${process.env.NODE_ENV || "unknown"}`,
-      );
-      console.log(`🔧 [${requestId}] Production mode: ${isProduction}`);
+        `🔔 [${requestId}] Webhook recibido: ${webhookData.event} en modo ${isProduction ? "producción" : "desarrollo"}`,
+      ); // eslint-disable-line no-console
 
       // Verificar firma del webhook
       let isValid = true;
@@ -53,13 +40,13 @@ export class WebhookController {
       if (isProduction) {
         console.log(
           `🔒 [${requestId}] Verificando firma del webhook en producción...`,
-        );
+        ); // eslint-disable-line no-console
 
         // Verificar que el secret esté configurado
         if (!process.env.WOMPI_EVENTS_SECRET) {
           console.error(
             `❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado en producción`,
-          );
+          ); // eslint-disable-line no-console
           return { success: false, error: "Webhook secret not configured" };
         }
 
@@ -69,28 +56,28 @@ export class WebhookController {
           );
         console.log(
           `${isValid ? "✅" : "❌"} [${requestId}] Firma del webhook válida: ${isValid}`,
-        );
+        ); // eslint-disable-line no-console
 
         if (!isValid) {
           console.error(
             `❌ [${requestId}] Firma del webhook inválida - rechazando webhook`,
-          );
+          ); // eslint-disable-line no-console
           return { success: false, error: "Invalid webhook signature" };
         }
       } else if (isDevelopment) {
         console.log(
           `🔧 [${requestId}] Modo desarrollo: Omitiendo verificación de firma`,
-        );
+        ); // eslint-disable-line no-console
       } else {
         // En cualquier otro ambiente que no sea development, verificar firma
         console.log(
           `🔒 [${requestId}] Ambiente desconocido, verificando firma por seguridad...`,
-        );
+        ); // eslint-disable-line no-console
 
         if (!process.env.WOMPI_EVENTS_SECRET) {
           console.error(
             `❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado`,
-          );
+          ); // eslint-disable-line no-console
           return { success: false, error: "Webhook secret not configured" };
         }
 
@@ -100,28 +87,25 @@ export class WebhookController {
           );
         console.log(
           `${isValid ? "✅" : "❌"} [${requestId}] Firma del webhook válida: ${isValid}`,
-        );
+        ); // eslint-disable-line no-console
 
         if (!isValid) {
           console.error(
             `❌ [${requestId}] Firma del webhook inválida - rechazando webhook`,
-          );
+          ); // eslint-disable-line no-console
           return { success: false, error: "Invalid webhook signature" };
         }
       }
 
       // Procesar webhook
-      console.log(`🔄 [${requestId}] Procesando webhook...`);
       await this.paymentService.processWompiWebhook(webhookData);
-      console.log(`✅ [${requestId}] Webhook procesado exitosamente`);
-
       return { success: true };
     } catch (error) {
-      console.error(`❌ [${requestId}] Error procesando webhook:`, error);
+      console.error(`❌ [${requestId}] Error procesando webhook:`, error); // eslint-disable-line no-console
 
       // En desarrollo, devolver el error detallado
       if (process.env.NODE_ENV === "development") {
-        console.error(`📋 [${requestId}] Stack trace:`, error.stack);
+        console.error(`📋 [${requestId}] Stack trace:`, error.stack); // eslint-disable-line no-console
       }
 
       // No re-lanzar el error para evitar que Wompi reintente
@@ -142,16 +126,16 @@ export class WebhookController {
   async wompiTestWebhook(
     @Body() webhookData: any,
   ): Promise<{ success: boolean; error?: string }> {
-    console.log("🧪 TEST WEBHOOK WOMPI RECIBIDO 🧪");
-    console.log("Body recibido:", JSON.stringify(webhookData, null, 2));
+    console.log("🧪 TEST WEBHOOK WOMPI RECIBIDO 🧪"); // eslint-disable-line no-console
+    console.log("Body recibido:", JSON.stringify(webhookData, null, 2)); // eslint-disable-line no-console
 
     try {
       // Procesar webhook sin verificación de firma
       await this.paymentService.processWompiWebhook(webhookData);
-      console.log("✅ Test webhook procesado exitosamente");
+      console.log("✅ Test webhook procesado exitosamente"); // eslint-disable-line no-console
       return { success: true };
     } catch (error) {
-      console.error("❌ Error procesando test webhook:", error);
+      console.error("❌ Error procesando test webhook:", error); // eslint-disable-line no-console
       return { success: false, error: error.message };
     }
   }
@@ -161,8 +145,8 @@ export class WebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Debug webhook data structure" })
   async debugWebhook(@Body() webhookData: any): Promise<any> {
-    console.log("🔍 DEBUG WEBHOOK DATA STRUCTURE 🔍");
-    console.log("Full webhook data:", JSON.stringify(webhookData, null, 2));
+    console.log("🔍 DEBUG WEBHOOK DATA STRUCTURE 🔍"); // eslint-disable-line no-console
+    console.log("Full webhook data:", JSON.stringify(webhookData, null, 2)); // eslint-disable-line no-console
 
     const analysis = {
       hasSignature: !!webhookData.signature,
@@ -187,7 +171,7 @@ export class WebhookController {
         : null,
     };
 
-    console.log("📊 Webhook analysis:", JSON.stringify(analysis, null, 2));
+    console.log("📊 Webhook analysis:", JSON.stringify(analysis, null, 2)); // eslint-disable-line no-console
 
     return {
       success: true,
@@ -202,7 +186,7 @@ export class WebhookController {
   @ApiOperation({ summary: "Verify webhook configuration for production" })
   @ApiResponse({ status: 200, description: "Webhook configuration verified" })
   async verifyWebhookConfig(): Promise<any> {
-    console.log("🔍 VERIFICANDO CONFIGURACIÓN DEL WEBHOOK 🔍");
+    console.log("🔍 VERIFICANDO CONFIGURACIÓN DEL WEBHOOK 🔍"); // eslint-disable-line no-console
 
     const config = {
       nodeEnv: process.env.NODE_ENV,
@@ -219,7 +203,7 @@ export class WebhookController {
     console.log(
       "📋 Configuración del webhook:",
       JSON.stringify(config, null, 2),
-    );
+    ); // eslint-disable-line no-console
 
     // Validaciones específicas para producción
     const validationResults = [];
@@ -274,7 +258,7 @@ export class WebhookController {
   @ApiOperation({ summary: "Test webhook signature verification" })
   @ApiResponse({ status: 200, description: "Signature test completed" })
   async testSignatureVerification(@Body() testData?: any): Promise<any> {
-    console.log("🧪 TESTING WEBHOOK SIGNATURE VERIFICATION 🧪");
+    console.log("🧪 TESTING WEBHOOK SIGNATURE VERIFICATION 🧪"); // eslint-disable-line no-console
 
     const secret = process.env.WOMPI_EVENTS_SECRET;
     if (!secret) {
@@ -331,7 +315,7 @@ export class WebhookController {
     console.log(
       "📋 Test webhook data:",
       JSON.stringify(webhookWithSignature, null, 2),
-    );
+    ); // eslint-disable-line no-console
 
     // Verificar la firma
     const isValid =

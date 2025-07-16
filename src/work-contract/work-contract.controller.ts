@@ -7,11 +7,9 @@ import {
   Param,
   Put,
   Delete,
-  Req,
   UseGuards,
   Query,
 } from "@nestjs/common";
-import { Request as ExpressRequest } from "express";
 import { WorkContractService } from "./services/work-contract.service";
 import { CreateWorkContractDto } from "./dto/create-work-contract.dto";
 import { UpdateWorkContractDto } from "./dto/update-work-contract.dto";
@@ -33,7 +31,7 @@ import {
 @Controller("work-contracts")
 @UseGuards(AuthGuard, RolesGuard)
 export class WorkContractController {
-  constructor(private readonly workContractService: WorkContractService) {}
+  constructor(private readonly workContractService: WorkContractService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @ApiOperation({ summary: "Create a new work contract" })
@@ -43,9 +41,7 @@ export class WorkContractController {
   })
   async create(
     @Body() createWorkContractDto: CreateWorkContractDto,
-    @Req() req: ExpressRequest,
   ): Promise<WorkContract> {
-    console.log("Usuario autenticado:", req.user);
     return this.workContractService.create(createWorkContractDto);
   }
 
@@ -55,10 +51,7 @@ export class WorkContractController {
   @ApiQuery({ type: PaginationDto })
   findAll(
     @Query() paginationDto: PaginationDto,
-    @Req() req: ExpressRequest,
   ): Promise<PaginationResponse<WorkContract>> {
-    console.log("Cookies en la solicitud:", req.cookies);
-    console.log("Headers en la solicitud:", req.headers);
     return this.workContractService.findAll(paginationDto);
   }
 
@@ -76,19 +69,14 @@ export class WorkContractController {
     @Param("userId") userId: string,
     @Query() paginationDto: PaginationDto,
     @Query("role") role?: "client" | "provider",
-    @Req() req?: ExpressRequest,
   ): Promise<PaginationResponse<WorkContract>> {
-    console.log("Usuario autenticado:", req?.user);
     return this.workContractService.findByUser(+userId, paginationDto, role);
   }
 
   @Get("user/:userId/history")
   @ApiOperation({ summary: "Get work history statistics for a user" })
   @ApiParam({ name: "userId", description: "User ID" })
-  async getUserWorkHistory(
-    @Param("userId") userId: string,
-    @Req() req: ExpressRequest,
-  ): Promise<{
+  async getUserWorkHistory(@Param("userId") userId: string): Promise<{
     asClient: {
       total: number;
       completed: number;
@@ -102,18 +90,13 @@ export class WorkContractController {
       totalEarned: number;
     };
   }> {
-    console.log("Usuario autenticado:", req.user);
     return this.workContractService.getUserWorkHistory(+userId);
   }
 
   @Get(":id")
   @ApiOperation({ summary: "Get a work contract by id" })
   @ApiParam({ name: "id", description: "Work Contract ID" })
-  findOne(
-    @Param("id") id: string,
-    @Req() req: ExpressRequest,
-  ): Promise<WorkContract> {
-    console.log("Usuario autenticado:", req.user);
+  findOne(@Param("id") id: string): Promise<WorkContract> {
     return this.workContractService.findOne(id);
   }
 
@@ -123,20 +106,14 @@ export class WorkContractController {
   update(
     @Param("id") id: string,
     @Body() updateWorkContractDto: UpdateWorkContractDto,
-    @Req() req: ExpressRequest,
   ): Promise<WorkContract> {
-    console.log("Usuario autenticado:", req.user);
     return this.workContractService.update(id, updateWorkContractDto);
   }
 
   @Delete(":id")
   @ApiOperation({ summary: "Delete a work contract" })
   @ApiParam({ name: "id", description: "Work Contract ID" })
-  async remove(
-    @Param("id") id: string,
-    @Req() req: ExpressRequest,
-  ): Promise<{ message: string }> {
-    console.log("Usuario autenticado:", req.user);
+  async remove(@Param("id") id: string): Promise<{ message: string }> {
     await this.workContractService.remove(id);
     return { message: "Work contract deleted successfully" };
   }

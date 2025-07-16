@@ -20,9 +20,9 @@ export class MessageService {
 
   constructor(
     @InjectRepository(Message)
-    private readonly messageRepository: Repository<Message>,
+    private readonly messageRepository: Repository<Message>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createMessageDto: CreateMessageDto): Promise<Message> {
@@ -62,16 +62,6 @@ export class MessageService {
       const savedMessage = await this.messageRepository.findOne({
         where: { id: message.id },
         relations: ["sender", "recipient"],
-      });
-
-      // Debug: Log para verificar que las relaciones están correctas
-      console.log("Mensaje creado:", {
-        id: savedMessage.id,
-        content: savedMessage.content,
-        senderId: savedMessage.sender?.id,
-        senderName: savedMessage.sender?.name,
-        recipientId: savedMessage.recipient?.id,
-        recipientName: savedMessage.recipient?.name,
       });
 
       // Asegurar que el senderId y recipientId estén presentes

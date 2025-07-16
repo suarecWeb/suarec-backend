@@ -20,9 +20,9 @@ export class RoleService {
 
   constructor(
     @InjectRepository(Role)
-    private roleRepository: Repository<Role>,
+    private roleRepository: Repository<Role>, // eslint-disable-line no-unused-vars
     @InjectRepository(Permission)
-    private permissionRepository: Repository<Permission>,
+    private permissionRepository: Repository<Permission>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createRoleDto: CreateRoleDto) {

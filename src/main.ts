@@ -1,7 +1,5 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { AuthGuard } from "./auth/guard/auth.guard";
-import * as bcrypt from "bcrypt";
 import * as cookieParser from "cookie-parser";
 import { ValidationPipe } from "@nestjs/common";
 import { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";

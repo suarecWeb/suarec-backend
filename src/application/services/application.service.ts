@@ -21,11 +21,11 @@ export class ApplicationService {
 
   constructor(
     @InjectRepository(Application)
-    private readonly applicationRepository: Repository<Application>,
+    private readonly applicationRepository: Repository<Application>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
-    private readonly publicationRepository: Repository<Publication>,
+    private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(
@@ -50,16 +50,6 @@ export class ApplicationService {
           `Publication with ID ${publicationId} not found`,
         );
       }
-
-      console.log(
-        "!!!!!!!!!!!!! \n publicacion: " +
-          publication +
-          " con user y company : " +
-          publication.user +
-          " _ " +
-          publication.user.company +
-          " \n !!!!!!!!!!!!!!!!",
-      );
 
       // Verificar que el usuario no esté aplicando a su propia publicación
       if (publication.user.id === userId) {
@@ -88,16 +78,6 @@ export class ApplicationService {
         user,
         publication,
       });
-
-      console.log(
-        "!!!!!!!!!!!!! \n aplicacion: " +
-          application +
-          " con user y company : " +
-          application.user +
-          " _ " +
-          application.publication.user.company +
-          " \n !!!!!!!!!!!!!!!!",
-      );
 
       await this.applicationRepository.save(application);
 

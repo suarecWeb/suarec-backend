@@ -10,6 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailVerification } from "../entities/email-verification.entity";
 import { User } from "../../user/entities/user.entity";
+import { ApplicationStatus } from "../../application/entities/application.entity";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -18,9 +19,9 @@ export class EmailVerificationService {
 
   constructor(
     @InjectRepository(EmailVerification)
-    private readonly emailVerificationRepository: Repository<EmailVerification>,
+    private readonly emailVerificationRepository: Repository<EmailVerification>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async sendVerificationEmail(userId: number, email: string): Promise<void> {
@@ -144,12 +145,12 @@ export class EmailVerificationService {
       );
 
       const brevo = require("@getbrevo/brevo");
-      let apiInstance = new brevo.TransactionalEmailsApi();
+      const apiInstance = new brevo.TransactionalEmailsApi();
 
-      let apiKey = apiInstance.authentications["apiKey"];
+      const apiKey = apiInstance.authentications["apiKey"];
       apiKey.apiKey = process.env.BREVO_API;
 
-      let sendSmtpEmail = new brevo.SendSmtpEmail();
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
 
       sendSmtpEmail.subject = "Verifica tu cuenta en SUAREC";
       sendSmtpEmail.htmlContent = `
@@ -270,7 +271,10 @@ export class EmailVerificationService {
     candidateName: string,
     companyName: string,
     jobTitle: string,
-    status: "INTERVIEW" | "ACCEPTED" | "REJECTED",
+    status:
+      | ApplicationStatus.INTERVIEW
+      | ApplicationStatus.ACCEPTED
+      | ApplicationStatus.REJECTED,
     customMessage?: string,
     customDescription?: string,
   ): Promise<void> {
@@ -291,12 +295,12 @@ export class EmailVerificationService {
       );
 
       const brevo = require("@getbrevo/brevo");
-      let apiInstance = new brevo.TransactionalEmailsApi();
+      const apiInstance = new brevo.TransactionalEmailsApi();
 
-      let apiKey = apiInstance.authentications["apiKey"];
+      const apiKey = apiInstance.authentications["apiKey"];
       apiKey.apiKey = process.env.BREVO_API;
 
-      let sendSmtpEmail = new brevo.SendSmtpEmail();
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
 
       // Configurar el contenido según el estado
       const statusConfig = {
@@ -397,7 +401,7 @@ export class EmailVerificationService {
               </div>
               
               ${
-                status === "INTERVIEW"
+                status === ApplicationStatus.INTERVIEW
                   ? `
                 <!-- Interview Tips -->
                 <div style="background-color: #eff6ff; border-radius: 8px; padding: 20px; margin: 30px 0;">
@@ -431,7 +435,7 @@ export class EmailVerificationService {
               }
               
               ${
-                status === "REJECTED"
+                status === ApplicationStatus.REJECTED
                   ? `
                 <!-- Encouragement -->
                 <div style="background-color: #fef2f2; border-radius: 8px; padding: 20px; margin: 30px 0;">

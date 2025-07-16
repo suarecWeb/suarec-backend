@@ -30,7 +30,6 @@ import {
   ApiParam,
 } from "@nestjs/swagger";
 import { User } from "../../user/entities/user.entity";
-import { Req } from "@nestjs/common";
 import {
   UpdateCheckInTimeDto,
   AttendanceStatsQueryDto,
@@ -43,19 +42,13 @@ import {
 @ApiTags("Companies")
 @Controller("companies")
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService) {}
+  constructor(private readonly companyService: CompanyService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Public()
   @ApiOperation({ summary: "Create a new company" })
   @ApiResponse({ status: 201, description: "Company created successfully" })
   create(@Body() createCompanyDto: CreateCompanyDto): Promise<Company> {
-    console.log(
-      "Creating company..." +
-        createCompanyDto.email +
-        createCompanyDto.nit +
-        createCompanyDto.userId,
-    );
     return this.companyService.create(createCompanyDto);
   }
 
@@ -174,7 +167,6 @@ export class CompanyController {
   updateLocation(
     @Param("id") id: string,
     @Body() updateLocationDto: UpdateCompanyLocationDto,
-    @Req() req: Request,
   ) {
     return this.companyService.updateLocation(id, updateLocationDto);
   }

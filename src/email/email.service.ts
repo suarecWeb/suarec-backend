@@ -38,7 +38,6 @@ export class EmailService {
         `,
       });
     } catch (error) {
-      console.error("Error sending email:", error);
       // No lanzar error para no interrumpir el flujo principal
     }
   }
@@ -65,7 +64,7 @@ export class EmailService {
         `,
       });
     } catch (error) {
-      console.error("Error sending email:", error);
+      // Error sending email
     }
   }
 
@@ -91,7 +90,7 @@ export class EmailService {
         `,
       });
     } catch (error) {
-      console.error("Error sending email:", error);
+      // Error sending email
     }
   }
 }

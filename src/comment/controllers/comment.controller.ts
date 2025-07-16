@@ -23,7 +23,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 @ApiTags("Comments")
 @Controller("comments")
 export class CommentController {
-  constructor(private readonly commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("ADMIN", "PERSON")

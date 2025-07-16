@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
@@ -18,9 +18,6 @@ import { MessageModule } from "./message/message.module";
 import { ApplicationModule } from "./application/application.module";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { RatingModule } from "./rating/rating.module";
-import { EmailVerification } from "./email-verification/entities/email-verification.entity";
-import { WorkContract } from "./work-contract/entities/work-contract.entity";
-import { Notification } from "./notification/entities/notification.entity";
 import { WorkContractModule } from "./work-contract/work-contract.module";
 import { EmailVerificationModule } from "./email-verification/email-verification.module";
 import { ContractModule } from "./contract/contract.module";

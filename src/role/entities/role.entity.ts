@@ -4,10 +4,6 @@ import {
   Column,
   ManyToMany,
   JoinTable,
-  OneToOne,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
 } from "typeorm";
 import { Permission } from "../../permission/entities/permission.entity";
 import { User } from "../../user/entities/user.entity";

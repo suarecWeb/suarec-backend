@@ -23,25 +23,19 @@ export class RatingService {
 
   constructor(
     @InjectRepository(Rating)
-    private readonly ratingRepository: Repository<Rating>,
+    private readonly ratingRepository: Repository<Rating>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(WorkContract)
-    private readonly workContractRepository: Repository<WorkContract>,
+    private readonly workContractRepository: Repository<WorkContract>, // eslint-disable-line no-unused-vars
     @InjectRepository(Contract)
-    private readonly contractRepository: Repository<Contract>,
+    private readonly contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createRatingDto: CreateRatingDto): Promise<Rating> {
     try {
-      const {
-        reviewerId,
-        revieweeId,
-        workContractId,
-        stars,
-        comment,
-        category,
-      } = createRatingDto;
+      const { reviewerId, revieweeId, stars, comment, category } =
+        createRatingDto;
 
       // Validar que las estrellas estén entre 1 y 5
       if (stars < 1 || stars > 5) {
@@ -298,10 +292,6 @@ export class RatingService {
         .andWhere("contract.status = :status", { status: "accepted" })
         .getMany();
 
-      console.log(
-        `🔍 Encontrados ${contracts.length} contratos aceptados para usuario ${userId}`,
-      );
-
       // Filtrar contratos que tengan pagos completados
       const contractsWithCompletedPayments = [];
 
@@ -318,11 +308,6 @@ export class RatingService {
 
         if (parseInt(completedPayments[0].count) > 0) {
           contractsWithCompletedPayments.push(contract);
-          console.log(
-            `✅ Contrato ${contract.id} tiene ${completedPayments[0].count} pagos completados`,
-          );
-        } else {
-          console.log(`❌ Contrato ${contract.id} no tiene pagos completados`);
         }
       }
 
@@ -363,9 +348,6 @@ export class RatingService {
 
       const finalContracts = contractsWithRatingStatus.filter(
         (contract) => contract.canRate,
-      );
-      console.log(
-        `🎯 Contratos finales disponibles para rating: ${finalContracts.length}`,
       );
       return finalContracts;
     } catch (error) {

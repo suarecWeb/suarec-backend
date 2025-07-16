@@ -1,5 +1,4 @@
 import {
-  IsDate,
   IsDateString,
   IsNotEmpty,
   IsNumber,
@@ -7,10 +6,8 @@ import {
   IsString,
   IsUrl,
   MaxLength,
-  IsDecimal,
   IsArray,
 } from "class-validator";
-import { Type, Transform } from "class-transformer";
 
 export class CreatePublicationDto {
   @IsString()

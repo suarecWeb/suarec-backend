@@ -8,8 +8,6 @@ import {
   ConnectedSocket,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { UseGuards } from "@nestjs/common";
-import { WsAuthGuard } from "../auth/guard/ws-auth.guard";
 import { MessageService } from "./message.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { Message } from "./entities/message.entity";
@@ -43,48 +41,34 @@ export class MessageGateway
   >();
 
   constructor(
-    private readonly messageService: MessageService,
-    private readonly jwtService: JwtService,
+    private readonly messageService: MessageService, // eslint-disable-line no-unused-vars
+    private readonly jwtService: JwtService, // eslint-disable-line no-unused-vars
   ) {}
 
   async handleConnection(client: Socket) {
     try {
       // Verificar autenticación del usuario
       const token = client.handshake.auth.token;
-      console.log(
-        "🔑 WebSocket Connection - Token recibido:",
-        token ? "Sí" : "No",
-      );
-      console.log(
-        "🌐 WebSocket Connection - Origin:",
-        client.handshake.headers.origin,
-      );
 
       if (!token) {
-        console.log("❌ Token no proporcionado, desconectando cliente");
         client.disconnect();
         return;
       }
 
       // Verificar el token JWT
       const userId = this.extractUserIdFromToken(token);
-      console.log("👤 UserId extraído del token:", userId);
 
       if (!userId) {
-        console.log("Token inválido, desconectando cliente");
         client.disconnect();
         return;
       }
 
       // Verificar si el usuario ya está conectado y desconectarlo
       const existingConnection = Array.from(this.connectedUsers.entries()).find(
-        ([_, userData]) => userData.userId === userId,
+        ([_, userData]) => userData.userId === userId, // eslint-disable-line no-unused-vars
       );
 
       if (existingConnection) {
-        console.log(
-          `Usuario ${userId} ya conectado, manteniendo conexión anterior`,
-        );
         // No desconectar la conexión anterior, solo actualizar la referencia
         this.connectedUsers.delete(existingConnection[0]);
       }
@@ -94,10 +78,7 @@ export class MessageGateway
 
       // Unir al usuario a su sala personal
       await client.join(`user_${userId}`);
-
-      console.log(`Usuario ${userId} conectado: ${client.id}`);
     } catch (error) {
-      console.error("Error en conexión WebSocket:", error);
       client.disconnect();
     }
   }
@@ -105,10 +86,7 @@ export class MessageGateway
   handleDisconnect(client: Socket) {
     const userData = this.connectedUsers.get(client.id);
     if (userData) {
-      console.log(`Usuario ${userData.userId} desconectado: ${client.id}`);
       this.connectedUsers.delete(client.id);
-    } else {
-      console.log(`Cliente desconectado: ${client.id}`);
     }
   }
 
@@ -118,11 +96,8 @@ export class MessageGateway
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      console.log("📤 Enviando mensaje:", data);
-
       // Crear el mensaje en la base de datos
       const message = await this.messageService.create(data);
-      console.log("✅ Mensaje creado:", message);
 
       // Emitir el mensaje al destinatario si está conectado
       const recipientRoom = `user_${data.recipientId}`;
@@ -130,9 +105,6 @@ export class MessageGateway
         message,
         conversationId: `${Math.min(data.senderId, data.recipientId)}_${Math.max(data.senderId, data.recipientId)}`,
       };
-
-      console.log("📨 Emitiendo mensaje a:", recipientRoom);
-      console.log("📋 Datos del mensaje:", messageData);
 
       // Emitir el mensaje al destinatario
       this.server.to(recipientRoom).emit("new_message", messageData);
@@ -154,7 +126,6 @@ export class MessageGateway
         lastMessage: message,
       });
     } catch (error) {
-      console.error("❌ Error enviando mensaje:", error);
       client.emit("message_error", { error: "Error al enviar mensaje" });
     }
   }
@@ -176,7 +147,6 @@ export class MessageGateway
         });
       }
     } catch (error) {
-      console.error("Error marcando mensaje como leído:", error);
       client.emit("mark_read_error", {
         error: "Error al marcar mensaje como leído",
       });
@@ -219,7 +189,6 @@ export class MessageGateway
       timestamp: new Date().toISOString(),
     };
 
-    console.log("🔍 WebSocket Debug Info:", connectionInfo);
     client.emit("debug_response", connectionInfo);
   }
 
@@ -238,12 +207,9 @@ export class MessageGateway
 
   private extractUserIdFromToken(token: string): number | null {
     try {
-      console.log("🔍 Verificando token con JwtService...");
       const payload = this.jwtService.verify(token);
-      console.log("✅ Token verificado correctamente, payload:", payload);
       return payload.id || payload.sub || null;
     } catch (error) {
-      console.error("❌ Error verificando token:", error);
       return null;
     }
   }

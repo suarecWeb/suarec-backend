@@ -23,7 +23,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 @Controller("permissions")
 @UseGuards(RolesGuard)
 export class PermissionController {
-  constructor(private readonly permissionService: PermissionService) {}
+  constructor(private readonly permissionService: PermissionService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("ADMIN")

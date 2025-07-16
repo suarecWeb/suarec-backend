@@ -22,7 +22,7 @@ import { Roles } from "../auth/decorators/role.decorator";
 @Controller("contracts")
 @UseGuards(AuthGuard, RolesGuard)
 export class ContractController {
-  constructor(private readonly contractService: ContractService) {}
+  constructor(private readonly contractService: ContractService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("ADMIN", "BUSINESS", "PERSON")

@@ -11,9 +11,9 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 
 export enum RatingCategory {
-  SERVICE = "SERVICE",
-  EMPLOYER = "EMPLOYER",
-  EMPLOYEE = "EMPLOYEE",
+  SERVICE = "SERVICE", // eslint-disable-line no-unused-vars
+  EMPLOYER = "EMPLOYER", // eslint-disable-line no-unused-vars
+  EMPLOYEE = "EMPLOYEE", // eslint-disable-line no-unused-vars
 }
 
 export class CreateRatingDto {

@@ -13,7 +13,6 @@ import { ExperienceService } from "../services/experience.service";
 import { CreateExperienceDto } from "../dto/create-experience.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
-import { Roles } from "../../auth/decorators/role.decorator";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { Request as ExpressRequest } from "express";
 
@@ -21,7 +20,7 @@ import { Request as ExpressRequest } from "express";
 @Controller("experiences")
 @UseGuards(AuthGuard, RolesGuard)
 export class ExperienceController {
-  constructor(private readonly experienceService: ExperienceService) {}
+  constructor(private readonly experienceService: ExperienceService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @ApiOperation({ summary: "Create a new experience" })

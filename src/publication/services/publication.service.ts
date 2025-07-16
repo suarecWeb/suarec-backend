@@ -20,9 +20,9 @@ export class PublicationService {
 
   constructor(
     @InjectRepository(Publication)
-    private readonly publicationRepository: Repository<Publication>,
+    private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(
@@ -123,14 +123,6 @@ export class PublicationService {
         const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
         const isOwner = publication.user.id === user.id;
 
-        console.log("Debug permissions:", {
-          userId: user.id,
-          publicationUserId: publication.user.id,
-          isAdmin,
-          isOwner,
-          userRoles: user.roles,
-        });
-
         if (!isAdmin && !isOwner) {
           throw new BadRequestException(
             "You can only edit your own publications",
@@ -165,14 +157,6 @@ export class PublicationService {
       if (user) {
         const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
         const isOwner = publication.user.id === user.id;
-
-        console.log("Debug delete permissions:", {
-          userId: user.id,
-          publicationUserId: publication.user.id,
-          isAdmin,
-          isOwner,
-          userRoles: user.roles,
-        });
 
         if (!isAdmin && !isOwner) {
           throw new BadRequestException(

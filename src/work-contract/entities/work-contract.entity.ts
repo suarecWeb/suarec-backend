@@ -13,17 +13,17 @@ import { Publication } from "../../publication/entities/publication.entity";
 import { Rating } from "../../rating/entities/rating.entity";
 
 export enum ContractStatus {
-  PENDING = "PENDING",
-  ACCEPTED = "ACCEPTED",
-  IN_PROGRESS = "IN_PROGRESS",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED",
-  DISPUTED = "DISPUTED",
+  PENDING = "PENDING", // eslint-disable-line no-unused-vars
+  ACCEPTED = "ACCEPTED", // eslint-disable-line no-unused-vars
+  IN_PROGRESS = "IN_PROGRESS", // eslint-disable-line no-unused-vars
+  COMPLETED = "COMPLETED", // eslint-disable-line no-unused-vars
+  CANCELLED = "CANCELLED", // eslint-disable-line no-unused-vars
+  DISPUTED = "DISPUTED", // eslint-disable-line no-unused-vars
 }
 
 export enum ContractType {
-  SERVICE = "SERVICE", // Contratación de servicio individual
-  EMPLOYMENT = "EMPLOYMENT", // Contratación laboral por empresa
+  SERVICE = "SERVICE", // eslint-disable-line no-unused-vars
+  EMPLOYMENT = "EMPLOYMENT", // eslint-disable-line no-unused-vars
 }
 
 @Entity("work_contracts")

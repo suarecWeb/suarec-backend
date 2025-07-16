@@ -27,29 +27,20 @@ export class CompanyService {
 
   constructor(
     @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
+    private readonly companyRepository: Repository<Company>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(CompanyHistory)
-    private readonly companyHistoryRepository: Repository<CompanyHistory>,
+    private readonly companyHistoryRepository: Repository<CompanyHistory>, // eslint-disable-line no-unused-vars
     @InjectRepository(Attendance)
-    private readonly attendanceRepository: Repository<Attendance>,
+    private readonly attendanceRepository: Repository<Attendance>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     try {
-      console.log(
-        "Creating company..." +
-          createCompanyDto.email +
-          createCompanyDto.nit +
-          createCompanyDto.userId,
-      );
-
       const existingCompany = await this.companyRepository.findOne({
         where: { nit: createCompanyDto.nit },
       });
-
-      console.log("Existing company ?..." + existingCompany);
 
       if (existingCompany) {
         throw new BadRequestException("NIT already in use");
@@ -233,15 +224,9 @@ export class CompanyService {
       const company = await this.findOne(companyId);
       const user = await this.userRepository.findOne({ where: { id: userId } });
 
-      console.error(
-        "Adding employee to company..." + companyId + " for user " + userId,
-      );
-
       if (!user) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
-
-      console.log("User found: ", user);
 
       // Verificar si ya existe un historial activo para este usuario en esta empresa
       const existingActiveHistory = await this.companyHistoryRepository.findOne(
@@ -254,15 +239,11 @@ export class CompanyService {
         },
       );
 
-      console.log("Existing active history: ", existingActiveHistory);
-
       if (existingActiveHistory) {
         throw new BadRequestException(
           `User is already an active employee of this company`,
         );
       }
-
-      console.log("Creating new employee history...");
 
       const startDate = addEmployeeDto?.startDate
         ? new Date(addEmployeeDto.startDate)
@@ -280,8 +261,6 @@ export class CompanyService {
         startDate: startDate,
         isActive: true,
       });
-
-      console.log("Saving company history: ", companyHistory);
 
       await this.companyHistoryRepository.save(companyHistory);
 
@@ -350,19 +329,8 @@ export class CompanyService {
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<User>> {
     try {
-      const company = await this.findOne(companyId);
       const { page, limit } = paginationDto;
       const skip = (page - 1) * limit;
-
-      // Buscar todos los usuarios que han tenido historial con esta empresa
-      const [historyRecords, total] =
-        await this.companyHistoryRepository.findAndCount({
-          where: { company: { id: companyId } },
-          relations: ["user", "user.roles"],
-          order: { startDate: "DESC" },
-          skip,
-          take: limit,
-        });
 
       // Agrupar por usuario para obtener el historial más reciente de cada uno
       const userHistoryMap = new Map();
@@ -409,7 +377,7 @@ export class CompanyService {
           if (relevantHistory) {
             const startDate = new Date(relevantHistory.startDate);
             let endDate = null;
-            let diffTime, diffDays, diffMonths, diffYears;
+            let diffTime;
 
             if (relevantHistory.isActive) {
               // Empleado activo - calcular desde inicio hasta ahora
@@ -422,9 +390,9 @@ export class CompanyService {
               diffTime = Math.abs(endDate.getTime() - startDate.getTime());
             }
 
-            diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            diffMonths = Math.floor(diffDays / 30);
-            diffYears = Math.floor(diffMonths / 12);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffMonths = Math.floor(diffDays / 30);
+            const diffYears = Math.floor(diffMonths / 12);
 
             employmentInfo = {
               startDate: relevantHistory.startDate,
@@ -487,9 +455,7 @@ export class CompanyService {
     }
   }
 
-  async getLocation(
-    id: string,
-  ): Promise<{
+  async getLocation(id: string): Promise<{
     latitude: number;
     longitude: number;
     address: string;

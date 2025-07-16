@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  Body,
   UseGuards,
   Request,
 } from "@nestjs/common";
@@ -16,7 +15,7 @@ import { AuthGuard } from "../auth/guard/auth.guard";
 @UseGuards(AuthGuard)
 export class PublicationLikeController {
   constructor(
-    private readonly publicationLikeService: PublicationLikeService,
+    private readonly publicationLikeService: PublicationLikeService, // eslint-disable-line no-unused-vars
   ) {}
 
   // Dar like a una publicación

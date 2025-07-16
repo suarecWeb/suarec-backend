@@ -6,19 +6,17 @@ import {
 import { UserService } from "../../user/user.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
-import { from } from "rxjs";
 import { Repository } from "typeorm";
 import { User } from "../../user/entities/user.entity";
 import { InjectRepository } from "@nestjs/typeorm";
-import { stringify } from "querystring";
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UserService,
-    private jwtService: JwtService,
+    private usersService: UserService, // eslint-disable-line no-unused-vars
+    private jwtService: JwtService, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async signIn(email: string, password: string) {
@@ -59,12 +57,12 @@ export class AuthService {
       throw new NotFoundException(`The user with email ${email} not found`);
 
     const brevo = require("@getbrevo/brevo");
-    let apiInstance = new brevo.TransactionalEmailsApi();
+    const apiInstance = new brevo.TransactionalEmailsApi();
 
-    let apiKey = apiInstance.authentications["apiKey"];
+    const apiKey = apiInstance.authentications["apiKey"];
     apiKey.apiKey = `${process.env.BREVO_API}`;
 
-    let sendSmtpEmail = new brevo.SendSmtpEmail();
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
 
     sendSmtpEmail.subject = "{{params.subject}}";
 
@@ -100,18 +98,17 @@ export class AuthService {
 
     apiInstance.sendTransacEmail(sendSmtpEmail).then(
       function (data) {
-        console.log(
-          "API called successfully. Returned data: " + JSON.stringify(data),
-        );
+        console.log("API called successfully. Returned data: " + data); // eslint-disable-line no-console
       },
       function (error) {
-        console.error(error);
+        console.error(error); // eslint-disable-line no-console
+        throw new Error("Error sending email");
       },
     );
   }
 
   async changePassword(id: number, password: string) {
-    let user = await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id: id },
     });
 

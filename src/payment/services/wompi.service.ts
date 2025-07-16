@@ -60,6 +60,7 @@ export class WompiService {
   private readonly privateKey: string;
 
   constructor(private configService: ConfigService) {
+    // eslint-disable-line no-unused-vars
     this.baseUrl = this.configService.get<string>(
       "WOMPI_BASE_URL",
       "https://production.wompi.co/v1",
@@ -208,33 +209,19 @@ export class WompiService {
     try {
       const secret = process.env.WOMPI_EVENTS_SECRET;
       if (!secret) {
-        console.error("WOMPI_EVENTS_SECRET is not set");
         return false;
       }
-
-      console.log("🔍 Verificando firma del webhook...");
-      console.log("Event body keys:", Object.keys(eventBody));
 
       // Verificar estructura del webhook
       const { signature, timestamp, data } = eventBody;
 
       if (!signature || !timestamp || !data) {
-        console.error(
-          "❌ Webhook structure invalid - missing signature, timestamp, or data",
-        );
         return false;
       }
 
       if (!signature.properties || !signature.checksum) {
-        console.error(
-          "❌ Signature structure invalid - missing properties or checksum",
-        );
         return false;
       }
-
-      console.log("Signature properties:", signature.properties);
-      console.log("Timestamp:", timestamp);
-      console.log("Received checksum:", signature.checksum);
 
       // 1. Concatenar los valores de las propiedades en orden
       let concat = "";
@@ -246,7 +233,6 @@ export class WompiService {
         if (value !== undefined && value !== null) {
           concat += value;
         }
-        console.log(`Property: ${prop}, Value: ${value}`);
       }
 
       // 2. Concatenar el timestamp
@@ -261,17 +247,12 @@ export class WompiService {
         .update(concat)
         .digest("hex");
 
-      console.log("Calculated checksum:", calculatedChecksum);
-      console.log("Received checksum:", signature.checksum);
-
       // 5. Comparar con el checksum recibido (case insensitive)
       const isValid =
         calculatedChecksum.toLowerCase() === signature.checksum.toLowerCase();
-      console.log("Signature valid:", isValid);
 
       return isValid;
     } catch (error) {
-      console.error("❌ Error verifying webhook signature:", error);
       return false;
     }
   }
@@ -319,14 +300,9 @@ export class WompiService {
     collect_shipping?: boolean;
   }) {
     const url = `${this.baseUrl}/payment_links`;
-
-    // Extraer el transaction_id de la URL de éxito
-    const urlParts = redirect_url.split("?");
-    const transactionId = urlParts[1]?.split("=")[1];
-
-    console.log("🔗 URLs configuradas para el pago:");
-    console.log("  - Success URL:", redirect_url);
-    console.log("  - Transaction ID:", transactionId);
+    if (!this.privateKey) {
+      throw new Error("Wompi private key not configured");
+    }
 
     const payload: any = {
       name,

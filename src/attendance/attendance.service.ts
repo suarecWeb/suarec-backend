@@ -3,17 +3,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Between } from "typeorm";
 import { Attendance } from "./entities/attendance.entity";
 import { User } from "../user/entities/user.entity";
-import { Company } from "../company/entities/company.entity";
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @InjectRepository(Attendance)
-    private attendanceRepository: Repository<Attendance>,
+    private attendanceRepository: Repository<Attendance>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(Company)
-    private companyRepository: Repository<Company>,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   private async calculateIsLate(

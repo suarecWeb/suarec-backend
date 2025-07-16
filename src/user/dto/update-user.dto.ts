@@ -3,7 +3,6 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
-  IsNumber,
   IsEmail,
   IsDate,
   IsUUID,

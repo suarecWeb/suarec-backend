@@ -17,9 +17,9 @@ import {
 export class GalleryService {
   constructor(
     @InjectRepository(UserGallery)
-    private galleryRepository: Repository<UserGallery>,
+    private galleryRepository: Repository<UserGallery>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async getUserGallery(userId: number): Promise<UserGallery[]> {

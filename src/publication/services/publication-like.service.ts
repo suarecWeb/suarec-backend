@@ -13,9 +13,9 @@ import { CreatePublicationLikeDto } from "../dto/create-publication-like.dto";
 export class PublicationLikeService {
   constructor(
     @InjectRepository(PublicationLike)
-    private publicationLikeRepository: Repository<PublicationLike>,
+    private publicationLikeRepository: Repository<PublicationLike>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
-    private publicationRepository: Repository<Publication>,
+    private publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
   ) {}
 
   // Dar like a una publicación

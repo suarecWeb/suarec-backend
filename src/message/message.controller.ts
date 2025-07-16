@@ -27,8 +27,8 @@ import { Public } from "../auth/decorators/public.decorator";
 @UseGuards(AuthGuard, RolesGuard)
 export class MessageController {
   constructor(
-    private readonly messageService: MessageService,
-    private readonly messageGateway: MessageGateway,
+    private readonly messageService: MessageService, // eslint-disable-line no-unused-vars
+    private readonly messageGateway: MessageGateway, // eslint-disable-line no-unused-vars
   ) {}
 
   @Post()

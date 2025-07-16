@@ -30,7 +30,7 @@ import {
 @Controller("applications")
 @UseGuards(AuthGuard, RolesGuard)
 export class ApplicationController {
-  constructor(private readonly applicationService: ApplicationService) {}
+  constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("PERSON", "ADMIN")
@@ -96,7 +96,7 @@ export class ApplicationController {
 @Controller("companies/:companyId/applications")
 @UseGuards(AuthGuard, RolesGuard)
 export class CompanyApplicationController {
-  constructor(private readonly applicationService: ApplicationService) {}
+  constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Get()
   @Roles("BUSINESS", "ADMIN")
@@ -121,7 +121,7 @@ export class CompanyApplicationController {
 @Controller("users/:userId/applications")
 @UseGuards(AuthGuard, RolesGuard)
 export class UserApplicationController {
-  constructor(private readonly applicationService: ApplicationService) {}
+  constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Get()
   @Roles("PERSON", "ADMIN")
@@ -140,7 +140,7 @@ export class UserApplicationController {
 @Controller("publications/:publicationId/applications")
 @UseGuards(AuthGuard, RolesGuard)
 export class PublicationApplicationController {
-  constructor(private readonly applicationService: ApplicationService) {}
+  constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Get()
   @Roles("BUSINESS", "PERSON", "ADMIN")

@@ -26,14 +26,14 @@ export class ContractService {
 
   constructor(
     @InjectRepository(Contract)
-    private contractRepository: Repository<Contract>,
+    private contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
     @InjectRepository(ContractBid)
-    private bidRepository: Repository<ContractBid>,
+    private bidRepository: Repository<ContractBid>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
-    private publicationRepository: Repository<Publication>,
+    private publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private userRepository: Repository<User>,
-    private emailService: EmailService,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
+    private emailService: EmailService, // eslint-disable-line no-unused-vars
   ) {}
 
   /**
@@ -345,7 +345,7 @@ export class ContractService {
     }
 
     switch (action) {
-      case ContractStatus.ACCEPTED:
+      case ContractStatus.ACCEPTED: {
         contract.status = ContractStatus.ACCEPTED;
         contract.providerMessage = data.providerMessage;
         contract.agreedDate = data.proposedDate || contract.requestedDate;
@@ -368,6 +368,7 @@ export class ContractService {
           `Tu solicitud para "${contract.publication.title}" ha sido aceptada por el proveedor.`,
         );
         break;
+      }
 
       case ContractStatus.REJECTED:
         contract.status = ContractStatus.REJECTED;
@@ -381,7 +382,7 @@ export class ContractService {
         );
         break;
 
-      case ContractStatus.NEGOTIATING:
+      case ContractStatus.NEGOTIATING: {
         contract.status = ContractStatus.NEGOTIATING;
         contract.providerMessage = data.providerMessage;
         contract.currentPrice = data.counterOffer || contract.initialPrice;
@@ -402,6 +403,7 @@ export class ContractService {
           `El proveedor ha enviado una nueva propuesta para "${contract.publication.title}".`,
         );
         break;
+      }
     }
 
     return await this.contractRepository.save(contract);

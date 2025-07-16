@@ -11,12 +11,12 @@ import { User } from "../../user/entities/user.entity";
 import { Publication } from "../../publication/entities/publication.entity";
 
 export enum ContractStatus {
-  PENDING = "pending",
-  NEGOTIATING = "negotiating",
-  ACCEPTED = "accepted",
-  REJECTED = "rejected",
-  CANCELLED = "cancelled",
-  COMPLETED = "completed",
+  PENDING = "pending", // eslint-disable-line no-unused-vars
+  NEGOTIATING = "negotiating", // eslint-disable-line no-unused-vars
+  ACCEPTED = "accepted", // eslint-disable-line no-unused-vars
+  REJECTED = "rejected", // eslint-disable-line no-unused-vars
+  CANCELLED = "cancelled", // eslint-disable-line no-unused-vars
+  COMPLETED = "completed", // eslint-disable-line no-unused-vars
 }
 
 @Entity()

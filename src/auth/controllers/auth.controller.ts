@@ -1,21 +1,11 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  HttpCode,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Post, Body, Param } from "@nestjs/common";
 import { AuthService } from "../services/auth.service";
 import { passwordDto } from "../dto/password.dto";
 import { Public } from "../decorators/public.decorator";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {} // eslint-disable-line no-unused-vars
 
   @Public()
   @Post("login")

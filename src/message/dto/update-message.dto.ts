@@ -1,6 +1,5 @@
 // src/message/dto/update-message.dto.ts
 import { PartialType } from "@nestjs/mapped-types";
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { CreateMessageDto } from "./create-message.dto";
 

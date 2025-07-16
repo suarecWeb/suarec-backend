@@ -24,7 +24,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 @Controller("roles")
 @UseGuards(RolesGuard)
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(private readonly roleService: RoleService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("ADMIN")

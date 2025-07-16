@@ -24,7 +24,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 @ApiTags("Publications")
 @Controller("publications")
 export class PublicationController {
-  constructor(private readonly publicationService: PublicationService) {}
+  constructor(private readonly publicationService: PublicationService) {} // eslint-disable-line no-unused-vars
 
   @Post()
   @Roles("ADMIN", "PERSON", "BUSINESS")

@@ -1,5 +1,5 @@
 export enum PropertyType {
-  House = "HOUSE",
-  Apartment = "APARTMENT",
-  Chalet = "CHALET",
+  House = "HOUSE", // eslint-disable-line no-unused-vars
+  Apartment = "APARTMENT", // eslint-disable-line no-unused-vars
+  Chalet = "CHALET", // eslint-disable-line no-unused-vars
 }

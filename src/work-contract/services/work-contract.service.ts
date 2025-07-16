@@ -22,11 +22,11 @@ export class WorkContractService {
 
   constructor(
     @InjectRepository(WorkContract)
-    private readonly workContractRepository: Repository<WorkContract>,
+    private readonly workContractRepository: Repository<WorkContract>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
-    private readonly publicationRepository: Repository<Publication>,
+    private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(

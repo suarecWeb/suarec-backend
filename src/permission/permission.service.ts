@@ -19,7 +19,7 @@ export class PermissionService {
 
   constructor(
     @InjectRepository(Permission)
-    private permissionRepository: Repository<Permission>,
+    private permissionRepository: Repository<Permission>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createPermissionDto: CreatePermissionDto) {

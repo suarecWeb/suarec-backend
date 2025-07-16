@@ -1,13 +1,12 @@
 import { IsOptional, IsEnum, IsDateString } from "class-validator";
-import { Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { PaginationDto } from "../../common/dto/pagination.dto";
 import { PaymentStatus } from "../../enums/paymentMethod.enum";
 
 export enum PaymentHistoryType {
-  SENT = "sent", // Pagos enviados (como payer)
-  RECEIVED = "received", // Pagos recibidos (como payee)
-  ALL = "all", // Todos los pagos
+  SENT = "sent", // eslint-disable-line no-unused-vars
+  RECEIVED = "received", // eslint-disable-line no-unused-vars
+  ALL = "all", // eslint-disable-line no-unused-vars
 }
 
 export class PaymentHistoryDto extends PaginationDto {

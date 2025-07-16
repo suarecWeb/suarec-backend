@@ -5,7 +5,7 @@ import { JwtService } from "@nestjs/jwt";
 
 @Injectable()
 export class WsAuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService) {} // eslint-disable-line no-unused-vars
 
   async canActivate(context: any): Promise<boolean> {
     try {
