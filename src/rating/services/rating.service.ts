@@ -13,7 +13,7 @@ import { CreateRatingDto } from "../dto/create-rating.dto";
 import { UpdateRatingDto } from "../dto/update-rating.dto";
 import { User } from "../../user/entities/user.entity";
 import { WorkContract } from "../../work-contract/entities/work-contract.entity";
-import { Contract } from "../../contract/entities/contract.entity";
+import { Contract, ContractStatus } from "../../contract/entities/contract.entity";
 import { PaginationDto } from "../../common/dto/pagination.dto";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 
@@ -278,79 +278,112 @@ export class RatingService {
 
   async getContractsReadyForRating(userId: number): Promise<any[]> {
     try {
-      // Buscar contratos donde el usuario participó y hay pagos completados
-      // Usamos Contract porque PaymentTransaction se relaciona con Contract
+      console.log(`🔍 Buscando contratos listos para calificar para usuario: ${userId}`); // eslint-disable-line no-console
+      
+      // Verificar que el usuario existe
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        console.log(`❌ Usuario ${userId} no encontrado`); // eslint-disable-line no-console
+        return [];
+      }
+      
+      // Buscar contratos donde el usuario es el CLIENTE y hay pagos completados
+      // Solo los clientes pueden calificar a los proveedores después del pago
+      console.log(`📊 Buscando contratos donde usuario ${userId} es cliente...`); // eslint-disable-line no-console
       const contracts = await this.contractRepository
         .createQueryBuilder("contract")
         .leftJoinAndSelect("contract.client", "client")
         .leftJoinAndSelect("contract.provider", "provider")
         .leftJoinAndSelect("contract.publication", "publication")
-        .where(
-          "(contract.client.id = :userId OR contract.provider.id = :userId)",
-          { userId },
-        )
-        .andWhere("contract.status = :status", { status: "accepted" })
+        .where("contract.client.id = :userId", { userId }) // SOLO contratos donde el usuario es cliente
+        .andWhere("contract.status = :status", { status: ContractStatus.ACCEPTED }) // Estado correcto usando enum
         .getMany();
+
+      console.log(`📋 Contratos con status 'completed' encontrados: ${contracts.length}`); // eslint-disable-line no-console
 
       // Filtrar contratos que tengan pagos completados
       const contractsWithCompletedPayments = [];
 
       for (const contract of contracts) {
-        // Buscar pagos completados para este contrato
-        const completedPayments = await this.contractRepository.manager.query(
-          `
-          SELECT COUNT(*) as count 
-          FROM payment_transactions 
-          WHERE "contractId" = $1 AND status = 'COMPLETED'
-        `,
-          [contract.id],
-        );
+        try {
+          console.log(`💳 Verificando pagos para contrato: ${contract.id}`); // eslint-disable-line no-console
+          // Buscar pagos completados para este contrato
+          const completedPayments = await this.contractRepository.manager.query(
+            `
+            SELECT COUNT(*) as count 
+            FROM payment_transactions 
+            WHERE "contractId" = $1 AND status = 'COMPLETED'
+          `,
+            [contract.id],
+          );
 
-        if (parseInt(completedPayments[0].count) > 0) {
-          contractsWithCompletedPayments.push(contract);
+          if (completedPayments[0] && parseInt(completedPayments[0].count) > 0) {
+            contractsWithCompletedPayments.push(contract);
+          }
+        } catch (paymentError) {
+          console.error(`❌ Error verificando pagos para contrato ${contract.id}:`, paymentError); // eslint-disable-line no-console
+          // Continuar con el siguiente contrato en caso de error
         }
       }
 
+      console.log(`💳 Contratos con pagos completados: ${contractsWithCompletedPayments.length}`); // eslint-disable-line no-console
+
       const contractsWithRatingStatus = await Promise.all(
         contractsWithCompletedPayments.map(async (contract) => {
-          // Verificar si el usuario ya calificó al otro usuario de este contrato
-          const otherUserId =
-            contract.client.id === userId
-              ? contract.provider.id
-              : contract.client.id;
-          const existingRating = await this.ratingRepository.findOne({
-            where: {
-              reviewer: { id: userId },
-              reviewee: { id: otherUserId },
-            },
-          });
+          try {
+            // El cliente califica al proveedor
+            const providerId = contract.provider.id;
+            console.log(`⭐ Verificando rating existente - Cliente: ${userId}, Proveedor: ${providerId}`); // eslint-disable-line no-console
+            
+            const existingRating = await this.ratingRepository.findOne({
+              where: {
+                reviewer: { id: userId }, // Cliente como reviewer
+                reviewee: { id: providerId }, // Proveedor como reviewee
+              },
+            });
 
-          const otherUser =
-            contract.client.id === userId ? contract.provider : contract.client;
-          const userRole =
-            contract.client.id === userId ? "CLIENT" : "PROVIDER";
+            console.log(`📝 Rating existente para contrato ${contract.id}: ${existingRating ? 'SÍ' : 'NO'}`); // eslint-disable-line no-console
 
-          return {
-            contractId: contract.id,
-            contractTitle: contract.publication?.title || "Sin título",
-            otherUser: {
-              id: otherUser.id,
-              name: otherUser.name,
-              profile_image: otherUser.profile_image,
-            },
-            userRole,
-            canRate: !existingRating,
-            alreadyRated: !!existingRating,
-            completedAt: contract.updatedAt,
-          };
+            return {
+              contractId: contract.id,
+              contractTitle: contract.publication?.title || "Sin título",
+              otherUser: {
+                id: contract.provider.id,
+                name: contract.provider.name,
+                profile_image: contract.provider.profile_image,
+              },
+              userRole: "CLIENT", // Siempre será CLIENT ya que filtramos por client.id
+              canRate: !existingRating,
+              alreadyRated: !!existingRating,
+              completedAt: contract.updatedAt,
+              ratingCategory: "SERVICE", // Cliente califica el servicio del proveedor
+            };
+          } catch (ratingError) {
+            console.error(`❌ Error procesando contrato ${contract.id}:`, ratingError); // eslint-disable-line no-console
+            return null; // Devolver null para filtrar después
+          }
         }),
       );
 
-      const finalContracts = contractsWithRatingStatus.filter(
+      // Filtrar contratos nulos (errores)
+      const validContracts = contractsWithRatingStatus.filter(contract => contract !== null);
+
+      const finalContracts = validContracts.filter(
         (contract) => contract.canRate,
       );
+      
+      console.log(`⭐ Contratos finales listos para calificar: ${finalContracts.length}`); // eslint-disable-line no-console
+      console.log('📝 Contratos detalle:', finalContracts.map(c => ({ // eslint-disable-line no-console
+        contractId: c.contractId,
+        title: c.contractTitle,
+        providerName: c.otherUser.name,
+        canRate: c.canRate
+      })));
+      
       return finalContracts;
     } catch (error) {
+      console.error('❌ Error completo en getContractsReadyForRating:', error); // eslint-disable-line no-console
+      this.logger.error('Error in getContractsReadyForRating:', error);
       this.handleDBErrors(error);
     }
   }

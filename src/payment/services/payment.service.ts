@@ -110,7 +110,7 @@ export class PaymentService {
     // If payment method is Wompi, create Wompi transaction
     if (paymentData.payment_method === PaymentMethod.Wompi) {
       const backendUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+        process.env.NEXT_PUBLIC_API_BASE_URL;
 
       const paymentLink = await this.wompiService.createPaymentLink({
         name: contract.publication?.title || "Pago de servicio",
@@ -413,14 +413,14 @@ export class PaymentService {
         throw new Error("Payee relation not loaded");
       }
 
-      console.log("Payer ID:", paymentTransaction.payer.id); // eslint-disable-line no-console
-      console.log("Payee ID:", paymentTransaction.payee.id); // eslint-disable-line no-console
+      console.log("Cliente (Payer) ID:", paymentTransaction.payer.id); // eslint-disable-line no-console
+      console.log("Proveedor (Payee) ID:", paymentTransaction.payee.id); // eslint-disable-line no-console
       console.log("Contract ID:", paymentTransaction.contract?.id); // eslint-disable-line no-console
 
-      // Aquí podrías crear un registro de "oportunidad de calificación" o simplemente
-      // permitir que los usuarios califiquen basándose en el contrato completado
-
-      console.log("✅ Calificación habilitada para ambos usuarios"); // eslint-disable-line no-console
+      // SOLO el cliente (payer) puede calificar al proveedor (payee)
+      // El sistema de ratings está diseñado para que el cliente califique el servicio recibido
+      console.log("✅ Calificación habilitada para el cliente calificar al proveedor"); // eslint-disable-line no-console
+      console.log(`   📝 Cliente ID ${paymentTransaction.payer.id} puede calificar a Proveedor ID ${paymentTransaction.payee.id}`); // eslint-disable-line no-console
     } catch (error) {
       console.error("❌ Error habilitando calificación:", error); // eslint-disable-line no-console
       throw new BadRequestException("Error enabling rating after payment");
