@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class CreatePublicationLikeDto {
   @IsNumber()
@@ -8,4 +8,4 @@ export class CreatePublicationLikeDto {
   @IsString()
   @IsNotEmpty()
   publicationId: string;
-} 
+}
