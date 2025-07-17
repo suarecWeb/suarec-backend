@@ -1,45 +1,58 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserGallery } from '../entities/user-gallery.entity';
-import { User } from '../entities/user.entity';
-import { CreateGalleryImageDto, UpdateGalleryImageDto, UploadGalleryImagesDto } from '../dto/gallery.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { UserGallery } from "../entities/user-gallery.entity";
+import { User } from "../entities/user.entity";
+import {
+  CreateGalleryImageDto,
+  UpdateGalleryImageDto,
+  UploadGalleryImagesDto,
+} from "../dto/gallery.dto";
 
 @Injectable()
 export class GalleryService {
   constructor(
     @InjectRepository(UserGallery)
-    private galleryRepository: Repository<UserGallery>,
+    private galleryRepository: Repository<UserGallery>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
   async getUserGallery(userId: number): Promise<UserGallery[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['gallery'],
+      relations: ["gallery"],
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     return user.gallery.sort((a, b) => a.order_index - b.order_index);
   }
 
-  async addImageToGallery(userId: number, createDto: CreateGalleryImageDto): Promise<UserGallery> {
+  async addImageToGallery(
+    userId: number,
+    createDto: CreateGalleryImageDto,
+  ): Promise<UserGallery> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['gallery'],
+      relations: ["gallery"],
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Verificar límite de 20 imágenes
     if (user.gallery.length >= 20) {
-      throw new BadRequestException('La galería no puede tener más de 20 imágenes');
+      throw new BadRequestException(
+        "La galería no puede tener más de 20 imágenes",
+      );
     }
 
     const galleryImage = this.galleryRepository.create({
@@ -51,22 +64,27 @@ export class GalleryService {
     return this.galleryRepository.save(galleryImage);
   }
 
-  async uploadMultipleImages(userId: number, uploadDto: UploadGalleryImagesDto): Promise<UserGallery[]> {
+  async uploadMultipleImages(
+    userId: number,
+    uploadDto: UploadGalleryImagesDto,
+  ): Promise<UserGallery[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['gallery'],
+      relations: ["gallery"],
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Verificar límite de 20 imágenes
     const currentCount = user.gallery.length;
     const newImagesCount = uploadDto.image_urls.length;
-    
+
     if (currentCount + newImagesCount > 20) {
-      throw new BadRequestException(`No se pueden agregar ${newImagesCount} imágenes. La galería ya tiene ${currentCount} imágenes y el límite es 20.`);
+      throw new BadRequestException(
+        `No se pueden agregar ${newImagesCount} imágenes. La galería ya tiene ${currentCount} imágenes y el límite es 20.`,
+      );
     }
 
     const galleryImages = uploadDto.image_urls.map((url, index) => {
@@ -82,13 +100,17 @@ export class GalleryService {
     return this.galleryRepository.save(galleryImages);
   }
 
-  async updateImage(userId: number, imageId: number, updateDto: UpdateGalleryImageDto): Promise<UserGallery> {
+  async updateImage(
+    userId: number,
+    imageId: number,
+    updateDto: UpdateGalleryImageDto,
+  ): Promise<UserGallery> {
     const galleryImage = await this.galleryRepository.findOne({
       where: { id: imageId, user_id: userId },
     });
 
     if (!galleryImage) {
-      throw new NotFoundException('Imagen no encontrada');
+      throw new NotFoundException("Imagen no encontrada");
     }
 
     Object.assign(galleryImage, updateDto);
@@ -101,7 +123,7 @@ export class GalleryService {
     });
 
     if (!galleryImage) {
-      throw new NotFoundException('Imagen no encontrada');
+      throw new NotFoundException("Imagen no encontrada");
     }
 
     await this.galleryRepository.remove(galleryImage);
@@ -109,7 +131,7 @@ export class GalleryService {
     // Reordenar las imágenes restantes
     const remainingImages = await this.galleryRepository.find({
       where: { user_id: userId },
-      order: { order_index: 'ASC' },
+      order: { order_index: "ASC" },
     });
 
     for (let i = 0; i < remainingImages.length; i++) {
@@ -118,22 +140,29 @@ export class GalleryService {
     }
   }
 
-  async reorderImages(userId: number, imageIds: number[]): Promise<UserGallery[]> {
+  async reorderImages(
+    userId: number,
+    imageIds: number[],
+  ): Promise<UserGallery[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['gallery'],
+      relations: ["gallery"],
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Verificar que todas las imágenes pertenecen al usuario
-    const userImageIds = user.gallery.map(img => img.id);
-    const allImagesBelongToUser = imageIds.every(id => userImageIds.includes(id));
-    
+    const userImageIds = user.gallery.map((img) => img.id);
+    const allImagesBelongToUser = imageIds.every((id) =>
+      userImageIds.includes(id),
+    );
+
     if (!allImagesBelongToUser) {
-      throw new BadRequestException('Algunas imágenes no pertenecen al usuario');
+      throw new BadRequestException(
+        "Algunas imágenes no pertenecen al usuario",
+      );
     }
 
     // Actualizar el orden
@@ -145,4 +174,4 @@ export class GalleryService {
 
     return this.getUserGallery(userId);
   }
-} 
+}
