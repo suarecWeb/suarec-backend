@@ -30,23 +30,12 @@ export class WebhookController {
       const isProduction = process.env.NODE_ENV === "production";
       const isDevelopment = process.env.NODE_ENV === "development";
 
-      console.log(
-        `🔔 [${requestId}] Webhook recibido: ${webhookData.event} en modo ${isProduction ? "producción" : "desarrollo"}`,
-      ); // eslint-disable-line no-console
-
       // Verificar firma del webhook
       let isValid = true;
 
       if (isProduction) {
-        console.log(
-          `🔒 [${requestId}] Verificando firma del webhook en producción...`,
-        ); // eslint-disable-line no-console
-
         // Verificar que el secret esté configurado
         if (!process.env.WOMPI_EVENTS_SECRET) {
-          console.error(
-            `❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado en producción`,
-          ); // eslint-disable-line no-console
           return { success: false, error: "Webhook secret not configured" };
         }
 
@@ -54,30 +43,15 @@ export class WebhookController {
           await this.paymentService.wompiService.verifyWebhookSignature(
             webhookData,
           );
-        console.log(
-          `${isValid ? "✅" : "❌"} [${requestId}] Firma del webhook válida: ${isValid}`,
-        ); // eslint-disable-line no-console
 
         if (!isValid) {
-          console.error(
-            `❌ [${requestId}] Firma del webhook inválida - rechazando webhook`,
-          ); // eslint-disable-line no-console
           return { success: false, error: "Invalid webhook signature" };
         }
       } else if (isDevelopment) {
-        console.log(
-          `🔧 [${requestId}] Modo desarrollo: Omitiendo verificación de firma`,
-        ); // eslint-disable-line no-console
+        // Modo desarrollo: Omitir verificación de firma
       } else {
         // En cualquier otro ambiente que no sea development, verificar firma
-        console.log(
-          `🔒 [${requestId}] Ambiente desconocido, verificando firma por seguridad...`,
-        ); // eslint-disable-line no-console
-
         if (!process.env.WOMPI_EVENTS_SECRET) {
-          console.error(
-            `❌ [${requestId}] WOMPI_EVENTS_SECRET no está configurado`,
-          ); // eslint-disable-line no-console
           return { success: false, error: "Webhook secret not configured" };
         }
 
@@ -85,14 +59,8 @@ export class WebhookController {
           await this.paymentService.wompiService.verifyWebhookSignature(
             webhookData,
           );
-        console.log(
-          `${isValid ? "✅" : "❌"} [${requestId}] Firma del webhook válida: ${isValid}`,
-        ); // eslint-disable-line no-console
 
         if (!isValid) {
-          console.error(
-            `❌ [${requestId}] Firma del webhook inválida - rechazando webhook`,
-          ); // eslint-disable-line no-console
           return { success: false, error: "Invalid webhook signature" };
         }
       }
@@ -200,11 +168,6 @@ export class WebhookController {
       timestamp: new Date().toISOString(),
     };
 
-    console.log(
-      "📋 Configuración del webhook:",
-      JSON.stringify(config, null, 2),
-    ); // eslint-disable-line no-console
-
     // Validaciones específicas para producción
     const validationResults = [];
 
@@ -311,11 +274,6 @@ export class WebhookController {
         properties,
       },
     };
-
-    console.log(
-      "📋 Test webhook data:",
-      JSON.stringify(webhookWithSignature, null, 2),
-    ); // eslint-disable-line no-console
 
     // Verificar la firma
     const isValid =
