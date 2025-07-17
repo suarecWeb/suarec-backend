@@ -190,11 +190,6 @@ export class PaymentController {
 
     // Buscar la transacción
     const transaction = await this.paymentService.findOne(transactionId);
-    console.log("Transacción encontrada:", {
-      id: transaction.id,
-      wompi_payment_link_id: transaction.wompi_payment_link_id,
-      status: transaction.status,
-    }); // eslint-disable-line no-console
 
     // Simular webhook de Wompi
     const mockWebhook = {
@@ -274,10 +269,6 @@ export class PaymentController {
     summary: "Update existing transaction with missing wompi_payment_link_id",
   })
   async updateExistingTransaction(): Promise<any> {
-    console.log(
-      "🔧 Actualizando transacción existente con wompi_payment_link_id faltante",
-    ); // eslint-disable-line no-console
-
     try {
       // Buscar la transacción que tiene el payment_link pero no el payment_link_id
       const transactions = await this.paymentService.findAll();
@@ -331,18 +322,11 @@ export class PaymentController {
         transaction.status,
       );
 
-      console.log(
-        `🔄 Redirigiendo transacción ${transactionId} (${transaction.status}) a: ${redirectUrl}`,
-      ); // eslint-disable-line no-console
-
       // Retornar URL para redirección manual o usar @Redirect
       return { url: redirectUrl };
     } catch (error) {
       // Si no se encuentra la transacción, redirigir a página de error
       const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
-      console.log(
-        `❌ Error en redirección para ${transactionId}, enviando a: ${fallbackUrl}`,
-      ); // eslint-disable-line no-console
       return { url: fallbackUrl };
     }
   }
@@ -367,18 +351,11 @@ export class PaymentController {
         transaction.status,
       );
 
-      console.log(
-        `🔄 Redirección directa para ${transactionId} (${transaction.status}) a: ${redirectUrl}`,
-      ); // eslint-disable-line no-console
-
       // Hacer redirección HTTP real
       return res.redirect(302, redirectUrl);
     } catch (error) {
       // Si no se encuentra la transacción, redirigir a página de error
       const fallbackUrl = `${process.env.FRONTEND_URL}/payments/failed?transaction_id=${transactionId}&error=not_found`;
-      console.log(
-        `❌ Error en redirección directa para ${transactionId}, enviando a: ${fallbackUrl}`,
-      ); // eslint-disable-line no-console
       return res.redirect(302, fallbackUrl);
     }
   }
