@@ -191,4 +191,107 @@ export class EmailVerificationController {
     );
     return { message: "Application status email sent successfully" };
   }
+
+  @Public()
+  @Post("send-service-contract-notification")
+  @ApiOperation({ summary: "Send service contract notification email" })
+  @ApiResponse({
+    status: 200,
+    description: "Service contract notification email sent successfully",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        recipientEmail: { 
+          type: "string", 
+          description: "Recipient email address",
+          example: "usuario@ejemplo.com"
+        },
+        recipientName: { 
+          type: "string", 
+          description: "Recipient full name",
+          example: "Diego González"
+        },
+        notificationType: {
+          type: "string",
+          enum: [
+            "ACCEPTED",
+            "REJECTED",
+            "IN_PROGRESS"
+          ],
+          description: "Type of contract notification",
+          example: "ACCEPTED"
+        },
+        contractData: {
+          type: "object",
+          properties: {
+            contractId: { 
+              type: "string", 
+              description: "Work contract ID",
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            },
+            serviceTitle: { 
+              type: "string", 
+              description: "Service or publication title",
+              example: "Reparación de plomería"
+            },
+            clientName: { 
+              type: "string", 
+              description: "Client name (optional)",
+              example: "Santiago Rodríguez"
+            },
+            providerName: { 
+              type: "string", 
+              description: "Service provider name (optional)",
+              example: "Diego González"
+            },
+            agreedPrice: { 
+              type: "number", 
+              description: "Agreed service price (optional)",
+              example: 150000
+            },
+            currency: { 
+              type: "string", 
+              description: "Price currency (optional)",
+              example: "COP"
+            },
+            customMessage: { 
+              type: "string", 
+              description: "Custom message to include (optional)",
+              example: "Necesito el servicio con urgencia para el viernes"
+            }
+          },
+          required: ["contractId", "serviceTitle"]
+        }
+      },
+      required: ["recipientEmail", "recipientName", "notificationType", "contractData"],
+    },
+  })
+  async sendServiceContractNotification(
+    @Body("recipientEmail") recipientEmail: string,
+    @Body("recipientName") recipientName: string,
+    @Body("notificationType") notificationType: 
+      | "ACCEPTED"
+      | "REJECTED"
+      | "IN_PROGRESS",
+    @Body("contractData") contractData: {
+      contractId: string;
+      serviceTitle: string;
+      clientName?: string;
+      providerName?: string;
+      agreedPrice?: number;
+      currency?: string;
+      customMessage?: string;
+    }
+  ): Promise<{ message: string }> {
+    await this.emailVerificationService.sendServiceContractNotificationEmail(
+      recipientEmail,
+      recipientName,
+      notificationType,
+      contractData
+    );
+    return { message: "Service contract notification email sent successfully" };
+  }
 }
+

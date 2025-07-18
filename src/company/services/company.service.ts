@@ -20,6 +20,7 @@ import {
   AddEmployeeDto,
   RemoveEmployeeDto,
 } from "../dto/employee-management.dto";
+import { EmployeePaginationDto, EmployeeStatus } from "../dto/employee-pagination.dto";
 
 @Injectable()
 export class CompanyService {
@@ -325,59 +326,92 @@ export class CompanyService {
   }
 
   async getEmployees(
-    companyId: string,
-    paginationDto: PaginationDto,
+    companyId: string, 
+    paginationDto: EmployeePaginationDto
   ): Promise<PaginationResponse<User>> {
     try {
-      const { page, limit } = paginationDto;
+      const company = await this.findOne(companyId);
+      const { page, limit, status } = paginationDto;
       const skip = (page - 1) * limit;
 
-      // Agrupar por usuario para obtener el historial más reciente de cada uno
-      const userHistoryMap = new Map();
+      // Construir query base con TypeORM QueryBuilder para mejor performance
+      const queryBuilder = this.companyHistoryRepository
+        .createQueryBuilder('history')
+        .leftJoinAndSelect('history.user', 'user')
+        .leftJoinAndSelect('user.roles', 'roles')
+        .where('history.companyId = :companyId', { companyId });
 
-      // Primero, obtener todos los usuarios únicos que aparecen en el historial
-      const allHistoryForCompany = await this.companyHistoryRepository.find({
-        where: { company: { id: companyId } },
-        relations: ["user", "user.roles"],
-        order: { startDate: "DESC" },
-      });
+      // Aplicar filtros de estado
+      if (status === EmployeeStatus.ACTIVE) {
+        queryBuilder.andWhere('history.isActive = :isActive', { isActive: true });
+      } else if (status === EmployeeStatus.INACTIVE) {
+        queryBuilder.andWhere('history.isActive = :isActive', { isActive: false });
+      }
 
-      // Agrupar por usuario y tomar el historial más reciente
-      allHistoryForCompany.forEach((history) => {
-        const userId = history.user.id;
-        if (!userHistoryMap.has(userId)) {
-          userHistoryMap.set(userId, history);
-        }
-      });
+      // Subconsulta para obtener el historial más reciente por usuario
+      const latestHistorySubQuery = this.companyHistoryRepository
+        .createQueryBuilder('sub_history')
+        .select('sub_history.userId', 'userId')
+        .addSelect('MAX(sub_history.startDate)', 'maxStartDate')
+        .where('sub_history.companyId = :companyId', { companyId })
+        .groupBy('sub_history.userId')
+        .getQuery();
 
-      // Convertir a array y aplicar paginación manual
-      const uniqueUserHistories = Array.from(userHistoryMap.values());
-      const paginatedHistories = uniqueUserHistories.slice(skip, skip + limit);
+      // Query principal que usa la subconsulta
+      queryBuilder
+        .andWhere(`(user.id, history.startDate) IN (${latestHistorySubQuery})`)
+        .orderBy('history.startDate', 'DESC');
+
+      // Obtener el total de registros únicos para paginación
+      const totalQuery = this.companyHistoryRepository
+        .createQueryBuilder('history')
+        .leftJoin('history.user', 'user')
+        .select('COUNT(DISTINCT history.userId)', 'count')
+        .where('history.companyId = :companyId', { companyId });
+
+      // Aplicar los mismos filtros al conteo
+      if (status === EmployeeStatus.ACTIVE) {
+        totalQuery.andWhere('history.isActive = :isActive', { isActive: true });
+      } else if (status === EmployeeStatus.INACTIVE) {
+        totalQuery.andWhere('history.isActive = :isActive', { isActive: false });
+      }
+
+      // Ejecutar ambas queries en paralelo
+      const [historyRecords, totalResult] = await Promise.all([
+        queryBuilder.skip(skip).take(limit).getMany(),
+        totalQuery.getRawOne()
+      ]);
+
+      const total = parseInt(totalResult.count);
 
       // Enriquecer la información de empleados con datos del historial
       const enrichedEmployees = await Promise.all(
-        paginatedHistories.map(async (userHistory) => {
+        historyRecords.map(async (userHistory) => {
           const employee = userHistory.user;
-
-          // Buscar el historial activo actual
-          const currentActiveHistory =
-            await this.companyHistoryRepository.findOne({
-              where: {
-                user: { id: employee.id },
-                company: { id: companyId },
-                isActive: true,
-              },
+          
+          // Para empleados activos, verificar si hay historial activo actual
+          let relevantHistory = userHistory;
+          
+          if (status === EmployeeStatus.ALL || !status) {
+            // Si no hay filtro específico, buscar el historial activo actual
+            const currentActiveHistory = await this.companyHistoryRepository.findOne({
+              where: { 
+                user: { id: employee.id }, 
+                company: { id: companyId }, 
+                isActive: true 
+              }
             });
-
-          // Si hay historial activo, usarlo; si no, usar el más reciente inactivo
-          const relevantHistory = currentActiveHistory || userHistory;
-
+            
+            // Usar historial activo si existe, sino el más reciente
+            relevantHistory = currentActiveHistory || userHistory;
+          }
+          
           let employmentInfo = null;
 
           if (relevantHistory) {
             const startDate = new Date(relevantHistory.startDate);
             let endDate = null;
-            let diffTime;
+            let diffTime, diffDays, diffMonths, diffYears;
 
             if (relevantHistory.isActive) {
               // Empleado activo - calcular desde inicio hasta ahora
@@ -390,44 +424,38 @@ export class CompanyService {
               diffTime = Math.abs(endDate.getTime() - startDate.getTime());
             }
 
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            const diffMonths = Math.floor(diffDays / 30);
-            const diffYears = Math.floor(diffMonths / 12);
+            diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            diffMonths = Math.floor(diffDays / 30);
+            diffYears = Math.floor(diffMonths / 12);
 
             employmentInfo = {
               startDate: relevantHistory.startDate,
               endDate: relevantHistory.endDate,
-              position: relevantHistory.position,
-              department: relevantHistory.department,
+              position: employee.profession,
+              department: employee.profession,
               isActive: relevantHistory.isActive,
-              terminationReason: relevantHistory.terminationReason,
-              notes: relevantHistory.notes,
               duration: {
                 days: diffDays,
                 months: diffMonths,
                 years: diffYears,
-                displayText: this.formatDuration(
-                  diffYears,
-                  diffMonths,
-                  diffDays,
-                ),
-              },
+                displayText: this.formatDuration(diffYears, diffMonths, diffDays)
+              }
             };
           }
 
           return {
             ...employee,
-            currentEmployment: employmentInfo,
+            currentEmployment: employmentInfo
           };
-        }),
+        })
       );
 
-      const totalPages = Math.ceil(uniqueUserHistories.length / limit);
+      const totalPages = Math.ceil(total / limit);
 
       return {
         data: enrichedEmployees as any,
         meta: {
-          total: uniqueUserHistories.length,
+          total,
           page,
           limit,
           totalPages,

@@ -21,6 +21,7 @@ import { Roles } from "../../auth/decorators/role.decorator";
 import { Company } from "../entities/company.entity";
 import { Public } from "../../auth/decorators/public.decorator";
 import { PaginationDto } from "../../common/dto/pagination.dto";
+import { EmployeePaginationDto } from "../dto/employee-pagination.dto";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import {
   ApiTags,
@@ -92,15 +93,15 @@ export class CompanyController {
 
   // Nuevos endpoints para gestionar empleados
 
-  @Get(":id/employees")
-  @Roles("ADMIN", "BUSINESS")
+  @Get(':id/employees')
+  @Roles('ADMIN', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get all employees of a company" })
-  @ApiParam({ name: "id", description: "Company ID" })
-  @ApiQuery({ type: PaginationDto })
+  @ApiOperation({ summary: 'Get all employees of a company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiQuery({ type: EmployeePaginationDto })
   getEmployees(
-    @Param("id") id: string,
-    @Query() paginationDto: PaginationDto,
+    @Param('id') id: string,
+    @Query() paginationDto: EmployeePaginationDto
   ): Promise<PaginationResponse<User>> {
     return this.companyService.getEmployees(id, paginationDto);
   }
