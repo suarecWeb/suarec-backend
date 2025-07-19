@@ -100,17 +100,25 @@ export class PaymentService {
     const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === "true";
     if (
       MOCK_PAYMENT_SUCCESS &&
-      paymentData.payment_method === PaymentMethod.Wompi
+      (paymentData.payment_method === PaymentMethod.Wompi ||
+        paymentData.payment_method === PaymentMethod.Cash ||
+        paymentData.payment_method === PaymentMethod.Bank_transfer ||
+        paymentData.payment_method === PaymentMethod.Credit_card)
     ) {
       paymentTransaction.status = PaymentStatus.COMPLETED;
       await this.paymentTransactionRepository.save(paymentTransaction);
       await this.enableRatingAfterPayment(paymentTransaction);
     }
 
-    // If payment method is Wompi, create Wompi transaction
-    if (paymentData.payment_method === PaymentMethod.Wompi) {
+    // If payment method is Wompi, Cash, Bank Transfer, or Credit Card, create Wompi transaction
+    if (
+      paymentData.payment_method === PaymentMethod.Wompi ||
+      paymentData.payment_method === PaymentMethod.Cash ||
+      paymentData.payment_method === PaymentMethod.Bank_transfer ||
+      paymentData.payment_method === PaymentMethod.Credit_card
+    ) {
       const backendUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL;
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://suarec-backend-production-de98.up.railway.app';
 
       const paymentLink = await this.wompiService.createPaymentLink({
         name: contract.publication?.title || "Pago de servicio",

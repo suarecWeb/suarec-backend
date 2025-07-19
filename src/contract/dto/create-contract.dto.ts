@@ -49,6 +49,10 @@ export class CreateContractDto {
 
   @IsString()
   @IsOptional()
+  originalPaymentMethod?: string;
+
+  @IsString()
+  @IsOptional()
   serviceAddress?: string;
 
   @IsString()

@@ -58,6 +58,7 @@ export class WompiService {
   private readonly baseUrl: string;
   private readonly publicKey: string;
   private readonly privateKey: string;
+  private readonly axiosInstance;
 
   constructor(private configService: ConfigService) {
     // eslint-disable-line no-unused-vars
@@ -67,6 +68,47 @@ export class WompiService {
     );
     this.publicKey = this.configService.get<string>("WOMPI_PUBLIC_KEY");
     this.privateKey = this.configService.get<string>("WOMPI_PRIVATE_KEY");
+
+    // Crear instancia de axios con configuración por defecto
+    this.axiosInstance = axios.create({
+      timeout: 30000, // 30 segundos
+      maxRedirects: 5,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Interceptor para logging de requests
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        this.logger.log(`Making request to: ${config.method?.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => {
+        this.logger.error('Request interceptor error:', error.message);
+        return Promise.reject(error);
+      }
+    );
+
+    // Interceptor para logging de responses
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        this.logger.log(`Response received: ${response.status} from ${response.config.url}`);
+        return response;
+      },
+      (error) => {
+        if (error.code === 'ECONNABORTED') {
+          this.logger.error('Request timeout');
+        } else if (error.response) {
+          this.logger.error(`HTTP Error: ${error.response.status} - ${error.response.statusText}`);
+        } else if (error.request) {
+          this.logger.error('No response received:', error.message);
+        } else {
+          this.logger.error('Request setup error:', error.message);
+        }
+        return Promise.reject(error);
+      }
+    );
 
     if (!this.publicKey || !this.privateKey) {
       this.logger.warn(
@@ -148,12 +190,11 @@ export class WompiService {
         `Creating Wompi transaction: ${JSON.stringify(requestData)}`,
       );
 
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${this.baseUrl}/transactions`,
         requestData,
         {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${this.privateKey}`,
           },
         },
@@ -186,7 +227,7 @@ export class WompiService {
         throw new Error("Wompi private key not configured");
       }
 
-      const response = await axios.get(
+      const response = await this.axiosInstance.get(
         `${this.baseUrl}/transactions/${transactionId}`,
         {
           headers: {
@@ -316,10 +357,9 @@ export class WompiService {
       expire_in: "7200", // 2 horas de expiración
     };
 
-    const response = await axios.post(url, payload, {
+    const response = await this.axiosInstance.post(url, payload, {
       headers: {
         Authorization: `Bearer ${this.privateKey}`,
-        "Content-Type": "application/json",
       },
     });
     return response.data.data;
