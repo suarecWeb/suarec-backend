@@ -123,7 +123,7 @@ export class PaymentService {
       const paymentLink = await this.wompiService.createPaymentLink({
         name: contract.publication?.title || "Pago de servicio",
         description: paymentData.description || "Pago de servicio",
-        amount: paymentData.amount,
+        amount_in_cents: Math.round(paymentData.amount * 100),
         currency: paymentData.currency,
         redirect_url: `${backendUrl}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
         single_use: true,
