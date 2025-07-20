@@ -24,6 +24,7 @@ import { PaymentHistoryDto } from "../dto/payment-history.dto";
 import { AdminPaymentFilterDto } from "../dto/admin-payment-filter.dto";
 import { PaymentTransaction } from "../entities/payment-transaction.entity";
 import { AuthGuard } from "../../auth/guard/auth.guard";
+import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
 import { Public } from "../../auth/decorators/public.decorator";
 import { PaymentMethod, PaymentStatus } from "../../enums/paymentMethod.enum";
@@ -31,7 +32,7 @@ import { PaginationResponse } from "../../common/interfaces/paginated-response.i
 
 @ApiTags("payments")
 @Controller("payments")
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {} // eslint-disable-line no-unused-vars
 
