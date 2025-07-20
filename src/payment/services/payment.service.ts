@@ -96,20 +96,6 @@ export class PaymentService {
 
     await this.paymentTransactionRepository.save(paymentTransaction);
 
-    // MODO MOCK: Si está habilitado, simular pago exitoso inmediatamente
-    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === "true";
-    if (
-      MOCK_PAYMENT_SUCCESS &&
-      (paymentData.payment_method === PaymentMethod.Wompi ||
-        paymentData.payment_method === PaymentMethod.Cash ||
-        paymentData.payment_method === PaymentMethod.Bank_transfer ||
-        paymentData.payment_method === PaymentMethod.Credit_card)
-    ) {
-      paymentTransaction.status = PaymentStatus.COMPLETED;
-      await this.paymentTransactionRepository.save(paymentTransaction);
-      await this.enableRatingAfterPayment(paymentTransaction);
-    }
-
     // If payment method is Wompi, Cash, Bank Transfer, or Credit Card, create Wompi transaction
     if (
       paymentData.payment_method === PaymentMethod.Wompi ||
@@ -353,13 +339,6 @@ export class PaymentService {
     console.log("Transacción ID:", paymentTransaction.id); // eslint-disable-line no-console
     console.log("Estado actual:", paymentTransaction.status); // eslint-disable-line no-console
     console.log("Estado de Wompi:", wompiStatus); // eslint-disable-line no-console
-
-    // MODO MOCK: Si está habilitado, simular pago exitoso
-    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === "true";
-    if (MOCK_PAYMENT_SUCCESS) {
-      console.log("🎭 MODO MOCK ACTIVADO - Simulando pago exitoso"); // eslint-disable-line no-console
-      wompiStatus = "APPROVED";
-    }
 
     let newStatus: PaymentStatus;
 
