@@ -340,28 +340,163 @@ export class WompiService {
     single_use?: boolean;
     collect_shipping?: boolean;
   }) {
-    const url = `${this.baseUrl}/payment_links`;
-    if (!this.privateKey) {
-      throw new Error("Wompi private key not configured");
-    }
+    console.log('🔗 ===== WOMPI createPaymentLink START =====');
+    console.log('📅 Timestamp:', new Date().toISOString());
+    
+    try {
+      console.log('📥 Input parameters received:');
+      console.log('  name:', JSON.stringify(name));
+      console.log('  name length:', name?.length);
+      console.log('  description:', JSON.stringify(description));
+      console.log('  description length:', description?.length);
+      console.log('  amount_in_cents:', amount_in_cents);
+      console.log('  amount_in_cents type:', typeof amount_in_cents);
+      console.log('  currency:', currency);
+      console.log('  currency type:', typeof currency);
+      console.log('  redirect_url:', redirect_url);
+      console.log('  redirect_url length:', redirect_url?.length);
+      console.log('  single_use:', single_use);
+      console.log('  collect_shipping:', collect_shipping);
 
-    const payload: any = {
-      name,
-      description,
-      single_use,
-      collect_shipping,
-      currency,
-      amount_in_cents: amount_in_cents,
-      redirect_url: redirect_url, // URL de éxito
-      // Configurar tiempo de expiración
-      expire_in: "7200", // 2 horas de expiración
-    };
+      console.log('🔧 WompiService configuration check:');
+      console.log('  baseUrl:', this.baseUrl);
+      console.log('  privateKey exists:', !!this.privateKey);
+      console.log('  privateKey length:', this.privateKey?.length);
+      console.log('  privateKey prefix:', this.privateKey?.substring(0, 12));
+      console.log('  publicKey exists:', !!this.publicKey);
+      console.log('  publicKey prefix:', this.publicKey?.substring(0, 10));
+      console.log('  axiosInstance exists:', !!this.axiosInstance);
 
-    const response = await this.axiosInstance.post(url, payload, {
-      headers: {
+      const url = `${this.baseUrl}/payment_links`;
+      console.log('🌐 Target URL:', url);
+      
+      if (!this.privateKey) {
+        console.error('❌ Private key not configured!');
+        throw new Error("Wompi private key not configured");
+      }
+
+      console.log('✅ Private key validation passed');
+
+      const payload: any = {
+        name,
+        description,
+        single_use,
+        collect_shipping,
+        currency,
+        amount_in_cents: amount_in_cents,
+        redirect_url: redirect_url,
+        expire_in: "7200",
+      };
+
+      console.log('📤 Final payload prepared:');
+      console.log(JSON.stringify(payload, null, 2));
+      
+      console.log('🔍 Payload validation:');
+      console.log('  payload.name type:', typeof payload.name);
+      console.log('  payload.description type:', typeof payload.description);
+      console.log('  payload.amount_in_cents type:', typeof payload.amount_in_cents);
+      console.log('  payload.amount_in_cents value:', payload.amount_in_cents);
+      console.log('  payload.currency type:', typeof payload.currency);
+      console.log('  payload.redirect_url type:', typeof payload.redirect_url);
+      console.log('  payload.single_use type:', typeof payload.single_use);
+      console.log('  payload.collect_shipping type:', typeof payload.collect_shipping);
+
+      console.log('🔑 Request headers:');
+      const headers = {
         Authorization: `Bearer ${this.privateKey}`,
-      },
-    });
-    return response.data.data;
+        'Content-Type': 'application/json',
+      };
+      console.log('  Authorization header length:', headers.Authorization.length);
+      console.log('  Authorization starts with Bearer:', headers.Authorization.startsWith('Bearer '));
+      console.log('  Content-Type:', headers['Content-Type']);
+
+      console.log('⏳ Making HTTP POST request...');
+      console.log('  URL:', url);
+      console.log('  Method: POST');
+      console.log('  Timeout:', this.axiosInstance.defaults.timeout);
+      
+      const requestStartTime = Date.now();
+      
+      const response = await this.axiosInstance.post(url, payload, {
+        headers: headers,
+      });
+      
+      const requestEndTime = Date.now();
+      console.log(`✅ HTTP request completed in ${requestEndTime - requestStartTime}ms`);
+      
+      console.log('📦 Response received:');
+      console.log('  Status:', response.status);
+      console.log('  Status Text:', response.statusText);
+      console.log('  Headers:', JSON.stringify(response.headers, null, 2));
+      console.log('  Data structure:', Object.keys(response.data || {}));
+      console.log('  Full Data:', JSON.stringify(response.data, null, 2));
+      
+      if (response.data?.data) {
+        console.log('✅ Payment link data found:');
+        console.log('  Payment Link ID:', response.data.data.id);
+        console.log('  Payment Link URL:', `https://checkout.wompi.co/l/${response.data.data.id}`);
+        console.log('  Amount in cents:', response.data.data.amount_in_cents);
+        console.log('  Currency:', response.data.data.currency);
+      } else {
+        console.warn('⚠️ Unexpected response structure - no data.data found');
+      }
+      
+      console.log('🔗 ===== WOMPI createPaymentLink SUCCESS =====');
+      return response.data.data;
+      
+    } catch (error) {
+      console.error('🔗 ===== WOMPI createPaymentLink ERROR =====');
+      console.error('❌ Error occurred in createPaymentLink:');
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      
+      if (error.code) {
+        console.error('  Error code:', error.code);
+      }
+      
+      if (error.response) {
+        console.error('📥 HTTP Response Error Details:');
+        console.error('  Status:', error.response.status);
+        console.error('  Status Text:', error.response.statusText);
+        console.error('  URL:', error.response.config?.url);
+        console.error('  Method:', error.response.config?.method?.toUpperCase());
+        console.error('  Request Headers:', JSON.stringify(error.response.config?.headers, null, 2));
+        console.error('  Request Data:', JSON.stringify(error.response.config?.data, null, 2));
+        console.error('  Response Headers:', JSON.stringify(error.response.headers, null, 2));
+        console.error('  Response Data:', JSON.stringify(error.response.data, null, 2));
+        
+        if (error.response.status === 422) {
+          console.error('🚨 422 VALIDATION ERROR ANALYSIS:');
+          if (error.response.data?.error?.messages) {
+            console.error('  Field validation errors:');
+            Object.entries(error.response.data.error.messages).forEach(([field, errors]) => {
+              console.error(`    ${field}:`, errors);
+            });
+          }
+          if (error.response.data?.error?.type) {
+            console.error('  Error type:', error.response.data.error.type);
+          }
+        }
+        
+      } else if (error.request) {
+        console.error('📤 HTTP Request Error (no response received):');
+        console.error('  Request URL:', error.request.url);
+        console.error('  Request Method:', error.request.method);
+        console.error('  Request Timeout:', error.request.timeout);
+        console.error('  This indicates network connectivity or server availability issues');
+        
+      } else {
+        console.error('⚙️ Request Setup Error:');
+        console.error('  Error occurred during request configuration');
+      }
+      
+      console.error('📋 Full Error Stack:');
+      console.error(error.stack);
+      
+      console.error('🔗 ===== WOMPI createPaymentLink ERROR END =====');
+      
+      // Re-throw the error to be handled by PaymentService
+      throw error;
+    }
   }
 }
