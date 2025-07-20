@@ -10,7 +10,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailVerification } from "../entities/email-verification.entity";
 import { User } from "../../user/entities/user.entity";
-import { WorkContract } from "../../work-contract/entities/work-contract.entity";
 import { Publication } from "../../publication/entities/publication.entity";
 import { ApplicationStatus } from "../../application/entities/application.entity";
 import * as crypto from "crypto";
@@ -24,8 +23,6 @@ export class EmailVerificationService {
     private readonly emailVerificationRepository: Repository<EmailVerification>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
-    @InjectRepository(WorkContract)
-    private readonly workContractRepository: Repository<WorkContract>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
     private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
   ) {}
@@ -761,8 +758,8 @@ export class EmailVerificationService {
                   Mis Contratos
                 </a>
                 <span style="color: #d1d5db; margin: 0 10px;">|</span>
-                <a href="${frontendUrl}/services" style="color: #097EEC; text-decoration: none; font-weight: 500;">
-                  Ver Servicios
+                <a href="${frontendUrl}/feed" style="color: #097EEC; text-decoration: none; font-weight: 500;">
+                  Ver Publicaciones
                 </a>
               </div>
               
@@ -832,85 +829,240 @@ export class EmailVerificationService {
     }
   }
 
-  // Métodos de conveniencia para notificaciones de contratos
-  async notifyClientContractAccepted(contractId: string, customMessage?: string): Promise<void> {
-    const contract = await this.workContractRepository.findOne({
-      where: { id: contractId },
-      relations: ['client', 'provider', 'publication']
-    });
-
-    if (!contract) {
-      throw new NotFoundException(`Work contract with ID ${contractId} not found`);
-    }
-
-    await this.sendServiceContractNotificationEmail(
-      contract.client.email,
-      contract.client.name,
-      'ACCEPTED',
-      {
-        contractId: contract.id,
-        serviceTitle: contract.title,
-        providerName: contract.provider.name,
-        agreedPrice: contract.agreed_price,
-        currency: contract.currency,
-        customMessage
-      }
-    );
-  }
-
-  async notifyClientContractRejected(contractId: string, customMessage?: string): Promise<void> {
-    const contract = await this.workContractRepository.findOne({
-      where: { id: contractId },
-      relations: ['client', 'provider', 'publication']
-    });
-
-    if (!contract) {
-      throw new NotFoundException(`Work contract with ID ${contractId} not found`);
-    }
-
-    await this.sendServiceContractNotificationEmail(
-      contract.client.email,
-      contract.client.name,
-      'REJECTED',
-      {
-        contractId: contract.id,
-        serviceTitle: contract.title,
-        providerName: contract.provider.name,
-        customMessage
-      }
-    );
-  }
-
-  async notifyContractInProgress(
-    contractId: string,
-    recipientType: 'client' | 'provider',
-    customMessage?: string
+  async sendEmployeeRemovalNotificationEmail(
+    employeeEmail: string,
+    employeeName: string,
+    companyName: string,
+    removalReason?: 'TERMINATION',
+    customMessage?: string,
+    endDate?: Date
   ): Promise<void> {
-    const contract = await this.workContractRepository.findOne({
-      where: { id: contractId },
-      relations: ['client', 'provider', 'publication']
-    });
-
-    if (!contract) {
-      throw new NotFoundException(`Work contract with ID ${contractId} not found`);
-    }
-
-    const recipient = recipientType === 'client' ? contract.client : contract.provider;
-
-    await this.sendServiceContractNotificationEmail(
-      recipient.email,
-      recipient.name,
-      'IN_PROGRESS',
-      {
-        contractId: contract.id,
-        serviceTitle: contract.title,
-        clientName: contract.client.name,
-        providerName: contract.provider.name,
-        agreedPrice: contract.agreed_price,
-        currency: contract.currency,
-        customMessage
+    try {
+      // Validar que la API key esté configurada
+      if (!process.env.BREVO_API) {
+        this.logger.error("BREVO_API environment variable is not set");
+        throw new InternalServerErrorException(
+          "Configuración de email no válida",
+        );
       }
-    );
+
+      this.logger.log(
+        `Attempting to send employee removal notification email to ${employeeEmail} with Brevo API`,
+      );
+      this.logger.log(
+        `Company: ${companyName}, Reason: ${removalReason || 'Not specified'}`,
+      );
+
+      const brevo = require("@getbrevo/brevo");
+      const apiInstance = new brevo.TransactionalEmailsApi();
+
+      const apiKey = apiInstance.authentications["apiKey"];
+      apiKey.apiKey = process.env.BREVO_API;
+
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+
+      // Configurar el contenido según la razón de la remoción
+      const reasonConfig = {
+        TERMINATION: {
+          subject: `Actualización de tu empleo en ${companyName}`,
+          statusText: "Fin de relación laboral",
+          statusColor: "#dc2626", // Rojo
+          statusIcon: "📋",
+          buttonText: "Buscar nuevas oportunidades",
+          buttonColor: "linear-gradient(135deg, #097EEC 0%, #2171BC 100%)",
+          description: `Tu relación laboral con ${companyName} ha finalizado. Agradecemos tu tiempo y dedicación durante tu período de trabajo con nosotros.`,
+        },
+      };
+
+      const config = reasonConfig[removalReason || 'OTHER'];
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const formattedEndDate = endDate ? endDate.toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
+
+      sendSmtpEmail.subject = config.subject;
+      sendSmtpEmail.htmlContent = `
+      <html>
+        <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f8fafc;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: white; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #097EEC 0%, #2171BC 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">SUAREC</h1>
+              <p style="color: #e3f2fd; margin: 10px 0 0 0; font-size: 16px;">Conectamos talento. Construimos futuro</p>
+            </div>
+            
+            <!-- Status Badge -->
+            <div style="padding: 20px; text-align: center; background-color: #f8fafc;">
+              <div style="display: inline-flex; align-items: center; gap: 10px; background: ${config.statusColor}; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12); font-weight: 600; font-size: 16px; border: 2px solid white;">
+                <span style="font-size: 20px;">${config.statusIcon}</span>
+                <span>${config.statusText}</span>
+              </div>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 0px 30px;">
+              <h3 style="color: #1f2937; margin-bottom: 20px; font-size: 20px;">¡Hola ${employeeName}!</h3>
+              
+              <!-- Employment Information -->
+              <div style="background-color: #f8fafc; border-left: 4px solid #097EEC; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <h4 style="color: #374151; margin: 0 0 10px 0; font-size: 16px;">🏢 Información de empleo:</h4>
+                <p style="color: #6b7280; margin: 5px 0; font-size: 16px;"><strong>Empresa:</strong> ${companyName}</p>
+                <p style="color: #6b7280; margin: 5px 0; font-size: 16px;"><strong>Fecha de finalización:</strong> ${formattedEndDate}</p>
+                ${removalReason ? `<p style="color: #6b7280; margin: 5px 0; font-size: 16px;"><strong>Motivo:</strong> ${removalReason === 'TERMINATION' ? 'Terminación' : removalReason === 'RESIGNATION' ? 'Renuncia' : removalReason === 'END_OF_CONTRACT' ? 'Fin de contrato' : 'Otros'}</p>` : ''}
+              </div>
+              
+              <!-- Description -->
+              <div style="margin: 20px 0;">
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0;">
+                  ${config.description}
+                </p>
+              </div>
+              
+              <!-- Custom Message -->
+              ${
+                customMessage
+                  ? `
+                <div style="background-color: #fef7ff; border: 1px solid #e879f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                  <h4 style="color: #86198f; margin: 0 0 10px 0; font-size: 16px;">💬 Mensaje de ${companyName}:</h4>
+                  <p style="color: #701a75; font-size: 15px; line-height: 1.5; margin: 0; font-style: italic;">
+                    "${customMessage}"
+                  </p>
+                </div>
+              `
+                  : ''
+              }
+              
+              <!-- Action Button -->
+              <div style="text-align: center; margin: 40px 0;">
+                <a href="${frontendUrl}/feed" 
+                   style="background: ${config.buttonColor}; 
+                          color: white; 
+                          padding: 16px 32px; 
+                          text-decoration: none; 
+                          border-radius: 8px; 
+                          font-weight: bold; 
+                          font-size: 16px; 
+                          display: inline-block;
+                          box-shadow: 0 4px 15px rgba(9, 126, 236, 0.3);
+                          transition: transform 0.2s;">
+                  ${config.buttonText}
+                </a>
+              </div>
+              
+              ${
+                removalReason === 'TERMINATION'
+                  ? `
+                <!-- Next Steps -->
+                <div style="background-color: #eff6ff; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                  <h4 style="color: #1e40af; margin: 0 0 15px 0; font-size: 16px;">💼 Próximos pasos:</h4>
+                  <ul style="color: #1e3a8a; margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Actualiza tu perfil en SUAREC para nuevas oportunidades</li>
+                    <li>Completa cualquier proceso administrativo pendiente</li>
+                    <li>Solicita referencias laborales si es necesario</li>
+                    <li>Explora las nuevas ofertas disponibles en la plataforma</li>
+                  </ul>
+                </div>
+              `
+                  : ''
+              }
+              
+              <!-- Important Notice -->
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 0 8px 8px 0;">
+                <h4 style="color: #92400e; margin: 0 0 10px 0; font-size: 16px;">⚠️ Información importante:</h4>
+                <p style="color: #78350f; font-size: 14px; line-height: 1.5; margin: 0;">
+                  Tu acceso a los recursos específicos de ${companyName} ha sido desactivado. 
+                  Sin embargo, tu cuenta de SUAREC permanece activa y puedes continuar 
+                  explorando nuevas oportunidades laborales en nuestra plataforma.
+                </p>
+              </div>
+              
+              <!-- Contact Info -->
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                  Si tienes dudas sobre este proceso, contacta directamente con ${companyName} o con nuestro soporte
+                </p>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #f9fafb; padding: 30px 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <div style="margin-bottom: 15px;">
+                <a href="${frontendUrl}" style="color: #097EEC; text-decoration: none; font-weight: 500;">
+                  Visitar SUAREC
+                </a>
+                <span style="color: #d1d5db; margin: 0 10px;">|</span>
+                <a href="${frontendUrl}/profile" style="color: #097EEC; text-decoration: none; font-weight: 500;">
+                  Mi Perfil
+                </a>
+                <span style="color: #d1d5db; margin: 0 10px;">|</span>
+                <a href="${frontendUrl}/feed" style="color: #097EEC; text-decoration: none; font-weight: 500;">
+                  Ver Empleos
+                </a>
+              </div>
+              
+              <p style="color: #9ca3af; font-size: 12px; margin: 10px 0;">
+                © ${new Date().getFullYear()} SUAREC. Todos los derechos reservados.
+              </p>
+              <p style="color: #9ca3af; font-size: 11px; margin: 0;">
+                Este email fue enviado porque hubo un cambio en tu situación laboral registrada en nuestra plataforma.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+      // Configurar remitente y destinatario
+      const senderEmail =
+        process.env.BREVO_SENDER_EMAIL || "contactosuarec@gmail.com";
+      const replyToEmail =
+        process.env.BREVO_REPLY_TO_EMAIL || "contactosuarec@gmail.com";
+
+      this.logger.log(`Sender email: ${senderEmail}`);
+      this.logger.log(`Reply to email: ${replyToEmail}`);
+      this.logger.log(`Recipient email: ${employeeEmail}`);
+      this.logger.log(`Recipient name: ${employeeName}`);
+
+      sendSmtpEmail.sender = { name: "SUAREC", email: senderEmail };
+      sendSmtpEmail.to = [{ email: employeeEmail, name: employeeName }];
+      sendSmtpEmail.replyTo = { email: replyToEmail };
+
+      this.logger.log(
+        `Sending employee removal notification email with Brevo API to ${employeeEmail}`,
+      );
+      const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+      this.logger.log(`Brevo API response: ${JSON.stringify(response)}`);
+      this.logger.log(
+        `Message ID: ${response.messageId || response.body?.messageId}`,
+      );
+      this.logger.log(
+        `Employee removal notification email sent to ${employeeEmail} from company: ${companyName}`,
+      );
+    } catch (error) {
+      this.logger.error("Error sending employee removal notification email:", error);
+
+      // Log more detailed error information
+      if (error.response) {
+        this.logger.error("Brevo API Error Response:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+
+      if (error.message) {
+        this.logger.error("Error message:", error.message);
+      }
+
+      if (error.code) {
+        this.logger.error("Error code:", error.code);
+      }
+
+      throw new InternalServerErrorException(
+        "Error al enviar email de notificación de remoción de empleado",
+      );
+    }
   }
 
   private handleDBErrors(error: any) {

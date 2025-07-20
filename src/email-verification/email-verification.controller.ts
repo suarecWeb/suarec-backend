@@ -293,5 +293,85 @@ export class EmailVerificationController {
     );
     return { message: "Service contract notification email sent successfully" };
   }
+
+  @Post("send-employee-removal-notification")
+  @Roles("ADMIN", "BUSINESS")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ 
+    summary: "Send employee removal notification email",
+    description: "Send notification email to an employee when they are removed from a company"
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Employee removal notification email sent successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request",
+  })
+  @ApiResponse({
+    status: 403,
+    description: "Forbidden - Admin or Business role required",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        employeeEmail: { 
+          type: "string", 
+          description: "Email of the employee being removed",
+          example: "empleado@ejemplo.com"
+        },
+        employeeName: { 
+          type: "string", 
+          description: "Name of the employee being removed",
+          example: "Juan Pérez"
+        },
+        companyName: { 
+          type: "string", 
+          description: "Name of the company removing the employee",
+          example: "Empresa de Prueba"
+        },
+        removalReason: { 
+          type: "string", 
+          enum: ["TERMINATION", "RESIGNATION", "END_OF_CONTRACT", "OTHER"],
+          description: "Reason for the employee removal",
+          example: "TERMINATION"
+        },
+        customMessage: { 
+          type: "string", 
+          description: "Custom message to include in the email",
+          example: "Agradecemos tu dedicación durante este tiempo."
+        },
+        endDate: { 
+          type: "string", 
+          format: "date",
+          description: "End date of employment (ISO date string)",
+          example: "2025-07-20"
+        }
+      },
+      required: ["employeeEmail", "employeeName", "companyName"],
+    },
+  })
+  async sendEmployeeRemovalNotification(
+    @Body("employeeEmail") employeeEmail: string,
+    @Body("employeeName") employeeName: string,
+    @Body("companyName") companyName: string,
+    @Body("removalReason") removalReason?: "TERMINATION",
+    @Body("customMessage") customMessage?: string,
+    @Body("endDate") endDate?: string
+  ): Promise<{ message: string }> {
+    const parsedEndDate = endDate ? new Date(endDate) : undefined;
+    
+    await this.emailVerificationService.sendEmployeeRemovalNotificationEmail(
+      employeeEmail,
+      employeeName,
+      companyName,
+      removalReason,
+      customMessage,
+      parsedEndDate
+    );
+    return { message: "Employee removal notification email sent successfully" };
+  }
 }
 
