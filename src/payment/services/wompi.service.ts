@@ -326,7 +326,7 @@ export class WompiService {
   async createPaymentLink({
     name,
     description,
-    amount,
+    amount_in_cents,
     currency,
     redirect_url,
     single_use = false,
@@ -334,7 +334,7 @@ export class WompiService {
   }: {
     name: string;
     description: string;
-    amount: number;
+    amount_in_cents: number;
     currency: string;
     redirect_url: string;
     single_use?: boolean;
@@ -351,7 +351,7 @@ export class WompiService {
       single_use,
       collect_shipping,
       currency,
-      amount_in_cents: Math.round(amount * 100),
+      amount_in_cents: amount_in_cents,
       redirect_url: redirect_url, // URL de éxito
       // Configurar tiempo de expiración
       expire_in: "7200", // 2 horas de expiración
