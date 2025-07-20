@@ -24,7 +24,12 @@ import { Education } from "./entities/education.entity";
 import { Reference } from "./entities/reference.entity";
 import { SocialLink } from "./entities/social-link.entity";
 import { UserGallery } from "./entities/user-gallery.entity";
+import { BankInfo } from "./entities/bank-info.entity";
 import { GalleryService } from "./services/gallery.service";
+import { BankInfoService } from "./services/bank-info.service";
+import { BankInfoController } from "./controllers/bank-info.controller";
+import { WompiBanksService } from "./services/wompi-banks.service";
+import { BanksController } from "./controllers/banks.controller";
 
 @Module({
   imports: [
@@ -47,6 +52,7 @@ import { GalleryService } from "./services/gallery.service";
       Reference,
       SocialLink,
       UserGallery,
+      BankInfo,
     ]),
     PermissionModule,
 
@@ -59,8 +65,8 @@ import { GalleryService } from "./services/gallery.service";
       signOptions: { expiresIn: "1h" }, // Opciones de firma (por ejemplo, expiración del token)
     }),
   ],
-  controllers: [UserController, ExperienceController],
-  providers: [UserService, ExperienceService, GalleryService],
-  exports: [UserService, ExperienceService, GalleryService, TypeOrmModule],
+  controllers: [UserController, ExperienceController, BankInfoController, BanksController],
+  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService],
+  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule],
 })
 export class UserModule {}
