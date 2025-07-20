@@ -59,7 +59,7 @@ export class BankInfoController {
     @Param("userId", ParseIntPipe) userId: number,
     @Req() req: any,
   ): Promise<BankInfoResponseDto | null> {
-    const isAdmin = req.user.roles?.includes("ADMIN") || false;
+    const isAdmin = req.user.roles?.some((role: any) => role.name === "ADMIN") || false;
     return this.bankInfoService.findByUserId(userId, req.user.id, isAdmin);
   }
 
