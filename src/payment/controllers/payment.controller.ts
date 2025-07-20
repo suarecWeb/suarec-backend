@@ -49,7 +49,74 @@ export class PaymentController {
     @Body() createPaymentDto: CreatePaymentDto,
     @Request() req,
   ): Promise<PaymentTransaction> {
-    return this.paymentService.createPayment(createPaymentDto, req.user.id);
+    
+    console.log('🎯 ===== PAYMENT CONTROLLER CREATE START =====');
+    console.log('📅 Timestamp:', new Date().toISOString());
+    console.log('🌐 Request IP:', req.ip);
+    console.log('📱 User Agent:', req.get('User-Agent'));
+    console.log('🔑 Request ID:', req.headers['x-request-id'] || 'N/A');
+    
+    try {
+      console.log('👤 Authentication info:');
+      console.log('  User exists:', !!req.user);
+      console.log('  User ID:', req.user?.id);
+      console.log('  User ID type:', typeof req.user?.id);
+      console.log('  User name:', req.user?.name);
+      console.log('  User email:', req.user?.email);
+      
+      console.log('📦 Request body received:');
+      console.log('  Body keys:', Object.keys(createPaymentDto || {}));
+      console.log('  Full body:', JSON.stringify(createPaymentDto, null, 2));
+      
+      console.log('🔍 Body validation:');
+      console.log('  amount:', createPaymentDto.amount, 'type:', typeof createPaymentDto.amount);
+      console.log('  currency:', createPaymentDto.currency, 'type:', typeof createPaymentDto.currency);
+      console.log('  payment_method:', createPaymentDto.payment_method, 'type:', typeof createPaymentDto.payment_method);
+      console.log('  contract_id:', createPaymentDto.contract_id, 'type:', typeof createPaymentDto.contract_id);
+      console.log('  payee_id:', createPaymentDto.payee_id, 'type:', typeof createPaymentDto.payee_id);
+      console.log('  description length:', createPaymentDto.description?.length);
+      console.log('  acceptance_token exists:', !!createPaymentDto.acceptance_token);
+      console.log('  accept_personal_auth exists:', !!createPaymentDto.accept_personal_auth);
+      
+      console.log('⏳ Calling PaymentService.createPayment...');
+      const startTime = Date.now();
+      
+      const result = await this.paymentService.createPayment(createPaymentDto, req.user.id);
+      
+      const endTime = Date.now();
+      console.log(`✅ PaymentService.createPayment completed in ${endTime - startTime}ms`);
+      
+      console.log('📦 Service result:');
+      console.log('  Result ID:', result.id);
+      console.log('  Result status:', result.status);
+      console.log('  Result amount:', result.amount);
+      console.log('  Result currency:', result.currency);
+      console.log('  Result payment_method:', result.payment_method);
+      console.log('  Result wompi_payment_link exists:', !!result.wompi_payment_link);
+      console.log('  Result wompi_payment_link_id:', result.wompi_payment_link_id);
+      
+      console.log('🎯 ===== PAYMENT CONTROLLER CREATE SUCCESS =====');
+      return result;
+      
+    } catch (error) {
+      console.error('🎯 ===== PAYMENT CONTROLLER CREATE ERROR =====');
+      console.error('❌ Error caught in controller:');
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      console.error('  Error status:', error.status || 'N/A');
+      
+      if (error.response) {
+        console.error('  HTTP Error Details:');
+        console.error('    Status:', error.response.status);
+        console.error('    Data:', JSON.stringify(error.response.data, null, 2));
+      }
+      
+      console.error('  Full Error Stack:');
+      console.error(error.stack);
+      
+      console.error('❌ Re-throwing error to NestJS exception handler...');
+      throw error; // NestJS manejará la respuesta HTTP
+    }
   }
 
   @Get()
