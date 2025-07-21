@@ -1,6 +1,14 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsEnum, IsDateString } from 'class-validator';
-import { Transform } from 'class-transformer';
-import { ContractStatus } from '../entities/contract.entity';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsEnum,
+  IsDateString,
+} from "class-validator";
+import { Transform } from "class-transformer";
+import { ContractStatus } from "../entities/contract.entity";
 
 export class CreateContractDto {
   @IsUUID()
@@ -38,6 +46,10 @@ export class CreateContractDto {
   @IsString()
   @IsOptional()
   paymentMethod?: string;
+
+  @IsString()
+  @IsOptional()
+  originalPaymentMethod?: string;
 
   @IsString()
   @IsOptional()
@@ -91,7 +103,10 @@ export class ProviderResponseDto {
 
   @IsEnum(ContractStatus)
   @IsNotEmpty()
-  action: ContractStatus.ACCEPTED | ContractStatus.REJECTED | ContractStatus.NEGOTIATING;
+  action:
+    | ContractStatus.ACCEPTED
+    | ContractStatus.REJECTED
+    | ContractStatus.NEGOTIATING;
 
   @IsString()
   @IsOptional()

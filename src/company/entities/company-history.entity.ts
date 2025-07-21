@@ -1,8 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from '../../user/entities/user.entity';
-import { Company } from './company.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { User } from "../../user/entities/user.entity";
+import { Company } from "./company.entity";
 
-@Entity('company_history')
+@Entity("company_history")
 export class CompanyHistory {
   @PrimaryGeneratedColumn()
   id: number;
@@ -13,13 +20,13 @@ export class CompanyHistory {
   @ManyToOne(() => Company, (company) => company.companyHistory)
   company: Company;
 
-  @Column('date')
+  @Column("date")
   startDate: Date;
 
-  @Column('date', { nullable: true })
+  @Column("date", { nullable: true })
   endDate: Date;
 
-  @Column('boolean', { default: true })
+  @Column("boolean", { default: true })
   isActive: boolean;
 
   @CreateDateColumn()

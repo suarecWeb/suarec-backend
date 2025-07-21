@@ -21,6 +21,6 @@ import { Role } from '../role/entities/role.entity';
     TypeOrmModule.forFeature([Company, User, CompanyGallery, CompanyHistory, Attendance, Role]), 
     ConfigModule,
     forwardRef(() => UserModule), // Referencia circular para evitar problemas de dependencia
-  ]
+  ],
 })
 export class CompanyModule {}

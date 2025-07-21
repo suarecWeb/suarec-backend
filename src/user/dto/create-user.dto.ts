@@ -1,5 +1,16 @@
-import { IsArray, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsUUID, IsDateString, ValidateIf } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import {
+  IsArray,
+  IsDate,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+  IsUUID,
+  IsDateString,
+  ValidateIf,
+} from "class-validator";
+import { Type, Transform } from "class-transformer";
 
 export class CreateUserDto {
   @IsString()
@@ -48,7 +59,7 @@ export class CreateUserDto {
   // Relación con la empresa como empleado (manyToOne)
   @IsString()
   @IsOptional()
-  @IsUUID('all', { message: 'Employer ID must be a valid UUID' })
+  @IsUUID("all", { message: "Employer ID must be a valid UUID" })
   employerId?: string;
 
   @IsString()
@@ -82,7 +93,7 @@ export class CreateUserDto {
   @IsOptional()
   bio?: string;
 
-  @ValidateIf(o => o.roles?.includes('PERSON'))
+  @ValidateIf((o) => o.roles?.includes("PERSON"))
   @IsString()
   @IsNotEmpty()
   cedula: string;
@@ -120,34 +131,34 @@ export class CreateEducationDto {
   @IsString()
   @IsNotEmpty()
   institution: string;
-  
+
   @IsString()
   @IsNotEmpty()
   degree: string;
-  
+
   @IsString()
   @IsOptional()
   fieldOfStudy?: string;
-  
+
   @IsDateString()
   @Transform(({ value }) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return new Date(value);
     }
     return value;
   })
   startDate: Date;
-  
+
   @IsDateString()
   @IsOptional()
   @Transform(({ value }) => {
-    if (value && typeof value === 'string') {
+    if (value && typeof value === "string") {
       return new Date(value);
     }
     return value;
   })
   endDate?: Date;
-  
+
   @IsString()
   @IsOptional()
   description?: string;

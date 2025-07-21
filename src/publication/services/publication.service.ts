@@ -1,38 +1,46 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Publication } from '../entities/publication.entity';
-import { CreatePublicationDto } from '../dto/create-publication.dto';
-import { UpdatePublicationDto } from '../dto/update-publication.dto';
-import { User } from '../../user/entities/user.entity';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Publication } from "../entities/publication.entity";
+import { CreatePublicationDto } from "../dto/create-publication.dto";
+import { UpdatePublicationDto } from "../dto/update-publication.dto";
+import { User } from "../../user/entities/user.entity";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 
 @Injectable()
 export class PublicationService {
-
-  private readonly logger = new Logger('PublicationService');
+  private readonly logger = new Logger("PublicationService");
 
   constructor(
     @InjectRepository(Publication)
-    private readonly publicationRepository: Repository<Publication>,
+    private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
   ) {}
 
-  async create(createPublicationDto: CreatePublicationDto): Promise<Publication> {
+  async create(
+    createPublicationDto: CreatePublicationDto,
+  ): Promise<Publication> {
     try {
-      const publication = this.publicationRepository.create(createPublicationDto);
+      const publication =
+        this.publicationRepository.create(createPublicationDto);
       const user = await this.userRepository.findOne({
         where: { id: createPublicationDto.userId },
-        relations: ['company', 'employer'],
+        relations: ["company", "employer"],
       });
 
       if (!user) {
-        throw new BadRequestException('User not found')
+        throw new BadRequestException("User not found");
       }
 
-      publication.user = user
+      publication.user = user;
       await this.publicationRepository.save(publication);
 
       return publication;
@@ -41,19 +49,21 @@ export class PublicationService {
     }
   }
 
-  async findAll(paginationDto: PaginationDto): Promise<PaginationResponse<Publication>> {
+  async findAll(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
-  
+
       const [data, total] = await this.publicationRepository.findAndCount({
         skip,
         take: limit,
-        relations: ['user', 'user.company', 'user.employer']
+        relations: ["user", "user.company", "user.employer"],
       });
-  
+
       const totalPages = Math.ceil(total / limit);
-  
+
       return {
         data,
         meta: {
@@ -74,7 +84,13 @@ export class PublicationService {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user', 'comments', 'comments.user', 'user.company', 'user.employer'],
+        relations: [
+          "user",
+          "comments",
+          "comments.user",
+          "user.company",
+          "user.employer",
+        ],
       });
 
       if (!publication) {
@@ -87,11 +103,15 @@ export class PublicationService {
     }
   }
 
-  async update(id: string, updatePublicationDto: UpdatePublicationDto, user?: any): Promise<Publication> {
+  async update(
+    id: string,
+    updatePublicationDto: UpdatePublicationDto,
+    user?: any,
+  ): Promise<Publication> {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user'],
+        relations: ["user"],
       });
 
       if (!publication) {
@@ -100,19 +120,13 @@ export class PublicationService {
 
       // Verificar permisos: solo el propietario o admin puede editar
       if (user) {
-        const isAdmin = user.roles.some((role: any) => role.name === 'ADMIN');
+        const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
         const isOwner = publication.user.id === user.id;
-        
-        console.log('Debug permissions:', {
-          userId: user.id,
-          publicationUserId: publication.user.id,
-          isAdmin,
-          isOwner,
-          userRoles: user.roles
-        });
-        
+
         if (!isAdmin && !isOwner) {
-          throw new BadRequestException('You can only edit your own publications');
+          throw new BadRequestException(
+            "You can only edit your own publications",
+          );
         }
       }
 
@@ -132,7 +146,7 @@ export class PublicationService {
     try {
       const publication = await this.publicationRepository.findOne({
         where: { id },
-        relations: ['user'],
+        relations: ["user"],
       });
 
       if (!publication) {
@@ -141,19 +155,13 @@ export class PublicationService {
 
       // Verificar permisos: solo el propietario o admin puede eliminar
       if (user) {
-        const isAdmin = user.roles.some((role: any) => role.name === 'ADMIN');
+        const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
         const isOwner = publication.user.id === user.id;
-        
-        console.log('Debug delete permissions:', {
-          userId: user.id,
-          publicationUserId: publication.user.id,
-          isAdmin,
-          isOwner,
-          userRoles: user.roles
-        });
-        
+
         if (!isAdmin && !isOwner) {
-          throw new BadRequestException('You can only delete your own publications');
+          throw new BadRequestException(
+            "You can only delete your own publications",
+          );
         }
       }
 
@@ -172,11 +180,13 @@ export class PublicationService {
       throw error;
     }
 
-    if (error.code === '23505') {
+    if (error.code === "23505") {
       throw new BadRequestException(error.detail);
     }
 
     this.logger.error(error);
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+    throw new InternalServerErrorException(
+      "Unexpected error, check server logs",
+    );
   }
 }

@@ -1,143 +1,346 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { PaymentTransaction } from '../entities/payment-transaction.entity';
-import { CreatePaymentDto } from '../dto/create-payment.dto';
-import { UpdatePaymentDto } from '../dto/update-payment.dto';
-import { UpdatePaymentStatusDto } from '../dto/update-payment-status.dto';
-import { PaymentHistoryDto, PaymentHistoryType } from '../dto/payment-history.dto';
-import { AdminPaymentFilterDto } from '../dto/admin-payment-filter.dto';
-import { WompiService } from './wompi.service';
-import { PaymentMethod, PaymentStatus } from '../../enums/paymentMethod.enum';
-import { User } from '../../user/entities/user.entity';
-import { Contract } from '../../contract/entities/contract.entity';
-import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { PaymentTransaction } from "../entities/payment-transaction.entity";
+import { CreatePaymentDto } from "../dto/create-payment.dto";
+import { UpdatePaymentDto } from "../dto/update-payment.dto";
+import { UpdatePaymentStatusDto } from "../dto/update-payment-status.dto";
+import {
+  PaymentHistoryDto,
+  PaymentHistoryType,
+} from "../dto/payment-history.dto";
+import { AdminPaymentFilterDto } from "../dto/admin-payment-filter.dto";
+import { WompiService } from "./wompi.service";
+import { PaymentMethod, PaymentStatus } from "../../enums/paymentMethod.enum";
+import { User } from "../../user/entities/user.entity";
+import { Contract } from "../../contract/entities/contract.entity";
+import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 
 @Injectable()
 export class PaymentService {
   public wompiService: WompiService;
   constructor(
     @InjectRepository(PaymentTransaction)
-    private paymentTransactionRepository: Repository<PaymentTransaction>,
+    private paymentTransactionRepository: Repository<PaymentTransaction>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Contract)
-    private contractRepository: Repository<Contract>,
+    private contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
     wompiService: WompiService,
   ) {
     this.wompiService = wompiService;
   }
 
-  async createPayment(createPaymentDto: CreatePaymentDto, payerId: number): Promise<PaymentTransaction> {
-    const { contract_id, payee_id, acceptance_token, accept_personal_auth, ...paymentData } = createPaymentDto;
+  async createPayment(
+    createPaymentDto: CreatePaymentDto,
+    payerId: number,
+  ): Promise<PaymentTransaction> {
+    
+    console.log('🚀 ===== INICIO createPayment DEBUG =====');
+    console.log('📅 Timestamp:', new Date().toISOString());
+    console.log('🌍 Environment:', process.env.NODE_ENV);
+    console.log('🔧 Platform:', process.platform);
+    
+    try {
+      console.log('📥 Input received:');
+      console.log('  createPaymentDto:', JSON.stringify(createPaymentDto, null, 2));
+      console.log('  payerId:', payerId);
+      console.log('  payerId type:', typeof payerId);
 
-    // Verify payer exists
-    const payer = await this.userRepository.findOne({ where: { id: payerId } });
-    if (!payer) {
-      throw new NotFoundException(`Payer with ID ${payerId} not found`);
-    }
+      const {
+        contract_id,
+        payee_id,
+        acceptance_token,
+        accept_personal_auth,
+        ...paymentData
+      } = createPaymentDto;
 
-    // Verify payee exists
-    const payee = await this.userRepository.findOne({ where: { id: payee_id } });
-    if (!payee) {
-      throw new NotFoundException(`Payee with ID ${payee_id} not found`);
-    }
+      console.log('📦 Destructured data:');
+      console.log('  contract_id:', contract_id, 'type:', typeof contract_id);
+      console.log('  payee_id:', payee_id, 'type:', typeof payee_id);
+      console.log('  acceptance_token exists:', !!acceptance_token);
+      console.log('  accept_personal_auth exists:', !!accept_personal_auth);
+      console.log('  paymentData:', JSON.stringify(paymentData, null, 2));
 
-    // Verify work contract exists
-    const contract = await this.contractRepository.findOne({ 
-      where: { id: contract_id },
-      relations: ['client', 'provider']
-    });
-    if (!contract) {
-      throw new NotFoundException(`Contract with ID ${contract_id} not found`);
-    }
-
-    // Verify payer is the client of the work contract
-    if (contract.client.id !== payerId) {
-      throw new BadRequestException('Only the client can make payments for this contract');
-    }
-
-    // Verify payee is the provider of the work contract
-    if (contract.provider.id !== payee_id) {
-      throw new BadRequestException('Payee must be the provider of the work contract');
-    }
-
-    // Create payment transaction
-    const paymentTransaction = this.paymentTransactionRepository.create({
-      ...paymentData,
-      payer,
-      payee,
-      contract: contract,
-      status: PaymentStatus.PENDING,
-      reference: paymentData.reference || `PAY-${Date.now()}`,
-    });
-
-    await this.paymentTransactionRepository.save(paymentTransaction);
-
-    // MODO MOCK: Si está habilitado, simular pago exitoso inmediatamente
-    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === 'true';
-    if (MOCK_PAYMENT_SUCCESS && paymentData.payment_method === PaymentMethod.Wompi) {
-      console.log('🎭 MODO MOCK ACTIVADO - Marcando pago como completado automáticamente');
-      paymentTransaction.status = PaymentStatus.COMPLETED;
-      await this.paymentTransactionRepository.save(paymentTransaction);
-      await this.enableRatingAfterPayment(paymentTransaction);
-      console.log('✅ Pago mockeado como exitoso - Rating habilitado');
-    }
-
-    // If payment method is Wompi, create Wompi transaction
-    if (paymentData.payment_method === PaymentMethod.Wompi) {
-      console.log('=== CREANDO PAYMENT LINK ===');
+      // Verify payer exists
+      console.log('🔍 Step 1: Verifying payer exists...');
+      console.log('  Looking for payer with ID:', payerId);
       
-      // Usar el endpoint del backend que ya maneja las redirecciones correctamente
-      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      let payer;
+      try {
+        payer = await this.userRepository.findOne({ where: { id: payerId } });
+        console.log('✅ Payer found:', payer ? { id: payer.id, name: payer.name, email: payer.email } : 'NULL');
+      } catch (error) {
+        console.error('❌ Error finding payer:', error.message);
+        throw error;
+      }
       
-      const paymentLink = await this.wompiService.createPaymentLink({
-        name: contract.publication?.title || 'Pago de servicio',
-        description: paymentData.description || 'Pago de servicio',
-        amount: paymentData.amount,
-        currency: paymentData.currency,
-        redirect_url: `${backendUrl}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
-        single_use: true,
-        collect_shipping: false,
+      if (!payer) {
+        console.error('❌ Payer not found with ID:', payerId);
+        throw new NotFoundException(`Payer with ID ${payerId} not found`);
+      }
+
+      // Verify payee exists
+      console.log('🔍 Step 2: Verifying payee exists...');
+      console.log('  Looking for payee with ID:', payee_id);
+      
+      let payee;
+      try {
+        payee = await this.userRepository.findOne({ where: { id: payee_id } });
+        console.log('✅ Payee found:', payee ? { id: payee.id, name: payee.name, email: payee.email } : 'NULL');
+      } catch (error) {
+        console.error('❌ Error finding payee:', error.message);
+        throw error;
+      }
+      
+      if (!payee) {
+        console.error('❌ Payee not found with ID:', payee_id);
+        throw new NotFoundException(`Payee with ID ${payee_id} not found`);
+      }
+
+      // Verify work contract exists
+      console.log('🔍 Step 3: Verifying contract exists...');
+      console.log('  Looking for contract with ID:', contract_id);
+      
+      let contract;
+      try {
+        contract = await this.contractRepository.findOne({
+          where: { id: contract_id },
+          relations: ["client", "provider"],
+        });
+        console.log('✅ Contract found:', contract ? {
+          id: contract.id,
+          client: contract.client ? { id: contract.client.id, name: contract.client.name } : 'NULL',
+          provider: contract.provider ? { id: contract.provider.id, name: contract.provider.name } : 'NULL',
+          publication: contract.publication ? { title: contract.publication.title } : 'NULL'
+        } : 'NULL');
+      } catch (error) {
+        console.error('❌ Error finding contract:', error.message);
+        throw error;
+      }
+      
+      if (!contract) {
+        console.error('❌ Contract not found with ID:', contract_id);
+        throw new NotFoundException(`Contract with ID ${contract_id} not found`);
+      }
+
+      // Verify payer is the client of the work contract
+      console.log('🔍 Step 4: Verifying payer is client...');
+      console.log('  Contract client ID:', contract.client?.id);
+      console.log('  Payer ID:', payerId);
+      console.log('  Match:', contract.client?.id === payerId);
+      
+      if (contract.client.id !== payerId) {
+        console.error('❌ Payer is not the client of this contract');
+        console.error('  Expected client ID:', contract.client.id);
+        console.error('  Received payer ID:', payerId);
+        throw new BadRequestException("Only the client can make payments for this contract");
+      }
+
+      // Verify payee is the provider of the work contract
+      console.log('🔍 Step 5: Verifying payee is provider...');
+      console.log('  Contract provider ID:', contract.provider?.id);
+      console.log('  Payee ID:', payee_id);
+      console.log('  Match:', contract.provider?.id === payee_id);
+      
+      if (contract.provider.id !== payee_id) {
+        console.error('❌ Payee is not the provider of this contract');
+        console.error('  Expected provider ID:', contract.provider.id);
+        console.error('  Received payee ID:', payee_id);
+        throw new BadRequestException("Payee must be the provider of the work contract");
+      }
+
+      console.log('✅ All validations passed, creating payment transaction...');
+
+      // Create payment transaction
+      console.log('💾 Step 6: Creating payment transaction in database...');
+      let paymentTransaction;
+      try {
+        paymentTransaction = this.paymentTransactionRepository.create({
+          ...paymentData,
+          payer,
+          payee,
+          contract: contract,
+          status: PaymentStatus.PENDING,
+          reference: paymentData.reference || `PAY-${Date.now()}`,
+        });
+        
+        console.log('✅ Payment transaction created (not saved yet):', {
+          amount: paymentTransaction.amount,
+          currency: paymentTransaction.currency,
+          payment_method: paymentTransaction.payment_method,
+          reference: paymentTransaction.reference,
+          status: paymentTransaction.status,
+        });
+
+        await this.paymentTransactionRepository.save(paymentTransaction);
+        console.log('✅ Payment transaction saved to database with ID:', paymentTransaction.id);
+        
+      } catch (error) {
+        console.error('❌ Error creating/saving payment transaction:', error.message);
+        console.error('  Error stack:', error.stack);
+        throw error;
+      }
+
+
+      // Check if should create Wompi link
+      const shouldCreateWompiLink = (
+        paymentData.payment_method === PaymentMethod.Wompi ||
+        paymentData.payment_method === PaymentMethod.Cash ||
+        paymentData.payment_method === PaymentMethod.Bank_transfer ||
+        paymentData.payment_method === PaymentMethod.Credit_card
+      );
+      
+      console.log('🔍 Step 7: Checking if should create Wompi link...');
+      console.log('  Payment method:', paymentData.payment_method);
+      console.log('  Should create Wompi link:', shouldCreateWompiLink);
+
+      if (shouldCreateWompiLink) {
+        console.log('🌐 Step 8: Creating Wompi payment link...');
+        
+        const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 
+          'https://suarec-backend-production-de98.up.railway.app';
+        
+        console.log('🔧 Wompi configuration:');
+        console.log('  Backend URL:', backendUrl);
+        console.log('  WompiService exists:', !!this.wompiService);
+        console.log('  WompiService is configured:', this.wompiService?.isConfigured());
+        console.log('  WOMPI_PRIVATE_KEY exists:', !!process.env.WOMPI_PRIVATE_KEY);
+        console.log('  WOMPI_PRIVATE_KEY prefix:', process.env.WOMPI_PRIVATE_KEY?.substring(0, 12));
+        console.log('  WOMPI_BASE_URL:', process.env.WOMPI_BASE_URL);
+
+        const wompiPayload = {
+          name: contract.publication?.title || "Pago de servicio",
+          description: paymentData.description || "Pago de servicio",
+          amount_in_cents: Math.round(paymentData.amount * 100),
+          currency: paymentData.currency,
+          redirect_url: `${backendUrl}/suarec/payments/redirect-direct/${paymentTransaction.id}`,
+          single_use: true,
+          collect_shipping: false,
+        };
+
+        console.log('📤 Wompi payload prepared:');
+        console.log(JSON.stringify(wompiPayload, null, 2));
+        
+        console.log('📊 Payload validation:');
+        console.log('  name length:', wompiPayload.name?.length);
+        console.log('  description length:', wompiPayload.description?.length);
+        console.log('  amount_in_cents type:', typeof wompiPayload.amount_in_cents);
+        console.log('  amount_in_cents value:', wompiPayload.amount_in_cents);
+        console.log('  currency type:', typeof wompiPayload.currency);
+        console.log('  redirect_url length:', wompiPayload.redirect_url?.length);
+
+        try {
+          console.log('⏳ Calling wompiService.createPaymentLink...');
+          const startTime = Date.now();
+          
+          const paymentLink = await this.wompiService.createPaymentLink(wompiPayload);
+          
+          const endTime = Date.now();
+          console.log(`✅ Wompi payment link created successfully in ${endTime - startTime}ms`);
+          console.log('📦 Payment link response:', JSON.stringify(paymentLink, null, 2));
+
+          console.log('💾 Step 9: Updating payment transaction with Wompi data...');
+          paymentTransaction.wompi_payment_link = `https://checkout.wompi.co/l/${paymentLink.id}`;
+          paymentTransaction.wompi_payment_link_id = paymentLink.id;
+
+          console.log('  Setting wompi_payment_link:', paymentTransaction.wompi_payment_link);
+          console.log('  Setting wompi_payment_link_id:', paymentTransaction.wompi_payment_link_id);
+
+          const savedTransaction = await this.paymentTransactionRepository.save(paymentTransaction);
+          console.log('✅ Payment transaction updated with Wompi data successfully');
+          
+        } catch (wompiError) {
+          console.error('❌ WOMPI ERROR OCCURRED:');
+          console.error('  Error type:', wompiError.constructor.name);
+          console.error('  Error message:', wompiError.message);
+          console.error('  Error stack:', wompiError.stack);
+          
+          if (wompiError.response) {
+            console.error('  HTTP Status:', wompiError.response.status);
+            console.error('  HTTP Status Text:', wompiError.response.statusText);
+            console.error('  Response Data:', JSON.stringify(wompiError.response.data, null, 2));
+            console.error('  Response Headers:', JSON.stringify(wompiError.response.headers, null, 2));
+          }
+          
+          if (wompiError.request) {
+            console.error('  Request Details:', {
+              method: wompiError.request.method,
+              url: wompiError.request.url,
+              timeout: wompiError.request.timeout,
+            });
+          }
+          
+          console.error('❌ Re-throwing Wompi error...');
+          throw wompiError;
+        }
+      } else {
+        console.log('ℹ️ Skipping Wompi link creation (payment method does not require it)');
+      }
+
+      console.log('🔍 Step 10: Retrieving final payment transaction...');
+      const finalResult = await this.findOne(paymentTransaction.id);
+      
+      console.log('✅ Final payment transaction retrieved:', {
+        id: finalResult.id,
+        status: finalResult.status,
+        amount: finalResult.amount,
+        currency: finalResult.currency,
+        wompi_payment_link: finalResult.wompi_payment_link,
+        wompi_payment_link_id: finalResult.wompi_payment_link_id,
       });
-      console.log('✅ Payment Link creado:', JSON.stringify(paymentLink, null, 2));
-      
-      paymentTransaction.wompi_payment_link = `https://checkout.wompi.co/l/${paymentLink.id}`;
-      paymentTransaction.wompi_payment_link_id = paymentLink.id;
-      
-      console.log('💾 Guardando en BD:');
-      console.log('  - wompi_payment_link:', paymentTransaction.wompi_payment_link);
-      console.log('  - wompi_payment_link_id:', paymentTransaction.wompi_payment_link_id);
-      
-      const savedTransaction = await this.paymentTransactionRepository.save(paymentTransaction);
-      console.log('✅ Transacción guardada con ID:', savedTransaction.id);
-      console.log('✅ wompi_payment_link_id guardado:', savedTransaction.wompi_payment_link_id);
-    }
 
-    return this.findOne(paymentTransaction.id);
+      console.log('🚀 ===== FIN createPayment SUCCESS =====');
+      return finalResult;
+      
+    } catch (error) {
+      console.error('🚀 ===== FIN createPayment ERROR =====');
+      console.error('❌ FINAL ERROR CAUGHT:');
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      
+      if (error.response) {
+        console.error('  HTTP Response Error Details:');
+        console.error('    Status:', error.response.status);
+        console.error('    Status Text:', error.response.statusText);
+        console.error('    Data:', JSON.stringify(error.response.data, null, 2));
+      }
+      
+      console.error('❌ Re-throwing error to controller...');
+      throw error; // Re-throw para que el controller lo maneje
+    }
   }
 
-  private async processWompiPayment(paymentTransaction: PaymentTransaction, acceptance_token?: string, accept_personal_auth?: string): Promise<void> {
+  private async processWompiPayment(
+    paymentTransaction: PaymentTransaction,
+    acceptance_token?: string,
+    accept_personal_auth?: string,
+  ): Promise<void> {
     try {
       if (!this.wompiService.isConfigured()) {
-        throw new Error('Wompi is not configured');
+        throw new Error("Wompi is not configured");
       }
-  
+
       // Use the payer's email from the payment transaction
       const customerEmail = paymentTransaction.payer.email;
-      
+
       if (!customerEmail) {
-        throw new Error('Customer email is required for payment processing');
+        throw new Error("Customer email is required for payment processing");
       }
-  
+
       if (!acceptance_token) {
-        throw new Error('Acceptance token is required');
+        throw new Error("Acceptance token is required");
       }
-  
+
       if (!accept_personal_auth) {
-        throw new Error('Personal data authorization token is required');
+        throw new Error("Personal data authorization token is required");
       }
-  
+
       const wompiResponse = await this.wompiService.createTransaction(
         paymentTransaction.amount,
         paymentTransaction.currency,
@@ -149,7 +352,7 @@ export class PaymentService {
         acceptance_token,
         accept_personal_auth,
       );
-  
+
       // Update payment transaction with Wompi data
       await this.paymentTransactionRepository.update(paymentTransaction.id, {
         wompi_transaction_id: wompiResponse.data.id,
@@ -159,7 +362,7 @@ export class PaymentService {
         status: PaymentStatus.PROCESSING,
       });
     } catch (error) {
-      console.error('Error in processWompiPayment:', error);
+      console.error("Error in processWompiPayment:", error); // eslint-disable-line no-console
       // Update payment transaction with error
       await this.paymentTransactionRepository.update(paymentTransaction.id, {
         status: PaymentStatus.FAILED,
@@ -171,18 +374,20 @@ export class PaymentService {
 
   async findAll(): Promise<PaymentTransaction[]> {
     return this.paymentTransactionRepository.find({
-      relations: ['payer', 'payee', 'contract'],
+      relations: ["payer", "payee", "contract"],
     });
   }
 
   async findOne(id: string): Promise<PaymentTransaction> {
     const paymentTransaction = await this.paymentTransactionRepository.findOne({
       where: { id },
-      relations: ['payer', 'payee', 'contract'],
+      relations: ["payer", "payee", "contract"],
     });
 
     if (!paymentTransaction) {
-      throw new NotFoundException(`Payment transaction with ID ${id} not found`);
+      throw new NotFoundException(
+        `Payment transaction with ID ${id} not found`,
+      );
     }
 
     return paymentTransaction;
@@ -190,24 +395,24 @@ export class PaymentService {
 
   async findByUser(userId: number): Promise<PaymentTransaction[]> {
     return this.paymentTransactionRepository.find({
-      where: [
-        { payer: { id: userId } },
-        { payee: { id: userId } },
-      ],
-      relations: ['payer', 'payee', 'contract'],
-      order: { created_at: 'DESC' },
+      where: [{ payer: { id: userId } }, { payee: { id: userId } }],
+      relations: ["payer", "payee", "contract"],
+      order: { created_at: "DESC" },
     });
   }
 
   async findByContract(contractId: string): Promise<PaymentTransaction[]> {
     return this.paymentTransactionRepository.find({
       where: { contract: { id: contractId } },
-      relations: ['payer', 'payee', 'contract'],
-      order: { created_at: 'DESC' },
+      relations: ["payer", "payee", "contract"],
+      order: { created_at: "DESC" },
     });
   }
 
-  async update(id: string, updatePaymentDto: UpdatePaymentDto): Promise<PaymentTransaction> {
+  async update(
+    id: string,
+    updatePaymentDto: UpdatePaymentDto,
+  ): Promise<PaymentTransaction> {
     const paymentTransaction = await this.findOne(id);
 
     Object.assign(paymentTransaction, updatePaymentDto);
@@ -217,14 +422,11 @@ export class PaymentService {
   }
 
   async updateStatus(
-    id: string, 
-    updateStatusDto: UpdatePaymentStatusDto
+    id: string,
+    updateStatusDto: UpdatePaymentStatusDto,
   ): Promise<PaymentTransaction> {
     const paymentTransaction = await this.findOne(id);
 
-    // Guardar el estado anterior para logging
-    const previousStatus = paymentTransaction.status;
-    
     // Actualizar el status y el comentario
     paymentTransaction.status = updateStatusDto.status;
 
@@ -237,9 +439,9 @@ export class PaymentService {
   async processWompiWebhook(webhookData: any): Promise<void> {
     try {
       const { event, data } = webhookData;
-      console.log('=== WEBHOOK WOMPI RECIBIDO ===');
-      console.log('Event:', event);
-      console.log('Data structure:', Object.keys(data));
+      console.log("=== WEBHOOK WOMPI RECIBIDO ==="); // eslint-disable-line no-console
+      console.log("Event:", event); // eslint-disable-line no-console
+      console.log("Data structure:", Object.keys(data)); // eslint-disable-line no-console
 
       // Extraer el payment_link_id del webhook
       let paymentLinkId = null;
@@ -249,165 +451,156 @@ export class PaymentService {
         // Estructura del webhook real de Wompi
         paymentLinkId = data.transaction.payment_link_id;
         transactionStatus = data.transaction.status;
-        console.log('📋 Webhook structure: transaction nested');
-        console.log('Payment Link ID:', paymentLinkId, 'Status:', transactionStatus);
       } else if (data.payment_link_id) {
         // Estructura directa
         paymentLinkId = data.payment_link_id;
         transactionStatus = data.status;
-        console.log('📋 Webhook structure: direct');
-        console.log('Payment Link ID:', paymentLinkId, 'Status:', transactionStatus);
       } else {
         // Estructura alternativa usando ID
         paymentLinkId = data.id;
         transactionStatus = data.status;
-        console.log('📋 Webhook structure: using ID field');
-        console.log('Data ID:', paymentLinkId, 'Status:', transactionStatus);
       }
 
       if (!paymentLinkId) {
-        console.error('❌ No se pudo extraer payment_link_id del webhook');
-        console.log('📋 Estructura completa del data:', JSON.stringify(data, null, 2));
-        throw new Error('Payment link ID not found in webhook data');
+        throw new Error("Payment link ID not found in webhook data");
       }
 
       // Buscar por Payment Link ID
-      console.log('🔍 Buscando transacción por wompi_payment_link_id:', paymentLinkId);
-      const paymentTransaction = await this.paymentTransactionRepository.findOne({
-        where: { wompi_payment_link_id: paymentLinkId },
-        relations: ['contract'],
-      });
+      const paymentTransaction =
+        await this.paymentTransactionRepository.findOne({
+          where: { wompi_payment_link_id: paymentLinkId },
+          relations: ["payer", "payee", "contract"],
+        });
 
       if (!paymentTransaction) {
-        console.log('❌ Transacción NO encontrada por wompi_payment_link_id');
-        
         // Buscar por transaction ID como alternativa
-        console.log('🔍 Buscando transacción por wompi_transaction_id:', paymentLinkId);
         const altTransaction = await this.paymentTransactionRepository.findOne({
           where: { wompi_transaction_id: paymentLinkId },
-          relations: ['contract'],
+          relations: ["payer", "payee", "contract"],
         });
-        
-        if (!altTransaction) {
-          console.log('❌ Transacción NO encontrada por wompi_transaction_id tampoco');
-          
-          // Buscar TODAS las transacciones para debug
-          console.log('🔍 Buscando TODAS las transacciones para debug...');
-          const allTransactions = await this.paymentTransactionRepository.find({
-            select: ['id', 'wompi_payment_link_id', 'wompi_transaction_id', 'status', 'amount']
-          });
-          console.log('📋 Todas las transacciones:', allTransactions);
-          
-          throw new Error(`Payment transaction not found for Wompi ID: ${paymentLinkId}`);
-        }
-        
-        console.log('✅ Transacción encontrada por wompi_transaction_id');
-        return await this.updatePaymentStatus(altTransaction, transactionStatus);
-      }
 
-      console.log('✅ Transacción encontrada por wompi_payment_link_id:', paymentTransaction.id);
-      console.log('🎯 Evento del webhook:', event);
-      console.log('📊 Estado de Wompi:', transactionStatus);
+        if (!altTransaction) {
+          throw new Error(
+            `Payment transaction not found for Wompi ID: ${paymentLinkId}`,
+          );
+        }
+
+        return await this.updatePaymentStatus(
+          altTransaction,
+          transactionStatus,
+        );
+      }
 
       // Update payment status based on webhook event
       switch (event) {
-        case 'transaction.updated':
+        case "transaction.updated":
           await this.updatePaymentStatus(paymentTransaction, transactionStatus);
           break;
-        case 'transaction.paid':
-          await this.updatePaymentStatus(paymentTransaction, 'APPROVED');
+        case "transaction.paid":
+          await this.updatePaymentStatus(paymentTransaction, "APPROVED");
           break;
-        case 'transaction.declined':
-          await this.updatePaymentStatus(paymentTransaction, 'DECLINED');
+        case "transaction.declined":
+          await this.updatePaymentStatus(paymentTransaction, "DECLINED");
           break;
-        case 'transaction.pending':
-          await this.updatePaymentStatus(paymentTransaction, 'PENDING');
+        case "transaction.pending":
+          await this.updatePaymentStatus(paymentTransaction, "PENDING");
           break;
         default:
-          console.log(`⚠️ Evento de webhook no manejado: ${event}`);
+          console.log(`⚠️ Evento de webhook no manejado: ${event}`); // eslint-disable-line no-console
           // Aún así, actualizar con el estado recibido
           if (transactionStatus) {
-            await this.updatePaymentStatus(paymentTransaction, transactionStatus);
+            await this.updatePaymentStatus(
+              paymentTransaction,
+              transactionStatus,
+            );
           }
       }
     } catch (error) {
-      console.error('❌ Error processing Wompi webhook:', error);
+      console.error("❌ Error processing Wompi webhook:", error); // eslint-disable-line no-console
       throw error;
     }
   }
 
-  private async updatePaymentStatus(paymentTransaction: PaymentTransaction, wompiStatus: string): Promise<void> {
-    console.log('=== ACTUALIZANDO ESTADO DE PAGO ===');
-    console.log('Transacción ID:', paymentTransaction.id);
-    console.log('Estado actual:', paymentTransaction.status);
-    console.log('Estado de Wompi:', wompiStatus);
-    
-    // MODO MOCK: Si está habilitado, simular pago exitoso
-    const MOCK_PAYMENT_SUCCESS = process.env.MOCK_PAYMENT_SUCCESS === 'true';
-    if (MOCK_PAYMENT_SUCCESS) {
-      console.log('🎭 MODO MOCK ACTIVADO - Simulando pago exitoso');
-      wompiStatus = 'APPROVED';
-    }
-    
+  private async updatePaymentStatus(
+    paymentTransaction: PaymentTransaction,
+    wompiStatus: string,
+  ): Promise<void> {
+    console.log("=== ACTUALIZANDO ESTADO DE PAGO ==="); // eslint-disable-line no-console
+    console.log("Transacción ID:", paymentTransaction.id); // eslint-disable-line no-console
+    console.log("Estado actual:", paymentTransaction.status); // eslint-disable-line no-console
+    console.log("Estado de Wompi:", wompiStatus); // eslint-disable-line no-console
+
     let newStatus: PaymentStatus;
 
     switch (wompiStatus) {
-      case 'APPROVED':
-      case 'COMPLETED':
+      case "APPROVED":
+      case "COMPLETED":
         newStatus = PaymentStatus.COMPLETED;
         break;
-      case 'DECLINED':
-      case 'FAILED':
-      case 'ERROR':
+      case "DECLINED":
+      case "FAILED":
+      case "ERROR":
         newStatus = PaymentStatus.FAILED;
-        console.log(`🔴 Estado de error detectado: ${wompiStatus} → ${newStatus}`);
         break;
-      case 'PENDING':
+      case "PENDING":
         newStatus = PaymentStatus.PROCESSING;
         break;
       default:
-        console.log(`⚠️ Estado de Wompi no manejado: ${wompiStatus}, marcando como PENDING`);
         newStatus = PaymentStatus.PENDING;
     }
 
-    console.log(`🔄 Cambiando estado de ${paymentTransaction.status} a ${newStatus}`);
-    
-    try {
-      await this.update(paymentTransaction.id, { 
-        status: newStatus,
-        wompi_response: JSON.stringify({ status: wompiStatus, updated_at: new Date() })
-      });
-      console.log('✅ Estado actualizado correctamente en BD');
-      
-      // Si el pago fue completado, habilitar calificación
-      if (newStatus === PaymentStatus.COMPLETED) {
-        await this.enableRatingAfterPayment(paymentTransaction);
+    await this.update(paymentTransaction.id, {
+      status: newStatus,
+      wompi_response: JSON.stringify({
+        status: wompiStatus,
+        updated_at: new Date(),
+      }),
+    });
+
+    // Si el pago fue completado, habilitar calificación
+    if (newStatus === PaymentStatus.COMPLETED) {
+      // Recargar la transacción con todas las relaciones necesarias
+      const fullPaymentTransaction =
+        await this.paymentTransactionRepository.findOne({
+          where: { id: paymentTransaction.id },
+          relations: ["payer", "payee", "contract"],
+        });
+
+      if (fullPaymentTransaction) {
+        await this.enableRatingAfterPayment(fullPaymentTransaction);
       }
-      
-      // Verificar que se actualizó
-      const updatedTransaction = await this.paymentTransactionRepository.findOne({
-        where: { id: paymentTransaction.id }
-      });
-      console.log('✅ Verificación - Estado actual en BD:', updatedTransaction.status);
-    } catch (error) {
-      console.error('❌ Error actualizando estado:', error);
-      throw error;
     }
   }
 
-  private async enableRatingAfterPayment(paymentTransaction: PaymentTransaction): Promise<void> {
+  private async enableRatingAfterPayment(
+    paymentTransaction: PaymentTransaction,
+  ): Promise<void> {
     try {
-      console.log('⭐ Habilitando calificación después del pago exitoso');
-      console.log('Payer ID:', paymentTransaction.payer.id);
-      console.log('Payee ID:', paymentTransaction.payee.id);
-      console.log('Contract ID:', paymentTransaction.contract?.id);
-      
-      // Aquí podrías crear un registro de "oportunidad de calificación" o simplemente
-      // permitir que los usuarios califiquen basándose en el contrato completado
-      
-      console.log('✅ Calificación habilitada para ambos usuarios');
+      console.log("⭐ Habilitando calificación después del pago exitoso"); // eslint-disable-line no-console
+      console.log("Transacción ID:", paymentTransaction.id); // eslint-disable-line no-console
+
+      // Validar que las relaciones estén cargadas
+      if (!paymentTransaction.payer) {
+        console.error("❌ Payer no está cargado en la transacción"); // eslint-disable-line no-console
+        throw new Error("Payer relation not loaded");
+      }
+
+      if (!paymentTransaction.payee) {
+        console.error("❌ Payee no está cargado en la transacción"); // eslint-disable-line no-console
+        throw new Error("Payee relation not loaded");
+      }
+
+      console.log("Cliente (Payer) ID:", paymentTransaction.payer.id); // eslint-disable-line no-console
+      console.log("Proveedor (Payee) ID:", paymentTransaction.payee.id); // eslint-disable-line no-console
+      console.log("Contract ID:", paymentTransaction.contract?.id); // eslint-disable-line no-console
+
+      // SOLO el cliente (payer) puede calificar al proveedor (payee)
+      // El sistema de ratings está diseñado para que el cliente califique el servicio recibido
+      console.log("✅ Calificación habilitada para el cliente calificar al proveedor"); // eslint-disable-line no-console
+      console.log(`   📝 Cliente ID ${paymentTransaction.payer.id} puede calificar a Proveedor ID ${paymentTransaction.payee.id}`); // eslint-disable-line no-console
     } catch (error) {
-      console.error('❌ Error habilitando calificación:', error);
+      console.error("❌ Error habilitando calificación:", error); // eslint-disable-line no-console
+      throw new BadRequestException("Error enabling rating after payment");
     }
   }
 
@@ -417,72 +610,77 @@ export class PaymentService {
   }
 
   async getPaymentHistory(
-    userId: number, 
-    historyDto: PaymentHistoryDto
+    userId: number,
+    historyDto: PaymentHistoryDto,
   ): Promise<PaginationResponse<PaymentTransaction>> {
     const { page, limit, type, status, startDate, endDate } = historyDto;
     const skip = (page - 1) * limit;
 
     // Construir query base con QueryBuilder para mejor control
     const queryBuilder = this.paymentTransactionRepository
-      .createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.payer', 'payer')
-      .leftJoinAndSelect('payment.payee', 'payee')
-      .leftJoinAndSelect('payment.contract', 'contract')
-      .leftJoinAndSelect('contract.publication', 'publication');
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.payer", "payer")
+      .leftJoinAndSelect("payment.payee", "payee")
+      .leftJoinAndSelect("payment.contract", "contract")
+      .leftJoinAndSelect("contract.publication", "publication");
 
     // Aplicar filtros por tipo de historial
     if (type === PaymentHistoryType.SENT) {
       // Solo pagos enviados (usuario como payer)
-      queryBuilder.where('payer.id = :userId', { userId });
+      queryBuilder.where("payer.id = :userId", { userId });
     } else if (type === PaymentHistoryType.RECEIVED) {
       // Solo pagos recibidos (usuario como payee)
-      queryBuilder.where('payee.id = :userId', { userId });
+      queryBuilder.where("payee.id = :userId", { userId });
     } else {
       // Todos los pagos (enviados y recibidos)
-      queryBuilder.where('(payer.id = :userId OR payee.id = :userId)', { userId });
+      queryBuilder.where("(payer.id = :userId OR payee.id = :userId)", {
+        userId,
+      });
     }
 
     // Filtro por estado
     if (status) {
-      queryBuilder.andWhere('payment.status = :status', { status });
+      queryBuilder.andWhere("payment.status = :status", { status });
     }
 
     // Filtros por fecha
     if (startDate && endDate) {
-      queryBuilder.andWhere('payment.created_at BETWEEN :startDate AND :endDate', {
-        startDate: new Date(startDate),
-        endDate: new Date(endDate + ' 23:59:59') // Incluir todo el día
-      });
+      queryBuilder.andWhere(
+        "payment.created_at BETWEEN :startDate AND :endDate",
+        {
+          startDate: new Date(startDate),
+          endDate: new Date(endDate + " 23:59:59"), // Incluir todo el día
+        },
+      );
     } else if (startDate) {
-      queryBuilder.andWhere('payment.created_at >= :startDate', {
-        startDate: new Date(startDate)
+      queryBuilder.andWhere("payment.created_at >= :startDate", {
+        startDate: new Date(startDate),
       });
     } else if (endDate) {
-      queryBuilder.andWhere('payment.created_at <= :endDate', {
-        endDate: new Date(endDate + ' 23:59:59')
+      queryBuilder.andWhere("payment.created_at <= :endDate", {
+        endDate: new Date(endDate + " 23:59:59"),
       });
     }
 
     // Ordenar por fecha más reciente
-    queryBuilder.orderBy('payment.created_at', 'DESC');
+    queryBuilder.orderBy("payment.created_at", "DESC");
 
     // Ejecutar queries de datos y conteo en paralelo
     const [payments, total] = await Promise.all([
       queryBuilder.skip(skip).take(limit).getMany(),
-      queryBuilder.getCount()
+      queryBuilder.getCount(),
     ]);
 
     // Enriquecer los datos con información adicional
-    const enrichedPayments = payments.map(payment => ({
+    const enrichedPayments = payments.map((payment) => ({
       ...payment,
       // Agregar flag para identificar si es enviado o recibido
       isOutgoing: payment.payer.id === userId,
       isIncoming: payment.payee.id === userId,
       // Información del contrato
-      contractTitle: payment.contract?.publication?.title || 'Sin título',
+      contractTitle: payment.contract?.publication?.title || "Sin título",
       // Información del otro usuario
-      otherUser: payment.payer.id === userId ? payment.payee : payment.payer
+      otherUser: payment.payer.id === userId ? payment.payee : payment.payer,
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -501,111 +699,122 @@ export class PaymentService {
   }
 
   async getAllPaymentsForAdmin(
-    filterDto: AdminPaymentFilterDto
+    filterDto: AdminPaymentFilterDto,
   ): Promise<PaginationResponse<PaymentTransaction>> {
-    const { 
-      page, 
-      limit, 
-      status, 
-      paymentMethod, 
-      payerId, 
-      payeeId, 
-      startDate, 
-      endDate, 
-      contractId, 
-      minAmount, 
-      maxAmount 
+    const {
+      page,
+      limit,
+      status,
+      paymentMethod,
+      payerId,
+      payeeId,
+      startDate,
+      endDate,
+      contractId,
+      minAmount,
+      maxAmount,
     } = filterDto;
     const skip = (page - 1) * limit;
 
     // Construir query base con QueryBuilder
     const queryBuilder = this.paymentTransactionRepository
-      .createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.payer', 'payer')
-      .leftJoinAndSelect('payment.payee', 'payee')
-      .leftJoinAndSelect('payment.contract', 'contract')
-      .leftJoinAndSelect('contract.publication', 'publication');
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.payer", "payer")
+      .leftJoinAndSelect("payment.payee", "payee")
+      .leftJoinAndSelect("payment.contract", "contract")
+      .leftJoinAndSelect("contract.publication", "publication");
 
     // Filtro por estado
     if (status) {
-      queryBuilder.andWhere('payment.status = :status', { status });
+      queryBuilder.andWhere("payment.status = :status", { status });
     }
 
     // Filtro por método de pago
     if (paymentMethod) {
-      queryBuilder.andWhere('payment.payment_method = :paymentMethod', { paymentMethod });
+      queryBuilder.andWhere("payment.payment_method = :paymentMethod", {
+        paymentMethod,
+      });
     }
 
     // Filtro por payer ID
     if (payerId) {
-      queryBuilder.andWhere('payer.id = :payerId', { payerId });
+      queryBuilder.andWhere("payer.id = :payerId", { payerId });
     }
 
     // Filtro por payee ID
     if (payeeId) {
-      queryBuilder.andWhere('payee.id = :payeeId', { payeeId });
+      queryBuilder.andWhere("payee.id = :payeeId", { payeeId });
     }
 
     // Filtro por contrato
     if (contractId) {
-      queryBuilder.andWhere('contract.id = :contractId', { contractId });
+      queryBuilder.andWhere("contract.id = :contractId", { contractId });
     }
 
     // Filtros por monto
     if (minAmount && maxAmount) {
-      queryBuilder.andWhere('payment.amount BETWEEN :minAmount AND :maxAmount', {
-        minAmount,
-        maxAmount
-      });
+      queryBuilder.andWhere(
+        "payment.amount BETWEEN :minAmount AND :maxAmount",
+        {
+          minAmount,
+          maxAmount,
+        },
+      );
     } else if (minAmount) {
-      queryBuilder.andWhere('payment.amount >= :minAmount', { minAmount });
+      queryBuilder.andWhere("payment.amount >= :minAmount", { minAmount });
     } else if (maxAmount) {
-      queryBuilder.andWhere('payment.amount <= :maxAmount', { maxAmount });
+      queryBuilder.andWhere("payment.amount <= :maxAmount", { maxAmount });
     }
 
     // Filtros por fecha
     if (startDate && endDate) {
-      queryBuilder.andWhere('payment.created_at BETWEEN :startDate AND :endDate', {
-        startDate: new Date(startDate),
-        endDate: new Date(endDate + ' 23:59:59') // Incluir todo el día
-      });
+      queryBuilder.andWhere(
+        "payment.created_at BETWEEN :startDate AND :endDate",
+        {
+          startDate: new Date(startDate),
+          endDate: new Date(endDate + " 23:59:59"), // Incluir todo el día
+        },
+      );
     } else if (startDate) {
-      queryBuilder.andWhere('payment.created_at >= :startDate', {
-        startDate: new Date(startDate)
+      queryBuilder.andWhere("payment.created_at >= :startDate", {
+        startDate: new Date(startDate),
       });
     } else if (endDate) {
-      queryBuilder.andWhere('payment.created_at <= :endDate', {
-        endDate: new Date(endDate + ' 23:59:59')
+      queryBuilder.andWhere("payment.created_at <= :endDate", {
+        endDate: new Date(endDate + " 23:59:59"),
       });
     }
 
     // Ordenar por fecha más reciente
-    queryBuilder.orderBy('payment.created_at', 'DESC');
+    queryBuilder.orderBy("payment.created_at", "DESC");
 
     // Ejecutar queries de datos y conteo en paralelo
     const [payments, total] = await Promise.all([
       queryBuilder.skip(skip).take(limit).getMany(),
-      queryBuilder.getCount()
+      queryBuilder.getCount(),
     ]);
 
     // Enriquecer los datos con información adicional para admin
-    const enrichedPayments = payments.map(payment => ({
+    const enrichedPayments = payments.map((payment) => ({
       ...payment,
       // Información del contrato
-      contractTitle: payment.contract?.publication?.title || 'Sin título',
+      contractTitle: payment.contract?.publication?.title || "Sin título",
       // Información de los usuarios
       payerInfo: {
         id: payment.payer.id,
         name: payment.payer.name,
-        email: payment.payer.email
+        email: payment.payer.email,
       },
       payeeInfo: {
         id: payment.payee.id,
         name: payment.payee.name,
-        email: payment.payee.email
+        email: payment.payee.email,
       },
       // Estadísticas adicionales
-      daysSinceCreated: Math.floor((new Date().getTime() - new Date(payment.created_at).getTime()) / (1000 * 60 * 60 * 24))
+      daysSinceCreated: Math.floor(
+        (new Date().getTime() - new Date(payment.created_at).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ),
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -626,8 +835,8 @@ export class PaymentService {
   /**
    * Genera URLs de redirección basadas en el estado del pago
    */
-  private generateRedirectUrls(transactionId: string, baseUrl?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  private generateRedirectUrls(transactionId: string) {
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     return {
       success: `${frontendUrl}/payments/success?transaction_id=${transactionId}`,
       failed: `${frontendUrl}/payments/failed?transaction_id=${transactionId}`,
@@ -638,9 +847,12 @@ export class PaymentService {
   /**
    * Maneja la redirección del usuario después del pago
    */
-  async handlePaymentRedirect(transactionId: string, status: PaymentStatus): Promise<string> {
+  async handlePaymentRedirect(
+    transactionId: string,
+    status: PaymentStatus,
+  ): Promise<string> {
     const urls = this.generateRedirectUrls(transactionId);
-    
+
     switch (status) {
       case PaymentStatus.COMPLETED:
         return urls.success;
@@ -664,7 +876,7 @@ export class PaymentService {
     // Buscar todos los pagos del contrato
     const payments = await this.paymentTransactionRepository.find({
       where: { contract: { id: contractId } },
-      order: { created_at: 'DESC' },
+      order: { created_at: "DESC" },
     });
 
     if (payments.length === 0) {
@@ -676,19 +888,24 @@ export class PaymentService {
       };
     }
 
-    const hasPendingPayments = payments.some(p => 
-      p.status === PaymentStatus.PENDING || p.status === PaymentStatus.PROCESSING
-    );
-    
-    const hasCompletedPayments = payments.some(p => 
-      p.status === PaymentStatus.COMPLETED || p.status === PaymentStatus.FINISHED
+    const hasPendingPayments = payments.some(
+      (p) =>
+        p.status === PaymentStatus.PENDING ||
+        p.status === PaymentStatus.PROCESSING,
     );
 
-    const hasActivePayments = payments.some(p => 
-      p.status === PaymentStatus.PENDING || 
-      p.status === PaymentStatus.PROCESSING || 
-      p.status === PaymentStatus.COMPLETED ||
-      p.status === PaymentStatus.FINISHED
+    const hasCompletedPayments = payments.some(
+      (p) =>
+        p.status === PaymentStatus.COMPLETED ||
+        p.status === PaymentStatus.FINISHED,
+    );
+
+    const hasActivePayments = payments.some(
+      (p) =>
+        p.status === PaymentStatus.PENDING ||
+        p.status === PaymentStatus.PROCESSING ||
+        p.status === PaymentStatus.COMPLETED ||
+        p.status === PaymentStatus.FINISHED,
     );
 
     // El pago más reciente
