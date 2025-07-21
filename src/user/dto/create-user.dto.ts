@@ -86,6 +86,34 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   cedula: string;
+
+  @IsString()
+  @IsOptional()
+  location?: string;
+
+  @IsOptional()
+  hourly_rate?: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  available_days?: string[];
+
+  @IsString()
+  @IsOptional()
+  available_hours?: string;
+
+  @IsOptional()
+  is_available?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  portfolio_images?: string[];
 }
 
 export class CreateEducationDto {
