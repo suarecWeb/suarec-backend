@@ -49,7 +49,7 @@ export class UserService {
 
   async onModuleInit() {
     await this.createPermissionsAndRoles();
-    await this.createInitialUsers();
+    // await this.createInitialUsers(); // Comentado para no crear usuarios duplicados en cada reinicio
   }
 
   private async createPermissionsAndRoles() {
