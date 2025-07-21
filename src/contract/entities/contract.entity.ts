@@ -57,6 +57,9 @@ export class Contract {
   @Column("varchar", { length: 50, nullable: true })
   paymentMethod?: string; // Método de pago seleccionado
 
+  @Column("varchar", { length: 50, nullable: true })
+  originalPaymentMethod?: string; // Método de pago original antes de ser convertido
+
   @Column("text", { nullable: true })
   serviceAddress?: string; // Dirección donde se prestará el servicio
 

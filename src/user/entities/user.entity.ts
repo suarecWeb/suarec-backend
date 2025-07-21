@@ -27,6 +27,7 @@ import { SocialLink } from "./social-link.entity";
 import { Contract, ContractBid } from "../../contract/entities/contract.entity";
 import { UserGallery } from "./user-gallery.entity";
 import { CompanyHistory } from "../../company/entities/company-history.entity";
+import { BankInfo } from "./bank-info.entity";
 
 @Entity("users")
 export class User {
@@ -225,6 +226,9 @@ export class User {
 
   @OneToMany(() => CompanyHistory, (history) => history.user)
   companyHistory: CompanyHistory[];
+
+  @OneToOne(() => BankInfo, (bankInfo) => bankInfo.user, { cascade: true })
+  bankInfo: BankInfo;
 
   @Column("text", { nullable: true, unique: true })
   cedula: string;

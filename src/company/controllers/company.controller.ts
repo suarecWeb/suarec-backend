@@ -1,49 +1,34 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Query,
-  Request,
-} from "@nestjs/common";
-import { CompanyService } from "../services/company.service";
-import { CreateCompanyDto } from "../dto/create-company.dto";
-import { UpdateCompanyDto } from "../dto/update-company.dto";
-import { UpdateCompanyLocationDto } from "../dto/update-company-location.dto";
-import { AuthGuard } from "../../auth/guard/auth.guard";
-import { RolesGuard } from "../../auth/guard/roles.guard";
-import { LocationGuard } from "../../auth/guard/location.guard";
-import { Roles } from "../../auth/decorators/role.decorator";
-import { Company } from "../entities/company.entity";
-import { Public } from "../../auth/decorators/public.decorator";
-import { PaginationDto } from "../../common/dto/pagination.dto";
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Request, UseInterceptors, UploadedFile, Res, BadRequestException } from '@nestjs/common';
+import { CompanyService } from '../services/company.service';
+import { BulkEmployeeService } from '../services/bulk-employee.service';
+import { CreateCompanyDto } from '../dto/create-company.dto';
+import { UpdateCompanyDto } from '../dto/update-company.dto';
+import { UpdateCompanyLocationDto } from '../dto/update-company-location.dto';
+import { AuthGuard } from '../../auth/guard/auth.guard';
+import { RolesGuard } from '../../auth/guard/roles.guard';
+import { LocationGuard } from '../../auth/guard/location.guard';
+import { Roles } from '../../auth/decorators/role.decorator';
+import { Company } from '../entities/company.entity';
+import { Public } from '../../auth/decorators/public.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationResponse } from '../../common/interfaces/paginated-response.interface';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiConsumes } from '@nestjs/swagger';
+import { User } from '../../user/entities/user.entity';
+import { Req } from '@nestjs/common';
+import { UpdateCheckInTimeDto, AttendanceStatsQueryDto } from '../dto/in-time.dto';
+import { AddEmployeeDto, RemoveEmployeeDto } from '../dto/employee-management.dto';
+import { BulkEmployeeUploadResponseDto } from '../dto/bulk-employee-upload.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { EmployeePaginationDto } from "../dto/employee-pagination.dto";
-import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-  ApiParam,
-} from "@nestjs/swagger";
-import { User } from "../../user/entities/user.entity";
-import {
-  UpdateCheckInTimeDto,
-  AttendanceStatsQueryDto,
-} from "../dto/in-time.dto";
-import {
-  AddEmployeeDto,
-  RemoveEmployeeDto,
-} from "../dto/employee-management.dto";
 
-@ApiTags("Companies")
-@Controller("companies")
+@ApiTags('Companies')
+@Controller('companies')
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService) {} // eslint-disable-line no-unused-vars
+  constructor(
+    private readonly companyService: CompanyService,
+    private readonly bulkEmployeeService: BulkEmployeeService,
+  ) { }
 
   @Post()
   @Public()
@@ -91,7 +76,46 @@ export class CompanyController {
     return this.companyService.remove(id);
   }
 
-  // Nuevos endpoints para gestionar empleados
+  // Endpoints para carga masiva de empleados
+
+  @Post(':id/employees/bulk-upload')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload Excel file with employee data for bulk import' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: 'Employees uploaded successfully', type: BulkEmployeeUploadResponseDto })
+  async uploadEmployees(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<BulkEmployeeUploadResponseDto> {
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+
+    return this.bulkEmployeeService.processExcelFile(file.buffer, id);
+  }
+
+  @Get(':id/employees/template')
+  @Roles('ADMIN', 'BUSINESS')
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Download Excel template for employee bulk upload' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  async downloadTemplate(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.bulkEmployeeService.generateTemplate();
+    
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="plantilla-empleados.xlsx"',
+      'Content-Length': buffer.length,
+    });
+    
+    res.end(buffer);
+  }
 
   @Get(':id/employees')
   @Roles('ADMIN', 'BUSINESS')
@@ -117,7 +141,12 @@ export class CompanyController {
     @Param("userId") userId: string,
     @Body() addEmployeeDto?: AddEmployeeDto,
   ): Promise<Company> {
-    return this.companyService.addEmployee(id, +userId, addEmployeeDto);
+    // Validate that userId is a valid number
+    const userIdNumber = +userId;
+    if (isNaN(userIdNumber)) {
+      throw new BadRequestException(`Invalid user ID: ${userId}. User ID must be a valid number.`);
+    }
+    return this.companyService.addEmployee(id, userIdNumber, addEmployeeDto);
   }
 
   @Post(":id/employees-email/:userId")
@@ -131,7 +160,12 @@ export class CompanyController {
     @Param("userId") userId: string,
     @Body() addEmployeeDto?: AddEmployeeDto,
   ): Promise<Company> {
-    return this.companyService.addEmployeeEmail(email, +userId, addEmployeeDto);
+    // Validate that userId is a valid number
+    const userIdNumber = +userId;
+    if (isNaN(userIdNumber)) {
+      throw new BadRequestException(`Invalid user ID: ${userId}. User ID must be a valid number.`);
+    }
+    return this.companyService.addEmployeeEmail(email, userIdNumber, addEmployeeDto);
   }
 
   @Delete(":id/employees/:userId")
@@ -145,7 +179,12 @@ export class CompanyController {
     @Param("userId") userId: string,
     @Body() removeEmployeeDto?: RemoveEmployeeDto,
   ): Promise<Company> {
-    return this.companyService.removeEmployee(id, +userId, removeEmployeeDto);
+    // Validate that userId is a valid number
+    const userIdNumber = +userId;
+    if (isNaN(userIdNumber)) {
+      throw new BadRequestException(`Invalid user ID: ${userId}. User ID must be a valid number.`);
+    }
+    return this.companyService.removeEmployee(id, userIdNumber, removeEmployeeDto);
   }
 
   @Get(":id/location")
