@@ -101,6 +101,15 @@ export class UserController {
     return this.userService.update(+id, updateUserDto);
   }
 
+  @Patch(":id")
+  @ApiOperation({ summary: "Partially update a user" })
+  @ApiResponse({ status: 200, description: "User updated successfully" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  @ApiParam({ name: "id", description: "User ID" })
+  partialUpdate(@Param("id") id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(+id, updateUserDto);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a user" })
   remove(@Param("id") id: string) {
@@ -201,6 +210,18 @@ export class UserController {
   @Post("me/gallery/reorder")
   async reorderImages(@Request() req, @Body() body: { imageIds: number[] }) {
     return this.galleryService.reorderImages(req.user.id, body.imageIds);
+  }
+
+  @Patch("me")
+  @UseGuards(AuthGuard)
+  @ApiOperation({ 
+    summary: "Update current user profile",
+    description: "Allows authenticated users to update their own profile partially"
+  })
+  @ApiResponse({ status: 200, description: "Profile updated successfully" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async updateMyProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(req.user.id, updateUserDto);
   }
 
   @Get("me/stats")

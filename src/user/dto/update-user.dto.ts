@@ -7,6 +7,7 @@ import {
   IsDate,
   IsUUID,
   ValidateIf,
+  IsBoolean,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -158,4 +159,8 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   cedula?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isVerify?: boolean;
 }

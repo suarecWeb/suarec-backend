@@ -20,6 +20,7 @@ import { AddEmployeeDto, RemoveEmployeeDto } from '../dto/employee-management.dt
 import { BulkEmployeeUploadResponseDto } from '../dto/bulk-employee-upload.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { EmployeePaginationDto } from "../dto/employee-pagination.dto";
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -116,15 +117,15 @@ export class CompanyController {
     res.end(buffer);
   }
 
-  @Get(":id/employees")
-  @Roles("ADMIN", "BUSINESS")
+  @Get(':id/employees')
+  @Roles('ADMIN', 'BUSINESS')
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get all employees of a company" })
-  @ApiParam({ name: "id", description: "Company ID" })
-  @ApiQuery({ type: PaginationDto })
+  @ApiOperation({ summary: 'Get all employees of a company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiQuery({ type: EmployeePaginationDto })
   getEmployees(
-    @Param("id") id: string,
-    @Query() paginationDto: PaginationDto,
+    @Param('id') id: string,
+    @Query() paginationDto: EmployeePaginationDto
   ): Promise<PaginationResponse<User>> {
     return this.companyService.getEmployees(id, paginationDto);
   }

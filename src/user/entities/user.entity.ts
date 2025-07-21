@@ -208,6 +208,9 @@ export class User {
   })
   socialLinks: SocialLink[];
 
+  @Column("boolean", { default: false })
+  isVerify: boolean;
+
   // Relaciones para contrataciones y subastas
   @OneToMany(() => Contract, (contract) => contract.client)
   serviceContractsAsClient: Contract[];
