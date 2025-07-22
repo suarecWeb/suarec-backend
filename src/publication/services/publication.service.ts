@@ -120,8 +120,16 @@ export class PublicationService {
 
       // Verificar permisos: solo el propietario o admin puede editar
       if (user) {
+        this.logger.log(`User attempting to edit: ${JSON.stringify(user)}`);
+        this.logger.log(`Publication owner ID: ${publication.user.id} (type: ${typeof publication.user.id})`);
+        this.logger.log(`User ID: ${user.id} (type: ${typeof user.id})`);
+        
         const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
-        const isOwner = publication.user.id === user.id;
+        const isOwner = Number(publication.user.id) === Number(user.id);
+        
+        this.logger.log(`Is Admin: ${isAdmin}`);
+        this.logger.log(`Is Owner: ${isOwner}`);
+        this.logger.log(`User roles: ${JSON.stringify(user.roles)}`);
 
         if (!isAdmin && !isOwner) {
           throw new BadRequestException(
@@ -161,8 +169,16 @@ export class PublicationService {
 
       // Verificar permisos: solo el propietario o admin puede eliminar
       if (user) {
+        this.logger.log(`User attempting to delete: ${JSON.stringify(user)}`);
+        this.logger.log(`Publication owner ID: ${publication.user.id} (type: ${typeof publication.user.id})`);
+        this.logger.log(`User ID: ${user.id} (type: ${typeof user.id})`);
+        
         const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
-        const isOwner = publication.user.id === user.id;
+        const isOwner = Number(publication.user.id) === Number(user.id);
+        
+        this.logger.log(`Is Admin: ${isAdmin}`);
+        this.logger.log(`Is Owner: ${isOwner}`);
+        this.logger.log(`User roles: ${JSON.stringify(user.roles)}`);
 
         if (!isAdmin && !isOwner) {
           throw new BadRequestException(
