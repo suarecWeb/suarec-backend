@@ -130,9 +130,15 @@ export class PublicationService {
         }
       }
 
+      // Establecer modified_at automáticamente
+      const updateData = {
+        ...updatePublicationDto,
+        modified_at: new Date(),
+      };
+
       const updatedPublication = await this.publicationRepository.preload({
         id,
-        ...updatePublicationDto,
+        ...updateData,
       });
 
       await this.publicationRepository.save(updatedPublication);
