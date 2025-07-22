@@ -24,7 +24,7 @@ export class Contract {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => Publication, (publication) => publication.contracts)
+  @ManyToOne(() => Publication, (publication) => publication.contracts, { onDelete: "CASCADE" })
   publication: Publication;
 
   @ManyToOne(() => User, (user) => user.contractsAsClient)
