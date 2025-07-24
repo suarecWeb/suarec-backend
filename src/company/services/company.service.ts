@@ -385,27 +385,28 @@ export class CompanyService {
       const total = parseInt(totalResult.count);
 
       // Enriquecer la información de empleados con datos del historial
+
       const enrichedEmployees = await Promise.all(
         historyRecords.map(async (userHistory) => {
           const employee = userHistory.user;
-          
+
           // Para empleados activos, verificar si hay historial activo actual
           let relevantHistory = userHistory;
-          
+
           if (status === EmployeeStatus.ALL || !status) {
             // Si no hay filtro específico, buscar el historial activo actual
             const currentActiveHistory = await this.companyHistoryRepository.findOne({
-              where: { 
-                user: { id: employee.id }, 
-                company: { id: companyId }, 
-                isActive: true 
+              where: {
+                user: { id: employee.id },
+                company: { id: companyId },
+                isActive: true
               }
             });
-            
+
             // Usar historial activo si existe, sino el más reciente
             relevantHistory = currentActiveHistory || userHistory;
           }
-          
+
           let employmentInfo = null;
 
           if (relevantHistory) {
@@ -443,9 +444,38 @@ export class CompanyService {
             };
           }
 
+          // Obtener education, socialLinks, references, experiences
+          // Si las relaciones no están cargadas, hacer fetch manual
+          let education = employee.education;
+          let socialLinks = employee.socialLinks;
+          let references = employee.references;
+          let experiences = employee.experiences;
+
+          // Si alguna relación no está presente, hacer fetch manual
+          if (!education || !socialLinks || !references || !experiences) {
+            const userWithRelations = await this.userRepository.findOne({
+              where: { id: employee.id },
+              relations: [
+                "education",
+                "socialLinks",
+                "references",
+                "experiences"
+              ]
+            });
+
+            education = userWithRelations?.education || [];
+            socialLinks = userWithRelations?.socialLinks || [];
+            references = userWithRelations?.references || [];
+            experiences = userWithRelations?.experiences || [];
+          }
+
           return {
             ...employee,
-            currentEmployment: employmentInfo
+            currentEmployment: employmentInfo,
+            education,
+            socialLinks,
+            references,
+            experiences
           };
         })
       );

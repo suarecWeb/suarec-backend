@@ -673,7 +673,7 @@ export class EmailVerificationService {
               
               <!-- Action Button -->
               <div style="text-align: center; margin: 40px 0;">
-                <a href="${frontendUrl}/contracts/${contractData.contractId}" 
+                <a href="${frontendUrl}/contracts" 
                    style="background: ${config.buttonColor}; 
                           color: white; 
                           padding: 16px 32px; 
