@@ -32,6 +32,9 @@ export class Publication {
   category: string;
 
   @Column("text", { nullable: true })
+  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+
+  @Column("text", { nullable: true })
   image_url?: string;
 
   @Column("numeric", { nullable: true })

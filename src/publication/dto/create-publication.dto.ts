@@ -33,6 +33,11 @@ export class CreatePublicationDto {
   @MaxLength(100)
   category: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+
   @IsUrl()
   @IsOptional()
   image_url?: string;
