@@ -24,6 +24,16 @@ import { SocialLink } from "./entities/social-link.entity";
 export class UserService {
   private readonly logger = new Logger("UserService");
 
+  /**
+   * Servicio para gestión de usuarios del sistema.
+   * 
+   * NOTA IMPORTANTE sobre la cédula:
+   * - Para usuarios PERSON: La cédula es obligatoria (validado en el frontend)
+   * - Para usuarios BUSINESS: La cédula es opcional y puede ser null
+   * - El frontend puede enviar string vacío o null para empresas
+   * - El backend normalizará strings vacíos a null
+   */
+
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>, // eslint-disable-line no-unused-vars
@@ -129,6 +139,7 @@ export class UserService {
           cellphone: "2345678901",
           cv_url: "",
           born_at: new Date("1985-05-15"),
+          // cedula es opcional para empresas
           roleName: "BUSINESS",
           company: {
             nit: "900123456-7",
@@ -252,6 +263,7 @@ export class UserService {
         education, // eslint-disable-line no-unused-vars
         references, // eslint-disable-line no-unused-vars
         socialLinks, // eslint-disable-line no-unused-vars
+        cedula, // Cédula es opcional para empresas, obligatorio para personas (validado en frontend)
         ...userData
       } = createUserDto;
 
@@ -282,6 +294,8 @@ export class UserService {
         password: bcrypt.hashSync(password, 10),
         created_at: new Date(),
         roles,
+        // Solo asignar cédula si se proporciona y no es string vacío
+        cedula: cedula && cedula.trim() !== '' ? cedula : null,
       });
 
       // Vincular con la empresa administrada (oneToOne)
@@ -331,6 +345,7 @@ export class UserService {
       education,
       references,
       socialLinks,
+      cedula,
       ...updateData
     } = updateDto;
     this.logger.log("education recibido:", JSON.stringify(education));
@@ -341,6 +356,11 @@ export class UserService {
     const user = await this.findOne(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // Manejar cédula de manera especial si viene en el DTO
+    if (typeof cedula !== "undefined") {
+      (updateData as any).cedula = cedula && cedula.trim() !== '' ? cedula : null;
     }
 
     // 1. Actualizar campos simples
