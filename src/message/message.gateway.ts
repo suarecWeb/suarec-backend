@@ -136,17 +136,23 @@ export class MessageGateway
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      console.log("📖 Backend recibió mark_as_read:", data);
       const message = await this.messageService.markAsRead(data.messageId);
+      console.log("📖 Mensaje marcado como leído en BD:", message.id);
 
       // Notificar al remitente que su mensaje fue leído
       const userConnection = this.connectedUsers.get(client.id);
       if (userConnection) {
+        console.log("📖 Emitiendo message_read a usuario:", message.sender.id);
         this.server.to(`user_${message.sender.id}`).emit("message_read", {
           messageId: data.messageId,
           readAt: message.read_at,
         });
+      } else {
+        console.log("❌ No se encontró conexión del usuario para emitir message_read");
       }
     } catch (error) {
+      console.error("❌ Error en handleMarkAsRead:", error);
       client.emit("mark_read_error", {
         error: "Error al marcar mensaje como leído",
       });
