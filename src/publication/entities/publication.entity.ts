@@ -28,6 +28,9 @@ export class Publication {
   @Column("timestamp", { nullable: false, default: () => "CURRENT_TIMESTAMP" })
   created_at: Date;
 
+  @Column("timestamp", { nullable: true })
+  deleted_at?: Date;
+
   @Column("text", { nullable: false })
   category: string;
 

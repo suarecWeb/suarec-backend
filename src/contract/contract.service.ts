@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, IsNull, Not } from "typeorm";
 import {
   Contract,
   ContractBid,
@@ -74,7 +74,7 @@ export class ContractService {
 
     // Verificar que la publicación existe
     const publication = await this.publicationRepository.findOne({
-      where: { id: publicationId },
+      where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
       relations: ["user"],
     });
 
@@ -138,7 +138,7 @@ export class ContractService {
 
     // Verificar que el contrato existe
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["client", "provider", "bids"],
     });
 
@@ -206,6 +206,11 @@ export class ContractService {
       throw new NotFoundException("Oferta no encontrada");
     }
 
+    // Verificar que el contrato no está eliminado
+    if (bid.contract.deleted_at) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
     // Verificar que el aceptador es parte del contrato
     if (
       bid.contract.client.id !== acceptorId &&
@@ -251,11 +256,11 @@ export class ContractService {
   ): Promise<{ asClient: Contract[]; asProvider: Contract[] }> {
     const [asClient, asProvider] = await Promise.all([
       this.contractRepository.find({
-        where: { client: { id: userId } },
+        where: { client: { id: userId }, deleted_at: null }, // Solo contratos activos
         relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       }),
       this.contractRepository.find({
-        where: { provider: { id: userId } },
+        where: { provider: { id: userId }, deleted_at: null }, // Solo contratos activos
         relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       }),
     ]);
@@ -265,7 +270,7 @@ export class ContractService {
 
   async getContractById(contractId: string): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["publication", "client", "provider", "bids", "bids.bidder"],
     });
 
@@ -278,7 +283,7 @@ export class ContractService {
 
   async cancelContract(contractId: string, userId: number): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["client", "provider"],
     });
 
@@ -296,11 +301,54 @@ export class ContractService {
     return await this.contractRepository.save(contract);
   }
 
+  // Soft delete para contratos
+  async softDeleteContract(contractId: string, userId: number): Promise<void> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    // Verificar permisos: solo el cliente, proveedor o admin puede eliminar
+    if (contract.client.id !== userId && contract.provider.id !== userId) {
+      throw new BadRequestException(
+        "No tienes permisos para eliminar este contrato",
+      );
+    }
+
+    // Soft delete: marcar como eliminado en lugar de remover físicamente
+    await this.contractRepository.update(contractId, {
+      deleted_at: new Date(),
+    });
+  }
+
+  // Restaurar contrato eliminado (solo para admins)
+  async restoreContract(contractId: string): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: Not(IsNull()) }, // Solo contratos eliminados
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato eliminado no encontrado");
+    }
+
+    // Restaurar el contrato
+    await this.contractRepository.update(contractId, {
+      deleted_at: null,
+    });
+
+    return await this.getContractById(contractId);
+  }
+
   async getPublicationBids(
     publicationId: string,
   ): Promise<{ contracts: Contract[]; totalBids: number }> {
     const contracts = await this.contractRepository.find({
-      where: { publication: { id: publicationId } },
+      where: { publication: { id: publicationId }, deleted_at: null }, // Solo contratos activos
       relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       order: { createdAt: "DESC" },
     });
@@ -323,7 +371,7 @@ export class ContractService {
     data: any,
   ): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["client", "provider", "publication"],
     });
 
