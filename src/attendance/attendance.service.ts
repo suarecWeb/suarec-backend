@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Between } from "typeorm";
 import { Attendance } from "./entities/attendance.entity";
@@ -53,6 +53,18 @@ export class AttendanceService {
     });
     if (!employee) {
       throw new Error("Employee not found");
+    }
+
+    // Verifica sino tiene un registro de asistencia para el día actual
+    const existingAttendance = await this.attendanceRepository.findOne({
+      where: {
+        employee: { id: employeeId },
+        date: date,
+      },
+    });
+
+    if (existingAttendance) {
+      throw new HttpException("Attendance record already exists for this date", HttpStatus.BAD_REQUEST);
     }
 
     const attendance = new Attendance();
