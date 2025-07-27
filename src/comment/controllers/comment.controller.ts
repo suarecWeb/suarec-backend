@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
 } from "@nestjs/common";
 import { CommentService } from "../services/comment.service";
 import { CreateCommentDto } from "../dto/create-comment.dto";
@@ -49,7 +50,7 @@ export class CommentController {
     );
   }
 
-  @Get()
+  @Get("all")
   @Roles("ADMIN", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: "Get all comments with pagination" })
@@ -58,6 +59,17 @@ export class CommentController {
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Comment>> {
     return this.commentService.findAll(paginationDto);
+  }
+
+  @Get("deleted")
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get all deleted comments (Admin only)" })
+  @ApiQuery({ type: PaginationDto })
+  findDeleted(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Comment>> {
+    return this.commentService.findDeleted(paginationDto);
   }
 
   @Get(":id")
@@ -80,10 +92,18 @@ export class CommentController {
   }
 
   @Delete(":id")
+  @Roles("ADMIN", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Soft delete a comment" })
+  remove(@Param("id") id: string, @Request() req): Promise<void> {
+    return this.commentService.remove(id, req.user);
+  }
+
+  @Post(":id/restore")
   @Roles("ADMIN")
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Delete a comment" })
-  remove(@Param("id") id: string): Promise<void> {
-    return this.commentService.remove(id);
+  @ApiOperation({ summary: "Restore a deleted comment (Admin only)" })
+  restore(@Param("id") id: string, @Request() req): Promise<Comment> {
+    return this.commentService.restore(id, req.user);
   }
 }

@@ -13,6 +13,9 @@ export class Comment {
   @Column("date", { nullable: false, default: () => "CURRENT_TIMESTAMP" })
   created_at: Date;
 
+  @Column("timestamp", { nullable: true })
+  deleted_at?: Date;
+
   @ManyToOne(() => Publication, (publication) => publication.comments, { onDelete: "CASCADE" })
   publication: Publication;
 
