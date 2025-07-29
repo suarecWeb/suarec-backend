@@ -94,4 +94,16 @@ export class ContractController {
   async cancelContract(@Param("id") id: string, @Request() req) {
     return await this.contractService.cancelContract(id, req.user.id);
   }
+
+  @Delete(":id")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async softDeleteContract(@Param("id") id: string, @Request() req) {
+    return await this.contractService.softDeleteContract(id, req.user.id);
+  }
+
+  @Post(":id/restore")
+  @Roles("ADMIN")
+  async restoreContract(@Param("id") id: string) {
+    return await this.contractService.restoreContract(id);
+  }
 }

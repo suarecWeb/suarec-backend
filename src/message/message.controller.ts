@@ -12,6 +12,8 @@ import {
 import { MessageService } from "./message.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { UpdateMessageDto } from "./dto/update-message.dto";
+import { UpdateTicketStatusDto } from "./dto/update-ticket-status.dto";
+import { CreateTicketDto } from "./dto/create-ticket.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { RolesGuard } from "../auth/guard/roles.guard";
 import { Roles } from "../auth/decorators/role.decorator";
@@ -37,6 +39,57 @@ export class MessageController {
   @ApiResponse({ status: 201, description: "Message created successfully" })
   create(@Body() createMessageDto: CreateMessageDto): Promise<Message> {
     return this.messageService.create(createMessageDto);
+  }
+
+  @Post("create-ticket")
+  @Roles("PERSON", "BUSINESS")
+  @ApiOperation({ summary: "Create a new support ticket" })
+  @ApiResponse({ status: 201, description: "Ticket created successfully" })
+  async createTicket(@Body() createTicketDto: CreateTicketDto): Promise<Message> {
+    return this.messageService.createTicket(+createTicketDto.userId, createTicketDto.content);
+  }
+
+  @Post("add-to-ticket")
+  @Roles("PERSON", "BUSINESS")
+  @ApiOperation({ summary: "Add message to existing ticket" })
+  @ApiResponse({ status: 201, description: "Message added to ticket successfully" })
+  async addMessageToTicket(@Body() data: { ticketId: string; userId: number; content: string }): Promise<Message> {
+    return this.messageService.addMessageToTicket(data.ticketId, data.userId, data.content);
+  }
+
+  @Post("admin-reply")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Send admin reply to support ticket" })
+  @ApiResponse({ status: 201, description: "Admin reply sent successfully" })
+  async sendAdminReply(@Body() data: { ticketId: string; content: string }): Promise<Message> {
+    return this.messageService.respondToTicket(data.ticketId, data.content);
+  }
+
+  @Get("active-ticket/:userId")
+  @Roles("ADMIN", "PERSON", "BUSINESS")
+  @ApiOperation({ summary: "Get active ticket for a user" })
+  @ApiResponse({ status: 200, description: "Active ticket retrieved successfully" })
+  async getActiveTicket(@Param("userId") userId: string): Promise<Message | null> {
+    return this.messageService.getActiveTicketForUser(+userId);
+  }
+
+  @Get("ticket/:ticketId/messages")
+  @Roles("ADMIN", "PERSON", "BUSINESS")
+  @ApiOperation({ summary: "Get all messages for a specific ticket" })
+  @ApiResponse({ status: 200, description: "Ticket messages retrieved successfully" })
+  async getTicketMessages(@Param("ticketId") ticketId: string): Promise<Message[]> {
+    return this.messageService.getTicketMessages(ticketId);
+  }
+
+  @Patch(":id/status")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Update ticket status" })
+  @ApiResponse({ status: 200, description: "Ticket status updated successfully" })
+  async updateTicketStatus(
+    @Param("id") id: string,
+    @Body() updateTicketStatusDto: UpdateTicketStatusDto,
+  ): Promise<Message> {
+    return this.messageService.updateTicketStatus(id, updateTicketStatusDto.status);
   }
 
   @Get()
@@ -80,6 +133,17 @@ export class MessageController {
     @Param("senderId") senderId: string,
   ): Promise<number> {
     return this.messageService.countUnreadMessages(+userId, +senderId);
+  }
+
+  @Get("support-tickets")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Get all support tickets" })
+  @ApiResponse({
+    status: 200,
+    description: "Support tickets retrieved successfully",
+  })
+  async getSupportTickets(@Query() paginationDto: PaginationDto) {
+    return this.messageService.getSupportTickets(paginationDto);
   }
 
   @Get(":id")
@@ -169,4 +233,5 @@ export class MessageController {
       };
     }
   }
+
 }

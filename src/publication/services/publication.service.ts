@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, IsNull, Not } from "typeorm";
 import { Publication } from "../entities/publication.entity";
 import { CreatePublicationDto } from "../dto/create-publication.dto";
 import { UpdatePublicationDto } from "../dto/update-publication.dto";
@@ -60,6 +60,7 @@ export class PublicationService {
         skip,
         take: limit,
         relations: ["user", "user.company", "user.employer"],
+        where: { deleted_at: null }, // Solo publicaciones no eliminadas
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -83,7 +84,7 @@ export class PublicationService {
   async findOne(id: string): Promise<Publication> {
     try {
       const publication = await this.publicationRepository.findOne({
-        where: { id },
+        where: { id, deleted_at: null }, // Solo publicaciones no eliminadas
         relations: [
           "user",
           "comments",
@@ -110,7 +111,7 @@ export class PublicationService {
   ): Promise<Publication> {
     try {
       const publication = await this.publicationRepository.findOne({
-        where: { id },
+        where: { id, deleted_at: null }, // Solo publicaciones no eliminadas
         relations: ["user"],
       });
 
@@ -159,7 +160,7 @@ export class PublicationService {
   async remove(id: string, user?: any): Promise<void> {
     try {
       const publication = await this.publicationRepository.findOne({
-        where: { id },
+        where: { id, deleted_at: null }, // Solo publicaciones no eliminadas
         relations: ["user"],
       });
 
@@ -187,7 +188,78 @@ export class PublicationService {
         }
       }
 
-      await this.publicationRepository.remove(publication);
+      // Soft delete: marcar como eliminada en lugar de remover físicamente
+      await this.publicationRepository.update(id, {
+        deleted_at: new Date(),
+      });
+
+      this.logger.log(`Publication ${id} soft deleted successfully`);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  // Método para restaurar una publicación eliminada (solo para admins)
+  async restore(id: string, user?: any): Promise<Publication> {
+    try {
+      const publication = await this.publicationRepository.findOne({
+        where: { id, deleted_at: Not(IsNull()) }, // Solo publicaciones eliminadas
+        relations: ["user"],
+      });
+
+      if (!publication) {
+        throw new NotFoundException(`Deleted publication with ID ${id} not found`);
+      }
+
+      // Verificar permisos: solo admin puede restaurar
+      if (user) {
+        const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
+        if (!isAdmin) {
+          throw new BadRequestException(
+            "Only administrators can restore deleted publications",
+          );
+        }
+      }
+
+      // Restaurar la publicación
+      await this.publicationRepository.update(id, {
+        deleted_at: null,
+      });
+
+      return await this.findOne(id);
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  // Método para obtener publicaciones eliminadas (solo para admins)
+  async findDeleted(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    try {
+      const { page = 1, limit = 10 } = paginationDto;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.publicationRepository.findAndCount({
+        skip,
+        take: limit,
+        relations: ["user", "user.company", "user.employer"],
+        where: { deleted_at: Not(IsNull()) }, // Solo publicaciones eliminadas
+      });
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }

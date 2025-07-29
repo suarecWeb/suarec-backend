@@ -50,6 +50,19 @@ export class PublicationController {
     >;
   }
 
+  @Get("deleted")
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get all deleted publications (Admin only)" })
+  @ApiQuery({ type: PaginationDto })
+  findDeleted(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findDeleted(paginationDto) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
   @Get(":id")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
@@ -73,8 +86,16 @@ export class PublicationController {
   @Delete(":id")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Delete a publication" })
+  @ApiOperation({ summary: "Soft delete a publication" })
   remove(@Param("id") id: string, @Request() req): Promise<void> {
     return this.publicationService.remove(id, req.user);
+  }
+
+  @Post(":id/restore")
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Restore a deleted publication (Admin only)" })
+  restore(@Param("id") id: string, @Request() req): Promise<Publication> {
+    return this.publicationService.restore(id, req.user);
   }
 }
