@@ -138,8 +138,7 @@ export class ContractService {
 
     // Verificar que el contrato existe
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId, deleted_at: null }, // Solo contratos activos
-      relations: ["client", "provider", "bids"],
+      where: { id: contractId },
     });
 
     if (!contract) {
@@ -180,15 +179,21 @@ export class ContractService {
     await this.contractRepository.save(contract);
 
     // Determinar a quién notificar (el otro participante)
-    const recipient =
-      contract.client.id === bidderId ? contract.provider : contract.client;
+    // const recipient =
+    //   contract.client.id === bidderId ? contract.provider : contract.client;
 
-    // Enviar notificación por email
-    await this.emailService.sendBidNotification(
-      recipient.email,
-      "Nueva oferta en tu contratación",
-      `Has recibido una nueva oferta de $${amount} ${contract.priceUnit} en tu contratación.`,
-    );
+    // await this.emailVerificationService.sendServiceContractNotificationEmail(
+    //   recipient.email,
+    //   recipient.name,
+    //   "IN_PROGRESS",
+    //   {
+    //     contractId: contract.id,
+    //     serviceTitle: contract.publication.title,
+    //     clientName: contract.client.name,
+    //     providerName: contract.provider.name,
+    //     agreedPrice: savedBid.amount,
+    //   },
+    // );
 
     return savedBid;
   }
@@ -230,23 +235,31 @@ export class ContractService {
 
     // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
-    bid.contract.currentPrice = bid.amount;
+    bid.contract.currentPrice = Number(bid.amount);
+    bid.contract.totalPrice = Number(bid.amount) + (Number(bid.amount) * this.TAX_RATE); // Asumimos que el totalPrice es igual al amount de la oferta aceptada
     bid.contract.suarecCommission = commissions.suarecCommission;
     bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
     bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
     const updatedContract = await this.contractRepository.save(bid.contract);
 
     // Enviar notificación por email al otro participante
-    const recipient =
-      bid.contract.client.id === acceptorId
-        ? bid.contract.provider
-        : bid.contract.client;
+    // const recipient =
+    //   bid.contract.client.id === acceptorId
+    //     ? bid.contract.provider
+    //     : bid.contract.client;
 
-    await this.emailService.sendAcceptanceNotification(
-      recipient.email,
-      "Oferta aceptada",
-      `Tu oferta de $${bid.amount} ${bid.contract.priceUnit} ha sido aceptada. El contrato está listo para proceder.`,
-    );
+    //  await this.emailVerificationService.sendServiceContractNotificationEmail(
+    //   recipient.email,
+    //   recipient.name,
+    //   "ACCEPTED",
+    //   {
+    //     contractId: updatedContract.id,
+    //     serviceTitle: updatedContract.publication.title,
+    //     clientName: updatedContract.client.name,
+    //     providerName: updatedContract.provider.name,
+    //     agreedPrice: updatedContract.currentPrice,
+    //   },
+    // );
 
     return updatedContract;
   }
