@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, IsNull, Not } from "typeorm";
-import { Publication } from "../entities/publication.entity";
+import { Publication, PublicationType } from "../entities/publication.entity";
 import { CreatePublicationDto } from "../dto/create-publication.dto";
 import { UpdatePublicationDto } from "../dto/update-publication.dto";
 import { User } from "../../user/entities/user.entity";
@@ -51,16 +51,42 @@ export class PublicationService {
 
   async findAll(
     paginationDto: PaginationDto,
+    type?: PublicationType,
   ): Promise<PaginationResponse<Publication>> {
     try {
-      const { page = 1, limit = 10 } = paginationDto;
+      const { page = 1, limit = 5 } = paginationDto;
       const skip = (page - 1) * limit;
+
+      const whereCondition: any = { deleted_at: IsNull() };
+      if (type) {
+        whereCondition.type = type;
+      }
+
+      console.log("🔍 Debug - Backend findAll:", {
+        page,
+        limit,
+        skip,
+        whereCondition,
+        type
+      });
 
       const [data, total] = await this.publicationRepository.findAndCount({
         skip,
         take: limit,
         relations: ["user", "user.company", "user.employer"],
-        where: { deleted_at: null }, // Solo publicaciones no eliminadas
+        where: whereCondition,
+        order: { created_at: "DESC" },
+      });
+
+      console.log("🔍 Debug - Backend resultados:", {
+        total,
+        dataCount: data.length,
+        publications: data.map(pub => ({
+          id: pub.id,
+          title: pub.title,
+          deleted_at: pub.deleted_at,
+          created_at: pub.created_at
+        }))
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -81,10 +107,22 @@ export class PublicationService {
     }
   }
 
+  async findServiceOffers(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.findAll(paginationDto, PublicationType.SERVICE_OFFER);
+  }
+
+  async findServiceRequests(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.findAll(paginationDto, PublicationType.SERVICE_REQUEST);
+  }
+
   async findOne(id: string): Promise<Publication> {
     try {
       const publication = await this.publicationRepository.findOne({
-        where: { id, deleted_at: null }, // Solo publicaciones no eliminadas
+        where: { id, deleted_at: IsNull() }, // Solo publicaciones no eliminadas
         relations: [
           "user",
           "comments",
@@ -111,7 +149,7 @@ export class PublicationService {
   ): Promise<Publication> {
     try {
       const publication = await this.publicationRepository.findOne({
-        where: { id, deleted_at: null }, // Solo publicaciones no eliminadas
+        where: { id, deleted_at: IsNull() }, // Solo publicaciones no eliminadas
         relations: ["user"],
       });
 
@@ -119,39 +157,14 @@ export class PublicationService {
         throw new NotFoundException(`Publication with ID ${id} not found`);
       }
 
-      // Verificar permisos: solo el propietario o admin puede editar
-      if (user) {
-        this.logger.log(`User attempting to edit: ${JSON.stringify(user)}`);
-        this.logger.log(`Publication owner ID: ${publication.user.id} (type: ${typeof publication.user.id})`);
-        this.logger.log(`User ID: ${user.id} (type: ${typeof user.id})`);
-        
-        const isAdmin = user.roles.some((role: any) => role.name === "ADMIN");
-        const isOwner = Number(publication.user.id) === Number(user.id);
-        
-        this.logger.log(`Is Admin: ${isAdmin}`);
-        this.logger.log(`Is Owner: ${isOwner}`);
-        this.logger.log(`User roles: ${JSON.stringify(user.roles)}`);
-
-        if (!isAdmin && !isOwner) {
-          throw new BadRequestException(
-            "You can only edit your own publications",
-          );
-        }
+      // Verificar si el usuario puede editar esta publicación
+      if (user && publication.user.id !== user.id && !user.roles?.some((role: any) => role.name === "ADMIN")) {
+        throw new BadRequestException("You can only edit your own publications");
       }
 
-      // Establecer modified_at automáticamente
-      const updateData = {
-        ...updatePublicationDto,
-        modified_at: new Date(),
-      };
-
-      const updatedPublication = await this.publicationRepository.preload({
-        id,
-        ...updateData,
-      });
-
-      await this.publicationRepository.save(updatedPublication);
-      return updatedPublication;
+      // Actualizar la publicación
+      Object.assign(publication, updatePublicationDto);
+      return await this.publicationRepository.save(publication);
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -237,7 +250,7 @@ export class PublicationService {
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
     try {
-      const { page = 1, limit = 10 } = paginationDto;
+      const { page = 1, limit = 5 } = paginationDto;
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.publicationRepository.findAndCount({

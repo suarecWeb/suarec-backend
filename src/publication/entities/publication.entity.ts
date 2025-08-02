@@ -11,6 +11,12 @@ import { Application } from "../../application/entities/application.entity";
 import { Contract } from "../../contract/entities/contract.entity";
 import { PublicationLike } from "./publication-like.entity";
 
+export enum PublicationType {
+  SERVICE = "SERVICE", // Valor existente para compatibilidad
+  SERVICE_OFFER = "SERVICE_OFFER", // Oferta de servicio (trabajador ofrece servicio)
+  SERVICE_REQUEST = "SERVICE_REQUEST", // Solicitud de servicio (cliente busca trabajador)
+}
+
 @Entity()
 export class Publication {
   @PrimaryGeneratedColumn("uuid")
@@ -49,6 +55,26 @@ export class Publication {
   @Column("simple-array", { nullable: true })
   gallery_images?: string[];
 
+  @Column({
+    type: "enum",
+    enum: PublicationType,
+    default: PublicationType.SERVICE_OFFER,
+  })
+  type: PublicationType;
+
+  // Campos específicos para solicitudes de servicios
+  @Column("text", { nullable: true })
+  requirements?: string; // Requisitos del trabajo
+
+  @Column("text", { nullable: true })
+  location?: string; // Ubicación del trabajo
+
+  @Column("text", { nullable: true })
+  urgency?: string; // Urgencia: "LOW", "MEDIUM", "HIGH"
+
+  @Column("text", { nullable: true })
+  preferredSchedule?: string; // Horario preferido
+
   @ManyToOne(() => User, (user) => user.publications)
   user: User;
 
@@ -63,7 +89,6 @@ export class Publication {
   @OneToMany(() => Contract, (contract) => contract.publication)
   contracts: Contract[];
 
-  // Relación para likes
   @OneToMany(() => PublicationLike, (like) => like.publication)
   likes: PublicationLike[];
 }

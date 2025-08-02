@@ -55,82 +55,113 @@ export class ContractService {
   async createContract(
     createContractDto: CreateContractDto,
   ): Promise<Contract> {
-    const {
-      publicationId,
-      clientId,
-      initialPrice,
-      totalPrice,
-      priceUnit,
-      clientMessage,
-      requestedDate,
-      requestedTime,
-      paymentMethod,
-      originalPaymentMethod,
-      serviceAddress,
-      propertyType,
-      neighborhood,
-      locationDescription,
-    } = createContractDto;
+    try {
+      console.log("🔍 Debug - Creando contrato con datos:", createContractDto);
+      
+      const {
+        publicationId,
+        clientId,
+        providerId,
+        initialPrice,
+        totalPrice,
+        priceUnit,
+        clientMessage,
+        requestedDate,
+        requestedTime,
+        paymentMethod,
+        originalPaymentMethod,
+        serviceAddress,
+        propertyType,
+        neighborhood,
+        locationDescription,
+      } = createContractDto;
 
-    // Verificar que la publicación existe
-    const publication = await this.publicationRepository.findOne({
-      where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
-      relations: ["user"],
-    });
+      console.log("🔍 Debug - Datos extraídos:", {
+        publicationId,
+        clientId,
+        providerId,
+        initialPrice,
+        totalPrice,
+        priceUnit
+      });
 
-    if (!publication) {
-      throw new NotFoundException("Publicación no encontrada");
+      // Verificar que la publicación existe
+      const publication = await this.publicationRepository.findOne({
+        where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
+        relations: ["user"],
+      });
+
+      console.log("🔍 Debug - Publicación encontrada:", publication ? publication.id : "NO ENCONTRADA");
+
+      if (!publication) {
+        throw new NotFoundException("Publicación no encontrada");
+      }
+
+      // Verificar que el cliente y proveedor existen
+      const [client, provider] = await Promise.all([
+        this.userRepository.findOne({ where: { id: clientId } }),
+        this.userRepository.findOne({ where: { id: providerId } }),
+      ]);
+
+      console.log("🔍 Debug - Usuarios encontrados:", {
+        client: client ? client.id : "NO ENCONTRADO",
+        provider: provider ? provider.id : "NO ENCONTRADO"
+      });
+
+      if (!client || !provider) {
+        throw new NotFoundException("Usuario no encontrado");
+      }
+
+      // Verificar que el cliente no está contratando su propio servicio
+      if (clientId === providerId) {
+        throw new BadRequestException("No puedes contratar tu propio servicio");
+      }
+
+      // Calcular precio con IVA (19%)
+      const priceWithTax = Math.round(initialPrice + initialPrice * 0.19);
+      const currentPriceWithTax = Math.round(initialPrice + initialPrice * 0.19);
+
+      console.log("🔍 Debug - Precios calculados:", {
+        initialPrice,
+        priceWithTax,
+        currentPriceWithTax
+      });
+
+      // Crear la contratación
+      const contract = this.contractRepository.create({
+        publication,
+        client,
+        provider,
+        initialPrice,
+        totalPrice: priceWithTax, // Usar precio con IVA
+        currentPrice: currentPriceWithTax, // Usar precio con IVA
+        priceUnit,
+        clientMessage,
+        requestedDate,
+        requestedTime,
+        paymentMethod,
+        originalPaymentMethod,
+        serviceAddress,
+        propertyType,
+        neighborhood,
+        locationDescription,
+        status: ContractStatus.ACCEPTED, // Cambiar a ACCEPTED automáticamente
+      });
+
+      const savedContract = await this.contractRepository.save(contract);
+
+      // Enviar notificación por email al proveedor
+      await this.emailService.sendContractNotification(
+        provider.email,
+        "Nueva solicitud de contratación",
+        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
+      );
+
+      return savedContract;
+    } catch (error) {
+      console.error("Error al crear contrato:", error);
+      throw error;
     }
-
-    // Obtener el providerId de la publicación
-    const providerId = publication.user.id;
-
-    // Verificar que el cliente y proveedor existen
-    const [client, provider] = await Promise.all([
-      this.userRepository.findOne({ where: { id: clientId } }),
-      this.userRepository.findOne({ where: { id: providerId } }),
-    ]);
-
-    if (!client || !provider) {
-      throw new NotFoundException("Usuario no encontrado");
-    }
-
-    // Verificar que el cliente no está contratando su propio servicio
-    if (clientId === providerId) {
-      throw new BadRequestException("No puedes contratar tu propio servicio");
-    }
-
-    // Crear la contratación
-    const contract = this.contractRepository.create({
-      publication,
-      client,
-      provider,
-      initialPrice,
-      totalPrice,
-      currentPrice: initialPrice,
-      priceUnit,
-      clientMessage,
-      requestedDate,
-      requestedTime,
-      paymentMethod,
-      originalPaymentMethod,
-      serviceAddress,
-      propertyType,
-      neighborhood,
-      locationDescription,
-      status: ContractStatus.PENDING,
-    });
-
-    const savedContract = await this.contractRepository.save(contract);
-
-    // Enviar notificación por email al proveedor
-    await this.emailService.sendContractNotification(
-      provider.email,
-      "Nueva solicitud de contratación",
-      `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
-    );
-
-    return savedContract;
   }
 
   async createBid(createBidDto: CreateBidDto): Promise<ContractBid> {

@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsNumber, IsUrl, MaxLength, IsArray, IsDateString } from "class-validator";
+import { IsOptional, IsString, IsNumber, IsUrl, MaxLength, IsArray, IsDateString, IsEnum } from "class-validator";
+import { PublicationType } from "../entities/publication.entity";
 
 export class UpdatePublicationDto {
   @IsString()
@@ -40,4 +41,29 @@ export class UpdatePublicationDto {
   @IsDateString()
   @IsOptional()
   modified_at?: string;
+
+  @IsEnum(PublicationType)
+  @IsOptional()
+  type?: PublicationType;
+
+  // Campos específicos para solicitudes de servicios
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  requirements?: string; // Requisitos del trabajo
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  location?: string; // Ubicación del trabajo
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  urgency?: string; // Urgencia: "LOW", "MEDIUM", "HIGH"
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  preferredSchedule?: string; // Horario preferido
 }

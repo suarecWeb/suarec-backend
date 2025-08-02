@@ -17,7 +17,7 @@ import { PaginationDto } from "../../common/dto/pagination.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
-import { Publication } from "../entities/publication.entity";
+import { Publication, PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 
@@ -42,10 +42,38 @@ export class PublicationController {
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: "Get all publications with pagination" })
   @ApiQuery({ type: PaginationDto })
+  @ApiQuery({ name: "type", enum: PublicationType, required: false })
   findAll(
     @Query() paginationDto: PaginationDto,
+    @Query("type") type?: PublicationType,
   ): Promise<PaginationResponse<Publication>> {
-    return this.publicationService.findAll(paginationDto) as Promise<
+    return this.publicationService.findAll(paginationDto, type) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
+  @Get("service-offers")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get service offers only" })
+  @ApiQuery({ type: PaginationDto })
+  findServiceOffers(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findServiceOffers(paginationDto) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
+  @Get("service-requests")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get service requests only" })
+  @ApiQuery({ type: PaginationDto })
+  findServiceRequests(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findServiceRequests(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
   }

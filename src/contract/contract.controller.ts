@@ -30,8 +30,16 @@ export class ContractController {
     @Body() createContractDto: CreateContractDto,
     @Request() req,
   ) {
+    console.log("🔍 Debug - Controlador createContract recibió:", {
+      createContractDto,
+      userId: req.user.id
+    });
+    
     // El cliente será el usuario autenticado
     createContractDto.clientId = req.user.id;
+    
+    console.log("🔍 Debug - DTO actualizado:", createContractDto);
+    
     return await this.contractService.createContract(createContractDto);
   }
 
