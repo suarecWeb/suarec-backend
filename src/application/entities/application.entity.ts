@@ -7,6 +7,7 @@ export enum ApplicationStatus {
   INTERVIEW = "INTERVIEW", // eslint-disable-line no-unused-vars
   ACCEPTED = "ACCEPTED", // eslint-disable-line no-unused-vars
   REJECTED = "REJECTED", // eslint-disable-line no-unused-vars
+  COMPLETED = "COMPLETED", // eslint-disable-line no-unused-vars
 }
 
 @Entity("applications")
