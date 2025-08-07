@@ -43,8 +43,12 @@ export class Publication {
   @Column("text", { nullable: false })
   category: string;
 
-  @Column("text", { nullable: true })
-  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+  @Column({
+    type: "enum",
+    enum: PublicationType,
+    default: PublicationType.SERVICE,
+  })
+  type: PublicationType;
 
   @Column("text", { nullable: true })
   image_url?: string;
@@ -60,13 +64,6 @@ export class Publication {
 
   @Column("simple-array", { nullable: true })
   gallery_images?: string[];
-
-  @Column({
-    type: "enum",
-    enum: PublicationType,
-    default: PublicationType.SERVICE,
-  })
-  type: PublicationType;
 
   // Campos específicos para solicitudes de servicios
   @Column("text", { nullable: true })

@@ -43,10 +43,9 @@ export class CreatePublicationDto {
   @MaxLength(100)
   category: string;
 
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
-  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+  @IsEnum(PublicationType)
+  @IsNotEmpty()
+  type: PublicationType;
 
   @IsUrl()
   @IsOptional()
@@ -72,10 +71,6 @@ export class CreatePublicationDto {
   @IsOptional()
   @IsString({ each: true })
   gallery_images?: string[];
-
-  @IsEnum(PublicationType)
-  @IsNotEmpty()
-  type: PublicationType;
 
   // Campos específicos para solicitudes de servicios
   @IsString()

@@ -17,10 +17,9 @@ export class UpdatePublicationDto {
   @MaxLength(100)
   category?: string;
 
-  @IsString()
+  @IsEnum(PublicationType)
   @IsOptional()
-  @MaxLength(50)
-  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+  type?: PublicationType;
 
   @IsUrl()
   @IsOptional()
@@ -46,10 +45,6 @@ export class UpdatePublicationDto {
   @IsDateString()
   @IsOptional()
   modified_at?: string;
-
-  @IsEnum(PublicationType)
-  @IsOptional()
-  type?: PublicationType;
 
   // Campos específicos para solicitudes de servicios
   @IsString()
