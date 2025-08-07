@@ -62,31 +62,12 @@ export class PublicationService {
         whereCondition.type = type;
       }
 
-      console.log("🔍 Debug - Backend findAll:", {
-        page,
-        limit,
-        skip,
-        whereCondition,
-        type
-      });
-
       const [data, total] = await this.publicationRepository.findAndCount({
         skip,
         take: limit,
         relations: ["user", "user.company", "user.employer"],
         where: whereCondition,
         order: { created_at: "DESC" },
-      });
-
-      console.log("🔍 Debug - Backend resultados:", {
-        total,
-        dataCount: data.length,
-        publications: data.map(pub => ({
-          id: pub.id,
-          title: pub.title,
-          deleted_at: pub.deleted_at,
-          created_at: pub.created_at
-        }))
       });
 
       const totalPages = Math.ceil(total / limit);

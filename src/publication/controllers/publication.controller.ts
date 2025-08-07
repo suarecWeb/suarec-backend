@@ -17,7 +17,8 @@ import { PaginationDto } from "../../common/dto/pagination.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
-import { Publication, PublicationType } from "../entities/publication.entity";
+import { Publication } from "../entities/publication.entity";
+import { PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 
@@ -45,9 +46,11 @@ export class PublicationController {
   @ApiQuery({ name: "type", enum: PublicationType, required: false })
   findAll(
     @Query() paginationDto: PaginationDto,
-    @Query("type") type?: PublicationType,
+    @Query("type") type?: string,
   ): Promise<PaginationResponse<Publication>> {
-    return this.publicationService.findAll(paginationDto, type) as Promise<
+    console.log("🔍 Controller - Received type:", type);
+    console.log("🔍 Controller - Type is valid enum:", Object.values(PublicationType).includes(type as PublicationType));
+    return this.publicationService.findAll(paginationDto, type as PublicationType) as Promise<
       PaginationResponse<Publication>
     >;
   }
