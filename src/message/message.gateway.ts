@@ -183,7 +183,7 @@ export class MessageGateway
       }
 
       console.log("🎫 Llamando a addMessageToTicket...");
-      
+
       // Agregar mensaje al ticket
       const message = await this.messageService.addMessageToTicket(data.ticketId, userId, data.content);
       

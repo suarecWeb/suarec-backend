@@ -1,11 +1,9 @@
 // src/application/dto/update-application.dto.ts
-import { PartialType } from "@nestjs/mapped-types";
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsNumber } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
-import { CreateApplicationDto } from "./create-application.dto";
 import { ApplicationStatus } from "../entities/application.entity";
 
-export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
+export class UpdateApplicationDto {
   @ApiProperty({
     description: "Nuevo estado de la aplicación",
     enum: ApplicationStatus,
@@ -23,4 +21,22 @@ export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
   @IsString()
   @IsOptional()
   message?: string;
+
+  @ApiProperty({
+    description: "Precio propuesto por el servicio",
+    example: 50000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+
+  @ApiProperty({
+    description: "Unidad del precio (hour, day, service, etc.)",
+    example: "service",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  priceUnit?: string;
 }
