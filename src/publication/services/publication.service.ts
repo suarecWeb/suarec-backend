@@ -110,7 +110,7 @@ export class PublicationService {
   async findServiceOffers(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    return this.findAll(paginationDto, PublicationType.SERVICE_OFFER);
+    return this.findAll(paginationDto, PublicationType.SERVICE);
   }
 
   async findServiceRequests(

@@ -12,9 +12,12 @@ import { Contract } from "../../contract/entities/contract.entity";
 import { PublicationLike } from "./publication-like.entity";
 
 export enum PublicationType {
-  SERVICE = "SERVICE", // Valor existente para compatibilidad
-  SERVICE_OFFER = "SERVICE_OFFER", // Oferta de servicio (trabajador ofrece servicio)
-  SERVICE_REQUEST = "SERVICE_REQUEST", // Solicitud de servicio (cliente busca trabajador)
+  // Tipos de servicios
+  SERVICE = "SERVICE", // Usuario ofrece servicios (OFERTA)
+  SERVICE_REQUEST = "SERVICE_REQUEST", // Usuario busca servicios (SOLICITUD)
+  
+  // Tipos de empleos
+  JOB = "JOB", // Empresa ofrece vacante
 }
 
 @Entity()
@@ -58,7 +61,7 @@ export class Publication {
   @Column({
     type: "enum",
     enum: PublicationType,
-    default: PublicationType.SERVICE_OFFER,
+    default: PublicationType.SERVICE,
   })
   type: PublicationType;
 

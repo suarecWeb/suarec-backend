@@ -11,9 +11,12 @@ import {
 } from "class-validator";
 
 export enum PublicationType {
-  SERVICE = "SERVICE", // Valor existente para compatibilidad
-  SERVICE_OFFER = "SERVICE_OFFER", // Oferta de servicio (trabajador ofrece servicio)
-  SERVICE_REQUEST = "SERVICE_REQUEST", // Solicitud de servicio (cliente busca trabajador)
+  // Tipos de servicios
+  SERVICE = "SERVICE", // Usuario ofrece servicios (OFERTA)
+  SERVICE_REQUEST = "SERVICE_REQUEST", // Usuario busca servicios (SOLICITUD)
+  
+  // Tipos de empleos
+  JOB = "JOB", // Empresa ofrece vacante
 }
 
 export class CreatePublicationDto {
