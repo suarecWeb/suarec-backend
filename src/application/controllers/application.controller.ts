@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
+  BadRequestException,
 } from "@nestjs/common";
 import { ApplicationService } from "../services/application.service";
 import { CreateApplicationDto } from "../dto/create-application.dto";
@@ -74,12 +76,37 @@ export class ApplicationController {
   }
 
   @Patch(":id")
-  @Roles("BUSINESS", "ADMIN")
-  @ApiOperation({ summary: "Update application status (business/admin only)" })
-  update(
+  @Roles("PERSON", "BUSINESS", "ADMIN")
+  @ApiOperation({ summary: "Update application status (with custom authorization)" })
+  async update(
     @Param("id") id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
+    @Request() req: any,
   ): Promise<Application> {
+    // Get the application to check if the user is the publication owner
+    const application = await this.applicationService.findOne(id);
+    
+    console.log("🔍 Debug authorization:", {
+      userId: req.user.id,
+      userRoles: req.user.roles.map((r: any) => r.name),
+      publicationOwnerId: application.publication.user.id,
+      isBusinessOrAdmin: req.user.roles.some((role: any) => ['BUSINESS', 'ADMIN'].includes(role.name)),
+      isPublicationOwner: application.publication.user.id === req.user.id,
+      applicationId: id,
+      updateData: updateApplicationDto
+    });
+    
+    // Allow if user is BUSINESS/ADMIN OR if user is the publication owner
+    const isAuthorized = 
+      req.user.roles.some((role: any) => ['BUSINESS', 'ADMIN'].includes(role.name)) ||
+      application.publication.user.id === req.user.id;
+    
+    if (!isAuthorized) {
+      console.log("❌ Authorization failed for user:", req.user.id);
+      throw new BadRequestException("You are not authorized to update this application");
+    }
+    
+    console.log("✅ Authorization successful for user:", req.user.id);
     return this.applicationService.update(id, updateApplicationDto);
   }
 

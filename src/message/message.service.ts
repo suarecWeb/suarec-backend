@@ -75,15 +75,15 @@ export class MessageService {
       console.log("📝 Estado del mensaje:", { isNewTicket, activeTicketId: activeTicket?.id });
 
       // Crear y guardar el mensaje
-      const message = this.messageRepository.create({
-        content,
-        sender,
-        recipient,
-        sent_at: new Date(), // Usar fecha local
-        read: false,
+               const message = this.messageRepository.create({
+           content,
+           sender,
+           recipient,
+           sent_at: new Date(), // Usar fecha local
+           read: false,
         status: isNewTicket ? "open" : "message", // "open" para tickets nuevos, "message" para mensajes normales
         ticket_id: activeTicket ? activeTicket.id : (isNewTicket ? "temp" : null), // Asignar ticket_id si hay ticket activo o temp para nuevos
-      });
+         });
 
       await this.messageRepository.save(message);
 

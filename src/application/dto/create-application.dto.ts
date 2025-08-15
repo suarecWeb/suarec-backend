@@ -27,4 +27,22 @@ export class CreateApplicationDto {
   @IsString()
   @IsOptional()
   message?: string;
+
+  @ApiProperty({
+    description: "Precio propuesto por el servicio",
+    example: 50000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+
+  @ApiProperty({
+    description: "Unidad del precio (hour, day, service, etc.)",
+    example: "service",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  priceUnit?: string;
 }

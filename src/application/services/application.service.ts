@@ -32,7 +32,7 @@ export class ApplicationService {
     createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
     try {
-      const { userId, publicationId, message } = createApplicationDto;
+      const { userId, publicationId, message, price, priceUnit } = createApplicationDto;
 
       // Verificar que el usuario existe
       const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -73,6 +73,8 @@ export class ApplicationService {
       // Crear la aplicación
       const application = this.applicationRepository.create({
         message,
+        price,
+        priceUnit,
         status: ApplicationStatus.PENDING,
         created_at: new Date(),
         user,
