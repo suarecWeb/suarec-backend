@@ -43,14 +43,12 @@ export class PublicationController {
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: "Get all publications with pagination" })
   @ApiQuery({ type: PaginationDto })
-  @ApiQuery({ name: "type", enum: PublicationType, required: false })
   findAll(
     @Query() paginationDto: PaginationDto,
-    @Query("type") type?: string,
   ): Promise<PaginationResponse<Publication>> {
-    console.log("🔍 Controller - Received type:", type);
-    console.log("🔍 Controller - Type is valid enum:", Object.values(PublicationType).includes(type as PublicationType));
-    return this.publicationService.findAll(paginationDto, type as PublicationType) as Promise<
+    console.log("🔍 Controller - Received type:", paginationDto.type);
+    console.log("🔍 Controller - Type is valid enum:", Object.values(PublicationType).includes(paginationDto.type as PublicationType));
+    return this.publicationService.findAll(paginationDto, paginationDto.type as PublicationType) as Promise<
       PaginationResponse<Publication>
     >;
   }
