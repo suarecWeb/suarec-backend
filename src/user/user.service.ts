@@ -581,6 +581,7 @@ export class UserService {
         "education",
         "references",
         "socialLinks",
+        "idPhotos"
       ],
     });
     if (!user) {
