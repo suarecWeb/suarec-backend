@@ -545,7 +545,7 @@ export class UserService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.usersRepository.findAndCount({
-        relations: ["roles", "company"],
+        relations: ["roles", "company", "education", "idPhotos", "idPhotos.reviewedBy"],
         skip,
         take: limit,
       });
