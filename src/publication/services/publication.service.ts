@@ -1,5 +1,8 @@
 import {
   BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -38,6 +41,10 @@ export class PublicationService {
 
       if (!user) {
         throw new BadRequestException("User not found");
+      }
+
+      if (!user.isVerify) {
+        throw new ForbiddenException('User must be verified to create publications');
       }
 
       publication.user = user;
@@ -262,6 +269,10 @@ export class PublicationService {
   private handleDBErrors(error: any) {
     if (error.status === 400) {
       throw new BadRequestException(error.response.message);
+    }
+
+    if (error instanceof HttpException) {
+      throw error;
     }
 
     if (error instanceof NotFoundException) {
