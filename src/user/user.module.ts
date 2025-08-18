@@ -30,6 +30,8 @@ import { BankInfoService } from "./services/bank-info.service";
 import { BankInfoController } from "./controllers/bank-info.controller";
 import { WompiBanksService } from "./services/wompi-banks.service";
 import { BanksController } from "./controllers/banks.controller";
+import { IdPhotosService } from "./services/id-photos.service";
+import { UserIdPhotos } from "./entities/user-id-photos.entity";
 
 @Module({
   imports: [
@@ -52,6 +54,7 @@ import { BanksController } from "./controllers/banks.controller";
       Reference,
       SocialLink,
       UserGallery,
+      UserIdPhotos,
       BankInfo,
     ]),
     PermissionModule,
@@ -66,7 +69,7 @@ import { BanksController } from "./controllers/banks.controller";
     }),
   ],
   controllers: [UserController, ExperienceController, BankInfoController, BanksController],
-  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService],
-  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule],
+  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService],
+  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService],
 })
 export class UserModule {}
