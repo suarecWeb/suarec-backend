@@ -21,6 +21,29 @@ import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class ContractService {
+  async updateContract(contractId: string, userId: number, updateContractDto: any): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider", "client"] });
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+    // Only provider or client can update
+    if (contract.provider.id !== userId && contract.client.id !== userId) {
+      throw new BadRequestException("No tienes permisos para editar este contrato");
+    }
+    Object.assign(contract, updateContractDto);
+    return await this.contractRepository.save(contract);
+  }
+  async updateProviderMessage(contractId: string, providerId: number, providerMessage: string): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider"] });
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+    if (contract.provider.id !== providerId) {
+      throw new BadRequestException("No tienes permisos para editar este mensaje");
+    }
+    contract.providerMessage = providerMessage;
+    return await this.contractRepository.save(contract);
+  }
   private readonly SUAREC_COMMISSION_RATE = 0.08; // 8%
   private readonly TAX_RATE = 0.19; // 19% IVA
 
@@ -64,7 +87,8 @@ export class ContractService {
         initialPrice,
         totalPrice,
         priceUnit,
-        clientMessage,
+        quantity,
+      clientMessage,
         requestedDate,
         requestedTime,
         paymentMethod,

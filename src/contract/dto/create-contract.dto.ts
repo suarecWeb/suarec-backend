@@ -37,6 +37,11 @@ export class CreateContractDto {
   @IsNotEmpty()
   priceUnit: string;
 
+  @IsNumber()
+  @IsOptional()
+  @Transform(({ value }) => value ? parseFloat(value) : undefined)
+  quantity?: number;
+
   @IsString()
   @IsOptional()
   clientMessage?: string;
