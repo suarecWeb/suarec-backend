@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   Delete,
+  BadRequestException,
   Patch,
 } from "@nestjs/common";
 import { ContractService } from "./contract.service";
@@ -39,7 +40,7 @@ export class ContractController {
   ) {
     console.log("🔍 Debug - Controlador createContract recibió:", {
       createContractDto,
-      userId: req.user.id
+      userId: req.user?.id
     });
     
     // El cliente será el usuario autenticado
