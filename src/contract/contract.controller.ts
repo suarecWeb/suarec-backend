@@ -37,8 +37,16 @@ export class ContractController {
     @Body() createContractDto: CreateContractDto,
     @Request() req,
   ) {
+    console.log("🔍 Debug - Controlador createContract recibió:", {
+      createContractDto,
+      userId: req.user.id
+    });
+    
     // El cliente será el usuario autenticado
     createContractDto.clientId = req.user.id;
+    
+    console.log("🔍 Debug - DTO actualizado:", createContractDto);
+    
     return await this.contractService.createContract(createContractDto);
   }
 
@@ -100,5 +108,17 @@ export class ContractController {
   @Roles("ADMIN", "BUSINESS", "PERSON")
   async cancelContract(@Param("id") id: string, @Request() req) {
     return await this.contractService.cancelContract(id, req.user.id);
+  }
+
+  @Delete(":id")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async softDeleteContract(@Param("id") id: string, @Request() req) {
+    return await this.contractService.softDeleteContract(id, req.user.id);
+  }
+
+  @Post(":id/restore")
+  @Roles("ADMIN")
+  async restoreContract(@Param("id") id: string) {
+    return await this.contractService.restoreContract(id);
   }
 }

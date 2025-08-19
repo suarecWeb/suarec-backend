@@ -1,5 +1,5 @@
 // src/message/dto/create-message.dto.ts
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateMessageDto {
@@ -26,4 +26,12 @@ export class CreateMessageDto {
   @IsNumber()
   @IsNotEmpty()
   recipientId: number;
+
+  @ApiProperty({
+    description: "ID del ticket al que pertenece el mensaje (opcional)",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+    required: false,
+  })
+  @IsOptional()
+  ticket_id?: string | null;
 }

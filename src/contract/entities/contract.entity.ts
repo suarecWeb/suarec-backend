@@ -103,6 +103,9 @@ export class Contract {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column("timestamp", { nullable: true })
+  deleted_at?: Date;
+
   @OneToMany(() => ContractBid, (bid) => bid.contract)
   bids: ContractBid[];
 

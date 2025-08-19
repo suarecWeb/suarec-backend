@@ -11,6 +11,15 @@ import { Application } from "../../application/entities/application.entity";
 import { Contract } from "../../contract/entities/contract.entity";
 import { PublicationLike } from "./publication-like.entity";
 
+export enum PublicationType {
+  // Tipos de servicios
+  SERVICE = "SERVICE", // Usuario ofrece servicios (OFERTA)
+  SERVICE_REQUEST = "SERVICE_REQUEST", // Usuario busca servicios (SOLICITUD)
+  
+  // Tipos de empleos
+  JOB = "JOB", // Empresa ofrece vacante
+}
+
 @Entity()
 export class Publication {
   @PrimaryGeneratedColumn("uuid")
@@ -28,11 +37,18 @@ export class Publication {
   @Column("timestamp", { nullable: false, default: () => "CURRENT_TIMESTAMP" })
   created_at: Date;
 
+  @Column("timestamp", { nullable: true })
+  deleted_at?: Date;
+
   @Column("text", { nullable: false })
   category: string;
 
-  @Column("text", { nullable: true })
-  type?: string; // 'SERVICE', 'JOB', etc. - Optional para compatibility
+  @Column({
+    type: "enum",
+    enum: PublicationType,
+    default: PublicationType.SERVICE,
+  })
+  type: PublicationType;
 
   @Column("text", { nullable: true })
   image_url?: string;
@@ -49,6 +65,19 @@ export class Publication {
   @Column("simple-array", { nullable: true })
   gallery_images?: string[];
 
+  // Campos específicos para solicitudes de servicios
+  @Column("text", { nullable: true })
+  requirements?: string; // Requisitos del trabajo
+
+  @Column("text", { nullable: true })
+  location?: string; // Ubicación del trabajo
+
+  @Column("text", { nullable: true })
+  urgency?: string; // Urgencia: "LOW", "MEDIUM", "HIGH"
+
+  @Column("text", { nullable: true })
+  preferredSchedule?: string; // Horario preferido
+
   @ManyToOne(() => User, (user) => user.publications)
   user: User;
 
@@ -63,7 +92,6 @@ export class Publication {
   @OneToMany(() => Contract, (contract) => contract.publication)
   contracts: Contract[];
 
-  // Relación para likes
   @OneToMany(() => PublicationLike, (like) => like.publication)
   likes: PublicationLike[];
 }

@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, IsNull, Not } from "typeorm";
 import {
   Contract,
   ContractBid,
@@ -78,84 +78,114 @@ export class ContractService {
   async createContract(
     createContractDto: CreateContractDto,
   ): Promise<Contract> {
-    const {
-      publicationId,
-      clientId,
-      initialPrice,
-      totalPrice,
-      priceUnit,
-      quantity,
+    try {
+      console.log("🔍 Debug - Creando contrato con datos:", createContractDto);
+      
+      const {
+        publicationId,
+        clientId,
+        providerId,
+        initialPrice,
+        totalPrice,
+        priceUnit,
+        quantity,
       clientMessage,
-      requestedDate,
-      requestedTime,
-      paymentMethod,
-      originalPaymentMethod,
-      serviceAddress,
-      propertyType,
-      neighborhood,
-      locationDescription,
-    } = createContractDto;
+        requestedDate,
+        requestedTime,
+        paymentMethod,
+        originalPaymentMethod,
+        serviceAddress,
+        propertyType,
+        neighborhood,
+        locationDescription,
+      } = createContractDto;
 
-    // Verificar que la publicación existe
-    const publication = await this.publicationRepository.findOne({
-      where: { id: publicationId },
-      relations: ["user"],
-    });
+      console.log("🔍 Debug - Datos extraídos:", {
+        publicationId,
+        clientId,
+        providerId,
+        initialPrice,
+        totalPrice,
+        priceUnit
+      });
 
-    if (!publication) {
-      throw new NotFoundException("Publicación no encontrada");
+      // Verificar que la publicación existe
+      const publication = await this.publicationRepository.findOne({
+        where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
+        relations: ["user"],
+      });
+
+      console.log("🔍 Debug - Publicación encontrada:", publication ? publication.id : "NO ENCONTRADA");
+
+      if (!publication) {
+        throw new NotFoundException("Publicación no encontrada");
+      }
+
+      // Verificar que el cliente y proveedor existen
+      const [client, provider] = await Promise.all([
+        this.userRepository.findOne({ where: { id: clientId } }),
+        this.userRepository.findOne({ where: { id: providerId } }),
+      ]);
+
+      console.log("🔍 Debug - Usuarios encontrados:", {
+        client: client ? client.id : "NO ENCONTRADO",
+        provider: provider ? provider.id : "NO ENCONTRADO"
+      });
+
+      if (!client || !provider) {
+        throw new NotFoundException("Usuario no encontrado");
+      }
+
+      // Verificar que el cliente no está contratando su propio servicio
+      if (clientId === providerId) {
+        throw new BadRequestException("No puedes contratar tu propio servicio");
+      }
+
+      // Calcular precio con IVA (19%)
+      const priceWithTax = Math.round(initialPrice + initialPrice * 0.19);
+      const currentPriceWithTax = Math.round(initialPrice + initialPrice * 0.19);
+
+      console.log("🔍 Debug - Precios calculados:", {
+        initialPrice,
+        priceWithTax,
+        currentPriceWithTax
+      });
+
+      // Crear la contratación
+      const contract = this.contractRepository.create({
+        publication,
+        client,
+        provider,
+        initialPrice,
+        totalPrice: priceWithTax, // Usar precio con IVA
+        currentPrice: currentPriceWithTax, // Usar precio con IVA
+        priceUnit,
+        clientMessage,
+        requestedDate,
+        requestedTime,
+        paymentMethod,
+        originalPaymentMethod,
+        serviceAddress,
+        propertyType,
+        neighborhood,
+        locationDescription,
+        status: ContractStatus.ACCEPTED, // Cambiar a ACCEPTED automáticamente
+      });
+
+      const savedContract = await this.contractRepository.save(contract);
+
+      // Enviar notificación por email al proveedor
+      await this.emailService.sendContractNotification(
+        provider.email,
+        "Nueva solicitud de contratación",
+        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
+      );
+
+      return savedContract;
+    } catch (error) {
+      console.error("Error al crear contrato:", error);
+      throw error;
     }
-
-    // Obtener el providerId de la publicación
-    const providerId = publication.user.id;
-
-    // Verificar que el cliente y proveedor existen
-    const [client, provider] = await Promise.all([
-      this.userRepository.findOne({ where: { id: clientId } }),
-      this.userRepository.findOne({ where: { id: providerId } }),
-    ]);
-
-    if (!client || !provider) {
-      throw new NotFoundException("Usuario no encontrado");
-    }
-
-    // Verificar que el cliente no está contratando su propio servicio
-    if (clientId === providerId) {
-      throw new BadRequestException("No puedes contratar tu propio servicio");
-    }
-
-    // Crear la contratación
-    const contract = this.contractRepository.create({
-      publication,
-      client,
-      provider,
-      initialPrice,
-      totalPrice,
-      currentPrice: initialPrice,
-      priceUnit,
-      quantity,
-      clientMessage,
-      requestedDate,
-      requestedTime,
-      paymentMethod,
-      originalPaymentMethod,
-      serviceAddress,
-      propertyType,
-      neighborhood,
-      locationDescription,
-      status: ContractStatus.PENDING,
-    });
-
-    const savedContract = await this.contractRepository.save(contract);
-
-    // Enviar notificación por email al proveedor
-    await this.emailService.sendContractNotification(
-      provider.email,
-      "Nueva solicitud de contratación",
-      `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
-    );
-
-    return savedContract;
   }
 
   async createBid(createBidDto: CreateBidDto): Promise<ContractBid> {
@@ -164,7 +194,6 @@ export class ContractService {
     // Verificar que el contrato existe
     const contract = await this.contractRepository.findOne({
       where: { id: contractId },
-      relations: ["client", "provider", "bids"],
     });
 
     if (!contract) {
@@ -205,15 +234,21 @@ export class ContractService {
     await this.contractRepository.save(contract);
 
     // Determinar a quién notificar (el otro participante)
-    const recipient =
-      contract.client.id === bidderId ? contract.provider : contract.client;
+    // const recipient =
+    //   contract.client.id === bidderId ? contract.provider : contract.client;
 
-    // Enviar notificación por email
-    await this.emailService.sendBidNotification(
-      recipient.email,
-      "Nueva oferta en tu contratación",
-      `Has recibido una nueva oferta de $${amount} ${contract.priceUnit} en tu contratación.`,
-    );
+    // await this.emailVerificationService.sendServiceContractNotificationEmail(
+    //   recipient.email,
+    //   recipient.name,
+    //   "IN_PROGRESS",
+    //   {
+    //     contractId: contract.id,
+    //     serviceTitle: contract.publication.title,
+    //     clientName: contract.client.name,
+    //     providerName: contract.provider.name,
+    //     agreedPrice: savedBid.amount,
+    //   },
+    // );
 
     return savedBid;
   }
@@ -229,6 +264,11 @@ export class ContractService {
 
     if (!bid) {
       throw new NotFoundException("Oferta no encontrada");
+    }
+
+    // Verificar que el contrato no está eliminado
+    if (bid.contract.deleted_at) {
+      throw new NotFoundException("Contrato no encontrado");
     }
 
     // Verificar que el aceptador es parte del contrato
@@ -250,23 +290,31 @@ export class ContractService {
 
     // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
-    bid.contract.currentPrice = bid.amount;
+    bid.contract.currentPrice = Number(bid.amount);
+    bid.contract.totalPrice = Number(bid.amount) + (Number(bid.amount) * this.TAX_RATE); // Asumimos que el totalPrice es igual al amount de la oferta aceptada
     bid.contract.suarecCommission = commissions.suarecCommission;
     bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
     bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
     const updatedContract = await this.contractRepository.save(bid.contract);
 
     // Enviar notificación por email al otro participante
-    const recipient =
-      bid.contract.client.id === acceptorId
-        ? bid.contract.provider
-        : bid.contract.client;
+    // const recipient =
+    //   bid.contract.client.id === acceptorId
+    //     ? bid.contract.provider
+    //     : bid.contract.client;
 
-    await this.emailService.sendAcceptanceNotification(
-      recipient.email,
-      "Oferta aceptada",
-      `Tu oferta de $${bid.amount} ${bid.contract.priceUnit} ha sido aceptada. El contrato está listo para proceder.`,
-    );
+    //  await this.emailVerificationService.sendServiceContractNotificationEmail(
+    //   recipient.email,
+    //   recipient.name,
+    //   "ACCEPTED",
+    //   {
+    //     contractId: updatedContract.id,
+    //     serviceTitle: updatedContract.publication.title,
+    //     clientName: updatedContract.client.name,
+    //     providerName: updatedContract.provider.name,
+    //     agreedPrice: updatedContract.currentPrice,
+    //   },
+    // );
 
     return updatedContract;
   }
@@ -276,11 +324,11 @@ export class ContractService {
   ): Promise<{ asClient: Contract[]; asProvider: Contract[] }> {
     const [asClient, asProvider] = await Promise.all([
       this.contractRepository.find({
-        where: { client: { id: userId } },
+        where: { client: { id: userId }, deleted_at: null }, // Solo contratos activos
         relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       }),
       this.contractRepository.find({
-        where: { provider: { id: userId } },
+        where: { provider: { id: userId }, deleted_at: null }, // Solo contratos activos
         relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       }),
     ]);
@@ -290,7 +338,7 @@ export class ContractService {
 
   async getContractById(contractId: string): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["publication", "client", "provider", "bids", "bids.bidder"],
     });
 
@@ -303,7 +351,7 @@ export class ContractService {
 
   async cancelContract(contractId: string, userId: number): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["client", "provider"],
     });
 
@@ -321,11 +369,54 @@ export class ContractService {
     return await this.contractRepository.save(contract);
   }
 
+  // Soft delete para contratos
+  async softDeleteContract(contractId: string, userId: number): Promise<void> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    // Verificar permisos: solo el cliente, proveedor o admin puede eliminar
+    if (contract.client.id !== userId && contract.provider.id !== userId) {
+      throw new BadRequestException(
+        "No tienes permisos para eliminar este contrato",
+      );
+    }
+
+    // Soft delete: marcar como eliminado en lugar de remover físicamente
+    await this.contractRepository.update(contractId, {
+      deleted_at: new Date(),
+    });
+  }
+
+  // Restaurar contrato eliminado (solo para admins)
+  async restoreContract(contractId: string): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: Not(IsNull()) }, // Solo contratos eliminados
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato eliminado no encontrado");
+    }
+
+    // Restaurar el contrato
+    await this.contractRepository.update(contractId, {
+      deleted_at: null,
+    });
+
+    return await this.getContractById(contractId);
+  }
+
   async getPublicationBids(
     publicationId: string,
   ): Promise<{ contracts: Contract[]; totalBids: number }> {
     const contracts = await this.contractRepository.find({
-      where: { publication: { id: publicationId } },
+      where: { publication: { id: publicationId }, deleted_at: null }, // Solo contratos activos
       relations: ["publication", "client", "provider", "bids", "bids.bidder"],
       order: { createdAt: "DESC" },
     });
@@ -348,7 +439,7 @@ export class ContractService {
     data: any,
   ): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
-      where: { id: contractId },
+      where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["client", "provider", "publication"],
     });
 

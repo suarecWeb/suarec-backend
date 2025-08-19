@@ -15,7 +15,12 @@ export class CreateContractDto {
   @IsNotEmpty()
   publicationId: string;
 
+  @IsNumber()
+  @IsNotEmpty()
   clientId: number;
+
+  @IsNumber()
+  providerId: number;
 
   @IsNumber()
   @IsNotEmpty()

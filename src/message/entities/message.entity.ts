@@ -18,6 +18,12 @@ export class Message {
   @Column("timestamp", { nullable: true })
   read_at: Date;
 
+  @Column("varchar", { length: 20, default: "open" })
+  status: string; // "open", "closed", "resolved", "message"
+
+  @Column("varchar", { length: 255, nullable: true })
+  ticket_id: string;
+
   @ManyToOne(() => User, (user) => user.sentMessages)
   sender: User;
 

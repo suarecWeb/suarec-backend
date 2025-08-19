@@ -18,6 +18,7 @@ import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
 import { Publication } from "../entities/publication.entity";
+import { PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
 
@@ -45,7 +46,48 @@ export class PublicationController {
   findAll(
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    return this.publicationService.findAll(paginationDto) as Promise<
+    console.log("🔍 Controller - Received type:", paginationDto.type);
+    console.log("🔍 Controller - Type is valid enum:", Object.values(PublicationType).includes(paginationDto.type as PublicationType));
+    return this.publicationService.findAll(paginationDto, paginationDto.type as PublicationType) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
+  @Get("service-offers")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get service offers only" })
+  @ApiQuery({ type: PaginationDto })
+  findServiceOffers(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findServiceOffers(paginationDto) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
+  @Get("service-requests")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get service requests only" })
+  @ApiQuery({ type: PaginationDto })
+  findServiceRequests(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findServiceRequests(paginationDto) as Promise<
+      PaginationResponse<Publication>
+    >;
+  }
+
+  @Get("deleted")
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get all deleted publications (Admin only)" })
+  @ApiQuery({ type: PaginationDto })
+  findDeleted(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findDeleted(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
   }
@@ -73,8 +115,16 @@ export class PublicationController {
   @Delete(":id")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Delete a publication" })
+  @ApiOperation({ summary: "Soft delete a publication" })
   remove(@Param("id") id: string, @Request() req): Promise<void> {
     return this.publicationService.remove(id, req.user);
+  }
+
+  @Post(":id/restore")
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Restore a deleted publication (Admin only)" })
+  restore(@Param("id") id: string, @Request() req): Promise<Publication> {
+    return this.publicationService.restore(id, req.user);
   }
 }

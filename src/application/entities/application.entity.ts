@@ -6,7 +6,9 @@ export enum ApplicationStatus {
   PENDING = "PENDING", // eslint-disable-line no-unused-vars
   INTERVIEW = "INTERVIEW", // eslint-disable-line no-unused-vars
   ACCEPTED = "ACCEPTED", // eslint-disable-line no-unused-vars
+  IN_PROGRESS = "IN_PROGRESS", // eslint-disable-line no-unused-vars
   REJECTED = "REJECTED", // eslint-disable-line no-unused-vars
+  COMPLETED = "COMPLETED", // eslint-disable-line no-unused-vars
 }
 
 @Entity("applications")
@@ -30,6 +32,12 @@ export class Application {
   @Column("text", { nullable: true })
   message: string;
 
+  @Column("decimal", { precision: 10, scale: 2, nullable: true })
+  price: number;
+
+  @Column("varchar", { length: 50, nullable: true })
+  priceUnit: string;
+
   @ManyToOne(() => User, (user) => user.applications, { onDelete: "CASCADE" })
   user: User;
 
@@ -45,6 +53,8 @@ export const getAllApplicationStatuses = (): ApplicationStatus[] => {
     ApplicationStatus.PENDING,
     ApplicationStatus.INTERVIEW,
     ApplicationStatus.ACCEPTED,
+    ApplicationStatus.IN_PROGRESS,
     ApplicationStatus.REJECTED,
+    ApplicationStatus.COMPLETED,
   ];
 };

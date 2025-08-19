@@ -36,4 +36,7 @@ export class Attendance {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column("timestamp", { nullable: true })
+  deleted_at?: Date;
 }
