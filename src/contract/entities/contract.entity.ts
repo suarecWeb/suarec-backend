@@ -105,6 +105,9 @@ export class Contract {
 
   @OneToMany(() => ContractBid, (bid) => bid.contract)
   bids: ContractBid[];
+
+  @Column("int", { nullable: true })
+  quantity?: number; // Cantidad de unidades contratadas
 }
 
 @Entity()

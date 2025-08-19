@@ -69,4 +69,8 @@ export class UpdateContractDto {
   @IsOptional()
   @IsString()
   agreedTime?: string;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
 }
