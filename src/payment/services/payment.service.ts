@@ -2,6 +2,8 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -19,6 +21,7 @@ import { PaymentMethod, PaymentStatus } from "../../enums/paymentMethod.enum";
 import { User } from "../../user/entities/user.entity";
 import { Contract } from "../../contract/entities/contract.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
+import { ContractService } from "../../contract/contract.service";
 
 @Injectable()
 export class PaymentService {
@@ -31,6 +34,8 @@ export class PaymentService {
     @InjectRepository(Contract)
     private contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
     wompiService: WompiService,
+    @Inject(forwardRef(() => ContractService))
+    private contractService: ContractService, // eslint-disable-line no-unused-vars
   ) {
     this.wompiService = wompiService;
   }
@@ -128,30 +133,36 @@ export class PaymentService {
         throw new NotFoundException(`Contract with ID ${contract_id} not found`);
       }
 
-      // Verify payer is the client of the work contract
-      console.log('🔍 Step 4: Verifying payer is client...');
-      console.log('  Contract client ID:', contract.client?.id);
-      console.log('  Payer ID:', payerId);
-      console.log('  Match:', contract.client?.id === payerId);
+      // Check if this is a cancellation penalty payment
+      const isCancellationPenalty = paymentData.reference && paymentData.reference.startsWith('PENALTY-');
       
-      if (contract.client.id !== payerId) {
-        console.error('❌ Payer is not the client of this contract');
-        console.error('  Expected client ID:', contract.client.id);
-        console.error('  Received payer ID:', payerId);
-        throw new BadRequestException("Only the client can make payments for this contract");
-      }
+      if (isCancellationPenalty) {
+      } else {
+        // Verify payer is the client of the work contract
+        console.log('🔍 Step 4: Verifying payer is client...');
+        console.log('  Contract client ID:', contract.client?.id);
+        console.log('  Payer ID:', payerId);
+        console.log('  Match:', contract.client?.id === payerId);
+        
+        if (contract.client.id !== payerId) {
+          console.error('❌ Payer is not the client of this contract');
+          console.error('  Expected client ID:', contract.client.id);
+          console.error('  Received payer ID:', payerId);
+          throw new BadRequestException("Only the client can make payments for this contract");
+        }
 
-      // Verify payee is the provider of the work contract
-      console.log('🔍 Step 5: Verifying payee is provider...');
-      console.log('  Contract provider ID:', contract.provider?.id);
-      console.log('  Payee ID:', payee_id);
-      console.log('  Match:', contract.provider?.id === payee_id);
-      
-      if (contract.provider.id !== payee_id) {
-        console.error('❌ Payee is not the provider of this contract');
-        console.error('  Expected provider ID:', contract.provider.id);
-        console.error('  Received payee ID:', payee_id);
-        throw new BadRequestException("Payee must be the provider of the work contract");
+        // Verify payee is the provider of the work contract
+        console.log('🔍 Step 5: Verifying payee is provider...');
+        console.log('  Contract provider ID:', contract.provider?.id);
+        console.log('  Payee ID:', payee_id);
+        console.log('  Match:', contract.provider?.id === payee_id);
+        
+        if (contract.provider.id !== payee_id) {
+          console.error('❌ Payee is not the provider of this contract');
+          console.error('  Expected provider ID:', contract.provider.id);
+          console.error('  Received payee ID:', payee_id);
+          throw new BadRequestException("Payee must be the provider of the work contract");
+        }
       }
 
       console.log('✅ All validations passed, creating payment transaction...');
@@ -557,7 +568,7 @@ export class PaymentService {
       }),
     });
 
-    // Si el pago fue completado, habilitar calificación
+    // Si el pago fue completado, habilitar calificación y procesar penalizaciones
     if (newStatus === PaymentStatus.COMPLETED) {
       // Recargar la transacción con todas las relaciones necesarias
       const fullPaymentTransaction =
@@ -567,7 +578,20 @@ export class PaymentService {
         });
 
       if (fullPaymentTransaction) {
-        await this.enableRatingAfterPayment(fullPaymentTransaction);
+        // Verificar si es un pago de penalización por cancelación
+        const isPenaltyPayment = fullPaymentTransaction.reference?.startsWith('PENALTY-');
+        
+        if (isPenaltyPayment && fullPaymentTransaction.contract) {
+          console.log("🚫 Pago de penalización completado, cancelando contrato automáticamente..."); // eslint-disable-line no-console
+          // Usar el método existente de ContractService para cancelar el contrato
+          await this.contractService.cancelContract(
+            fullPaymentTransaction.contract.id,
+            fullPaymentTransaction.payer.id
+          );
+        } else {
+          // Solo habilitar calificación para pagos normales
+          await this.enableRatingAfterPayment(fullPaymentTransaction);
+        }
       }
     }
   }
@@ -604,12 +628,14 @@ export class PaymentService {
     }
   }
 
+
+
   async remove(id: string): Promise<void> {
     const paymentTransaction = await this.findOne(id);
     await this.paymentTransactionRepository.remove(paymentTransaction);
   }
 
-  async getPaymentHistory(
+  async getPaymentHistory(  
     userId: number,
     historyDto: PaymentHistoryDto,
   ): Promise<PaginationResponse<PaymentTransaction>> {

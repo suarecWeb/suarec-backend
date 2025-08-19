@@ -97,6 +97,18 @@ export class ContractController {
     return await this.contractService.getContractById(id);
   }
 
+  @Get(":id/check-penalty")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async checkPenaltyRequired(@Param("id") id: string, @Request() req) {
+    return await this.contractService.checkPenaltyRequired(id, req.user.id);
+  }
+
+  @Post(":id/cancellation-penalty")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async createCancellationPenaltyPayment(@Param("id") id: string, @Request() req) {
+    return await this.contractService.createCancellationPenaltyPayment(id, req.user.id);
+  }
+
   @Delete(":id/cancel")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   async cancelContract(@Param("id") id: string, @Request() req) {
