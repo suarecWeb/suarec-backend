@@ -20,7 +20,8 @@ export class CreateContractDto {
   clientId: number;
 
   @IsNumber()
-  providerId: number;
+  @IsOptional() // Opcional ya que se obtiene automáticamente de la publicación
+  providerId?: number;
 
   @IsNumber()
   @IsNotEmpty()

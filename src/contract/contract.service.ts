@@ -61,7 +61,6 @@ export class ContractService {
       const {
         publicationId,
         clientId,
-        providerId,
         initialPrice,
         totalPrice,
         priceUnit,
@@ -79,7 +78,6 @@ export class ContractService {
       console.log("🔍 Debug - Datos extraídos:", {
         publicationId,
         clientId,
-        providerId,
         initialPrice,
         totalPrice,
         priceUnit
@@ -96,6 +94,14 @@ export class ContractService {
       if (!publication) {
         throw new NotFoundException("Publicación no encontrada");
       }
+
+      // Obtener el providerId de la publicación automáticamente
+      const providerId = publication.user?.id;
+      if (!providerId) {
+        throw new BadRequestException("La publicación no tiene un proveedor válido");
+      }
+
+      console.log("🔍 Debug - ProviderId obtenido de la publicación:", providerId);
 
       // Verificar que el cliente y proveedor existen
       const [client, provider] = await Promise.all([
