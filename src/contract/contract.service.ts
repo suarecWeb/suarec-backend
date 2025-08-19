@@ -151,7 +151,7 @@ export class ContractService {
         propertyType,
         neighborhood,
         locationDescription,
-        status: ContractStatus.ACCEPTED, // Cambiar a ACCEPTED automáticamente
+        status: ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
       });
 
       const savedContract = await this.contractRepository.save(contract);
@@ -159,8 +159,8 @@ export class ContractService {
       // Enviar notificación por email al proveedor
       await this.emailService.sendContractNotification(
         provider.email,
-        "Nueva solicitud de contratación",
-        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
+        "Nueva solicitud de contratación pendiente",
+        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}". Por favor, revisa los detalles y responde aceptando, rechazando o proponiendo una contraoferta.`,
       );
 
       return savedContract;
