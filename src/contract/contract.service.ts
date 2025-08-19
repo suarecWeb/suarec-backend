@@ -147,24 +147,14 @@ export class ContractService {
         throw new BadRequestException("No puedes contratar tu propio servicio");
       }
 
-      // Calcular precio con IVA (19%)
-      const priceWithTax = Math.round(initialPrice + initialPrice * 0.19);
-      const currentPriceWithTax = Math.round(initialPrice + initialPrice * 0.19);
-
-      console.log("🔍 Debug - Precios calculados:", {
-        initialPrice,
-        priceWithTax,
-        currentPriceWithTax
-      });
-
-      // Crear la contratación
+      // Crear la contratación usando los valores del frontend
       const contract = this.contractRepository.create({
         publication,
         client,
         provider,
         initialPrice,
-        totalPrice: priceWithTax, // Usar precio con IVA
-        currentPrice: currentPriceWithTax, // Usar precio con IVA
+        totalPrice, // Usar el totalPrice que viene del frontend (ya incluye IVA)
+        currentPrice: totalPrice, // Usar el mismo totalPrice como precio actual
         priceUnit,
         clientMessage,
         requestedDate,
@@ -297,7 +287,7 @@ export class ContractService {
     // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
     bid.contract.currentPrice = Number(bid.amount);
-    bid.contract.totalPrice = Number(bid.amount) + (Number(bid.amount) * this.TAX_RATE); // Asumimos que el totalPrice es igual al amount de la oferta aceptada
+    bid.contract.totalPrice = Number(bid.amount); // El monto de la oferta ya incluye IVA
     bid.contract.suarecCommission = commissions.suarecCommission;
     bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
     bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
