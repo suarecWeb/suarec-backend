@@ -210,6 +210,10 @@ export class ContractService {
       );
 
     return savedContract;
+    } catch (error) {
+      console.error("Error al crear contrato:", error);
+      throw error;
+    }
   }
 
   async createBid(createBidDto: CreateBidDto): Promise<ContractBid> {
