@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, IsNull, Not } from "typeorm";
@@ -18,6 +20,8 @@ import {
 import { Publication } from "../publication/entities/publication.entity";
 import { User } from "../user/entities/user.entity";
 import { EmailService } from "../email/email.service";
+import { PaymentService } from "../payment/services/payment.service";
+import { PaymentMethod } from "../enums/paymentMethod.enum";
 
 @Injectable()
 export class ContractService {
@@ -57,6 +61,8 @@ export class ContractService {
     @InjectRepository(User)
     private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     private emailService: EmailService, // eslint-disable-line no-unused-vars
+    @Inject(forwardRef(() => PaymentService))
+    private paymentService: PaymentService, // eslint-disable-line no-unused-vars
   ) {}
 
   /**
@@ -73,6 +79,39 @@ export class ContractService {
       priceWithoutCommission: Number(priceWithoutCommission.toFixed(2)),
       totalCommissionWithTax: Number(totalCommissionWithTax.toFixed(2)),
     };
+  }
+
+  /**
+   * Verifica si se requiere penalización por cancelación basado en el tiempo
+   * @param contract - Contrato a verificar
+   * @returns true si se requiere penalización, false si se puede cancelar sin penalización
+   */
+  public isPenaltyRequired(contract: Contract): boolean {
+    // Si no hay fecha acordada, usar la fecha solicitada
+    const serviceDate = contract.agreedDate || contract.requestedDate;
+    const serviceTime = contract.agreedTime || contract.requestedTime;
+
+    if (!serviceDate || !serviceTime) {
+      // Si no hay fecha/hora definida, siempre se requiere penalización
+      return true;
+    }
+
+    // Convertir serviceDate a Date si es necesario
+    const dateObj = serviceDate instanceof Date ? serviceDate : new Date(serviceDate);
+    
+    // Extraer horas y minutos del serviceTime
+    const [hours, minutes] = serviceTime.split(':').map(Number);
+    
+    // Crear la fecha y hora del servicio
+    const serviceDateTime = new Date(dateObj);
+    serviceDateTime.setHours(hours, minutes, 0, 0);
+
+    // Calcular 1 hora antes del servicio
+    const penaltyDeadline = new Date(serviceDateTime.getTime() - (60 * 60 * 1000));
+
+    // Si la hora actual es antes del deadline, no se requiere penalización
+    const now = new Date();
+    return now >= penaltyDeadline;
   }
 
   async createContract(
@@ -107,13 +146,11 @@ export class ContractService {
         priceUnit
       });
 
-      // Verificar que la publicación existe
-      const publication = await this.publicationRepository.findOne({
-        where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
-        relations: ["user"],
-      });
-
-      console.log("🔍 Debug - Publicación encontrada:", publication ? publication.id : "NO ENCONTRADA");
+    // Verificar que la publicación existe
+    const publication = await this.publicationRepository.findOne({
+      where: { id: publicationId, deleted_at: null }, // Solo publicaciones activas
+      relations: ["user"],
+    });
 
       if (!publication) {
         throw new NotFoundException("Publicación no encontrada");
@@ -127,25 +164,20 @@ export class ContractService {
 
       console.log("🔍 Debug - ProviderId obtenido de la publicación:", providerId);
 
-      // Verificar que el cliente y proveedor existen
-      const [client, provider] = await Promise.all([
-        this.userRepository.findOne({ where: { id: clientId } }),
-        this.userRepository.findOne({ where: { id: providerId } }),
-      ]);
+    // Verificar que el cliente y proveedor existen
+    const [client, provider] = await Promise.all([
+      this.userRepository.findOne({ where: { id: clientId } }),
+      this.userRepository.findOne({ where: { id: providerId } }),
+    ]);
 
-      console.log("🔍 Debug - Usuarios encontrados:", {
-        client: client ? client.id : "NO ENCONTRADO",
-        provider: provider ? provider.id : "NO ENCONTRADO"
-      });
+    if (!client || !provider) {
+      throw new NotFoundException("Usuario no encontrado");
+    }
 
-      if (!client || !provider) {
-        throw new NotFoundException("Usuario no encontrado");
-      }
-
-      // Verificar que el cliente no está contratando su propio servicio
-      if (clientId === providerId) {
-        throw new BadRequestException("No puedes contratar tu propio servicio");
-      }
+    // Verificar que el cliente no está contratando su propio servicio
+    if (clientId === providerId) {
+      throw new BadRequestException("No puedes contratar tu propio servicio");
+    }
 
       // Crear la contratación usando los valores del frontend
       const contract = this.contractRepository.create({
@@ -168,7 +200,7 @@ export class ContractService {
         status: ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
       });
 
-      const savedContract = await this.contractRepository.save(contract);
+    const savedContract = await this.contractRepository.save(contract);
 
       // Enviar notificación por email al proveedor
       await this.emailService.sendContractNotification(
@@ -177,7 +209,7 @@ export class ContractService {
         `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}". Por favor, revisa los detalles y responde aceptando, rechazando o proponiendo una contraoferta.`,
       );
 
-      return savedContract;
+    return savedContract;
     } catch (error) {
       console.error("Error al crear contrato:", error);
       throw error;
@@ -345,6 +377,35 @@ export class ContractService {
     return contract;
   }
 
+  async checkPenaltyRequired(contractId: string, userId: number): Promise<{ requiresPenalty: boolean; message?: string }> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    if (contract.client.id !== userId && contract.provider.id !== userId) {
+      throw new BadRequestException("No tienes permisos para verificar este contrato");
+    }
+
+    const requiresPenalty = this.isPenaltyRequired(contract);
+    
+    if (!requiresPenalty) {
+      return {
+        requiresPenalty: false,
+        message: "No se requiere penalización. Puedes cancelar el contrato directamente hasta 1 hora antes del servicio."
+      };
+    }
+
+    return {
+      requiresPenalty: true,
+      message: "Se requiere penalización por cancelación. El servicio está programado para menos de 1 hora."
+    };
+  }
+
   async cancelContract(contractId: string, userId: number): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null }, // Solo contratos activos
@@ -361,8 +422,89 @@ export class ContractService {
       );
     }
 
+    // Verificar si se requiere penalización basado en el tiempo
+    const penaltyRequired = this.isPenaltyRequired(contract);
+
+    if (penaltyRequired) {
+      // Si se requiere penalización, verificar que se haya pagado
+      const penaltyPayments = await this.paymentService.findByContract(contractId);
+      const hasPaidPenalty = penaltyPayments.some(payment => 
+        payment.reference?.startsWith('PENALTY-') && 
+        payment.status === 'COMPLETED' &&
+        payment.payer.id === userId
+      );
+
+      if (!hasPaidPenalty) {
+        throw new BadRequestException(
+          "Debes pagar la penalización por cancelación antes de poder cancelar el contrato"
+        );
+      }
+    }
+
+    // Proceder con la cancelación del contrato (con o sin penalización)
     contract.status = ContractStatus.CANCELLED;
     return await this.contractRepository.save(contract);
+  }
+
+  async createCancellationPenaltyPayment(contractId: string, userId: number): Promise<any> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    if (contract.client.id !== userId && contract.provider.id !== userId) {
+      throw new BadRequestException(
+        "No tienes permisos para cancelar este contrato",
+      );
+    }
+
+    // Verificar si se requiere penalización basado en el tiempo
+    if (!this.isPenaltyRequired(contract)) {
+      throw new BadRequestException(
+        "No se requiere penalización. Puedes cancelar el contrato directamente hasta 1 hora antes del servicio."
+      );
+    }
+
+    // Determinar quién es el payee para la penalización
+    // Si el cliente está cancelando, el payee es el proveedor
+    // Si el proveedor está cancelando, el payee es el cliente
+    let payeeId: number;
+    if (contract.client.id === userId) {
+      // El cliente está cancelando, el payee es el proveedor
+      payeeId = contract.provider.id;
+    } else {
+      // El proveedor está cancelando, el payee es el cliente
+      payeeId = contract.client.id;
+    }
+
+    // Crear el pago de penalización usando el PaymentService
+    const createPaymentDto = {
+      amount: 10000, // $10,000 pesos colombianos
+      currency: "COP",
+      payment_method: PaymentMethod.Wompi,
+      contract_id: contractId,
+      payee_id: payeeId, // El otro participante del contrato recibe la penalización
+      description: `Penalización por cancelación de contrato: ${contract.publication?.title || 'Contrato'}`,
+      reference: `PENALTY-${contractId.substring(0, 8)}`,
+    };
+
+    // Crear el pago real usando el PaymentService
+    const paymentTransaction = await this.paymentService.createPayment(createPaymentDto, userId);
+
+    // Retornar la información del pago incluyendo el enlace de Wompi
+    return {
+      id: paymentTransaction.id,
+      amount: paymentTransaction.amount,
+      currency: paymentTransaction.currency,
+      status: paymentTransaction.status,
+      wompi_payment_link: paymentTransaction.wompi_payment_link,
+      description: paymentTransaction.description,
+      contract_id: contractId,
+    };
   }
 
   // Soft delete para contratos
