@@ -21,6 +21,29 @@ import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class ContractService {
+  async updateContract(contractId: string, userId: number, updateContractDto: any): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider", "client"] });
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+    // Only provider or client can update
+    if (contract.provider.id !== userId && contract.client.id !== userId) {
+      throw new BadRequestException("No tienes permisos para editar este contrato");
+    }
+    Object.assign(contract, updateContractDto);
+    return await this.contractRepository.save(contract);
+  }
+  async updateProviderMessage(contractId: string, providerId: number, providerMessage: string): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider"] });
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+    if (contract.provider.id !== providerId) {
+      throw new BadRequestException("No tienes permisos para editar este mensaje");
+    }
+    contract.providerMessage = providerMessage;
+    return await this.contractRepository.save(contract);
+  }
   private readonly SUAREC_COMMISSION_RATE = 0.08; // 8%
   private readonly TAX_RATE = 0.19; // 19% IVA
 
@@ -61,11 +84,11 @@ export class ContractService {
       const {
         publicationId,
         clientId,
-        providerId,
         initialPrice,
         totalPrice,
         priceUnit,
-        clientMessage,
+        quantity,
+      clientMessage,
         requestedDate,
         requestedTime,
         paymentMethod,
@@ -79,7 +102,6 @@ export class ContractService {
       console.log("🔍 Debug - Datos extraídos:", {
         publicationId,
         clientId,
-        providerId,
         initialPrice,
         totalPrice,
         priceUnit
@@ -96,6 +118,14 @@ export class ContractService {
       if (!publication) {
         throw new NotFoundException("Publicación no encontrada");
       }
+
+      // Obtener el providerId de la publicación automáticamente
+      const providerId = publication.user?.id;
+      if (!providerId) {
+        throw new BadRequestException("La publicación no tiene un proveedor válido");
+      }
+
+      console.log("🔍 Debug - ProviderId obtenido de la publicación:", providerId);
 
       // Verificar que el cliente y proveedor existen
       const [client, provider] = await Promise.all([
@@ -117,24 +147,14 @@ export class ContractService {
         throw new BadRequestException("No puedes contratar tu propio servicio");
       }
 
-      // Calcular precio con IVA (19%)
-      const priceWithTax = Math.round(initialPrice + initialPrice * 0.19);
-      const currentPriceWithTax = Math.round(initialPrice + initialPrice * 0.19);
-
-      console.log("🔍 Debug - Precios calculados:", {
-        initialPrice,
-        priceWithTax,
-        currentPriceWithTax
-      });
-
-      // Crear la contratación
+      // Crear la contratación usando los valores del frontend
       const contract = this.contractRepository.create({
         publication,
         client,
         provider,
         initialPrice,
-        totalPrice: priceWithTax, // Usar precio con IVA
-        currentPrice: currentPriceWithTax, // Usar precio con IVA
+        totalPrice, // Usar el totalPrice que viene del frontend (ya incluye IVA)
+        currentPrice: totalPrice, // Usar el mismo totalPrice como precio actual
         priceUnit,
         clientMessage,
         requestedDate,
@@ -145,7 +165,7 @@ export class ContractService {
         propertyType,
         neighborhood,
         locationDescription,
-        status: ContractStatus.ACCEPTED, // Cambiar a ACCEPTED automáticamente
+        status: ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
       });
 
       const savedContract = await this.contractRepository.save(contract);
@@ -153,8 +173,8 @@ export class ContractService {
       // Enviar notificación por email al proveedor
       await this.emailService.sendContractNotification(
         provider.email,
-        "Nueva solicitud de contratación",
-        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}".`,
+        "Nueva solicitud de contratación pendiente",
+        `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}". Por favor, revisa los detalles y responde aceptando, rechazando o proponiendo una contraoferta.`,
       );
 
       return savedContract;
@@ -267,7 +287,7 @@ export class ContractService {
     // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
     bid.contract.currentPrice = Number(bid.amount);
-    bid.contract.totalPrice = Number(bid.amount) + (Number(bid.amount) * this.TAX_RATE); // Asumimos que el totalPrice es igual al amount de la oferta aceptada
+    bid.contract.totalPrice = Number(bid.amount); // El monto de la oferta ya incluye IVA
     bid.contract.suarecCommission = commissions.suarecCommission;
     bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
     bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;

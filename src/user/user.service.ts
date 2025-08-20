@@ -166,6 +166,17 @@ export class UserService {
           born_at: new Date("1995-10-20"),
           roleName: "PERSON",
         },
+        {
+          name: "Regular Person 2",
+          email: "fernandodj2004+person2@gmail.com",
+          password: "person123",
+          genre: "Male",
+          cedula: "0987654321",
+          cellphone: "3456789012",
+          cv_url: "",
+          born_at: new Date("1995-10-20"),
+          roleName: "PERSON",
+        }
       ];
 
       // Crear cada usuario si no existe ya
@@ -534,7 +545,7 @@ export class UserService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.usersRepository.findAndCount({
-        relations: ["roles", "company"],
+        relations: ["roles", "company", "education", "idPhotos", "idPhotos.reviewedBy"],
         skip,
         take: limit,
       });
@@ -570,6 +581,7 @@ export class UserService {
         "education",
         "references",
         "socialLinks",
+        "idPhotos"
       ],
     });
     if (!user) {

@@ -7,14 +7,12 @@ import {
   UseGuards,
   Request,
   Delete,
+  BadRequestException,
+  Patch,
 } from "@nestjs/common";
 import { ContractService } from "./contract.service";
-import {
-  CreateContractDto,
-  CreateBidDto,
-  AcceptBidDto,
-  ProviderResponseDto,
-} from "./dto/create-contract.dto";
+import { CreateContractDto, CreateBidDto, AcceptBidDto, ProviderResponseDto } from "./dto/create-contract.dto";
+import { UpdateContractDto } from "./dto/update-contract.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { RolesGuard } from "../auth/guard/roles.guard";
 import { Roles } from "../auth/decorators/role.decorator";
@@ -22,6 +20,16 @@ import { Roles } from "../auth/decorators/role.decorator";
 @Controller("contracts")
 @UseGuards(AuthGuard, RolesGuard)
 export class ContractController {
+  @Patch(":id")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async updateContract(
+    @Param("id") id: string,
+    @Body() updateContractDto: UpdateContractDto,
+    @Request() req,
+  ) {
+    // Only provider or client can update contract (add more checks if needed)
+    return await this.contractService.updateContract(id, req.user.id, updateContractDto);
+  }
   constructor(private readonly contractService: ContractService) {} // eslint-disable-line no-unused-vars
 
   @Post()
@@ -32,7 +40,7 @@ export class ContractController {
   ) {
     console.log("🔍 Debug - Controlador createContract recibió:", {
       createContractDto,
-      userId: req.user.id
+      userId: req.user?.id
     });
     
     // El cliente será el usuario autenticado
