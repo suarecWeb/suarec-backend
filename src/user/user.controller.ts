@@ -34,6 +34,8 @@ import {
   UpdateGalleryImageDto,
   UploadGalleryImagesDto,
 } from "./dto/gallery.dto";
+import { IdPhotosService } from "./services/id-photos.service";
+import { CreateIdPhotoDto, ReviewIdPhotoDto, UpdateIdPhotoDto } from "./dto/id-photos.dto";
 
 @ApiTags("Users")
 @Controller("users")
@@ -42,6 +44,7 @@ export class UserController {
   constructor(
     private readonly userService: UserService, // eslint-disable-line no-unused-vars
     private readonly galleryService: GalleryService, // eslint-disable-line no-unused-vars
+    private readonly idPhotosService: IdPhotosService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Public()
@@ -294,5 +297,125 @@ export class UserController {
   @ApiResponse({ status: 404, description: "User not found" })
   async getUserStats(@Param("id") id: number) {
     return this.userService.getUserStats(+id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("me/id-photos")
+  @ApiOperation({ 
+    summary: "Get current user ID photos",
+    description: "Get ID photos (cedula) for the authenticated user"
+  })
+  @ApiResponse({ status: 200, description: "ID photos retrieved successfully" })
+  async getMyIdPhotos(@Request() req) {
+    return this.idPhotosService.getUserIdPhotos(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("me/id-photos")
+  @ApiOperation({ 
+    summary: "Upload ID photo",
+    description: "Add a new ID photo (front or back of cedula) for the authenticated user"
+  })
+  @ApiResponse({ status: 201, description: "ID photo uploaded successfully" })
+  @ApiResponse({ status: 400, description: "Photo type already exists or validation error" })
+  async addMyIdPhoto(
+    @Request() req,
+    @Body() createDto: CreateIdPhotoDto,
+  ) {
+    return this.idPhotosService.addIdPhoto(req.user.id, createDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put("me/id-photos/:photoId")
+  @ApiOperation({ 
+    summary: "Update ID photo",
+    description: "Update an existing ID photo for the authenticated user"
+  })
+  @ApiParam({ name: "photoId", description: "ID Photo ID" })
+  @ApiResponse({ status: 200, description: "ID photo updated successfully" })
+  @ApiResponse({ status: 404, description: "ID photo not found" })
+  async updateMyIdPhoto(
+    @Request() req,
+    @Param("photoId") photoId: string,
+    @Body() updateDto: UpdateIdPhotoDto,
+  ) {
+    return this.idPhotosService.updateIdPhoto(req.user.id, +photoId, updateDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete("me/id-photos/:photoId")
+  @ApiOperation({ 
+    summary: "Delete ID photo",
+    description: "Delete an ID photo for the authenticated user"
+  })
+  @ApiParam({ name: "photoId", description: "ID Photo ID" })
+  @ApiResponse({ status: 200, description: "ID photo deleted successfully" })
+  @ApiResponse({ status: 404, description: "ID photo not found" })
+  async deleteMyIdPhoto(@Request() req, @Param("photoId") photoId: string) {
+    await this.idPhotosService.deleteIdPhoto(req.user.id, +photoId);
+    return { message: "Foto de cédula eliminada exitosamente" };
+  }
+
+  // Endpoints para administradores (revisar fotos de cédula)
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Get("id-photos/pending")
+  @ApiOperation({ 
+    summary: "Get pending ID photos (Admin only)",
+    description: "Get all ID photos with pending status for review"
+  })
+  @ApiResponse({ status: 200, description: "Pending ID photos retrieved successfully" })
+  @ApiResponse({ status: 403, description: "Forbidden - Admin access required" })
+  async getPendingIdPhotos() {
+    return this.idPhotosService.getAllPendingPhotos();
+  }
+
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Patch("id-photos/:photoId/review")
+  @ApiOperation({ 
+    summary: "Review ID photo (Admin only)",
+    description: "Approve or reject an ID photo"
+  })
+  @ApiParam({ name: "photoId", description: "ID Photo ID" })
+  @ApiResponse({ status: 200, description: "ID photo reviewed successfully" })
+  @ApiResponse({ status: 403, description: "Forbidden - Admin access required" })
+  @ApiResponse({ status: 404, description: "ID photo not found" })
+  async reviewIdPhoto(
+    @Request() req,
+    @Param("photoId") photoId: string,
+    @Body() reviewDto: ReviewIdPhotoDto,
+  ) {
+    return this.idPhotosService.reviewIdPhoto(+photoId, reviewDto, req.user.id);
+  }
+
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Get("id-photos/:photoId")
+  @ApiOperation({ 
+    summary: "Get ID photo by ID (Admin only)",
+    description: "Get detailed information about a specific ID photo"
+  })
+  @ApiParam({ name: "photoId", description: "ID Photo ID" })
+  @ApiResponse({ status: 200, description: "ID photo retrieved successfully" })
+  @ApiResponse({ status: 403, description: "Forbidden - Admin access required" })
+  @ApiResponse({ status: 404, description: "ID photo not found" })
+  async getIdPhotoById(@Param("photoId") photoId: string) {
+    return this.idPhotosService.getPhotoById(+photoId);
+  }
+
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Get(":id/id-photos")
+  @ApiOperation({ 
+    summary: "Get user ID photos by user ID (Admin only)",
+    description: "Get all ID photos for a specific user"
+  })
+  @ApiParam({ name: "id", description: "User ID" })
+  @ApiResponse({ status: 200, description: "User ID photos retrieved successfully" })
+  @ApiResponse({ status: 403, description: "Forbidden - Admin access required" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async getUserIdPhotosById(@Param("id") id: string) {
+    return this.idPhotosService.getUserIdPhotosByUserId(+id);
   }
 }

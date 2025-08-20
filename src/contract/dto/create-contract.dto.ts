@@ -20,7 +20,8 @@ export class CreateContractDto {
   clientId: number;
 
   @IsNumber()
-  providerId: number;
+  @IsOptional() // Opcional ya que se obtiene automáticamente de la publicación
+  providerId?: number;
 
   @IsNumber()
   @IsNotEmpty()
@@ -35,6 +36,11 @@ export class CreateContractDto {
   @IsString()
   @IsNotEmpty()
   priceUnit: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Transform(({ value }) => value ? parseFloat(value) : undefined)
+  quantity?: number;
 
   @IsString()
   @IsOptional()
