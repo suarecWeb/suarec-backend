@@ -134,4 +134,10 @@ export class ContractController {
   async restoreContract(@Param("id") id: string) {
     return await this.contractService.restoreContract(id);
   }
+
+  @Post(":id/complete")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async completeContract(@Param("id") id: string, @Request() req) {
+    return await this.contractService.completeContract(id, req.user.id);
+  }
 }

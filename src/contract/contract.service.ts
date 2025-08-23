@@ -550,6 +550,59 @@ export class ContractService {
     return await this.getContractById(contractId);
   }
 
+  async completeContract(contractId: string, userId: number): Promise<Contract> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    if (contract.provider.id !== userId) {
+      throw new BadRequestException(
+        "Solo el proveedor del servicio puede marcar el contrato como completado"
+      );
+    }
+
+    if (contract.status === ContractStatus.CANCELLED) {
+      throw new BadRequestException(
+        "No se pueden marcar como completados los contratos que están en estado 'CANCELLED'"
+      );
+    }
+
+    if (!contract.agreedDate || !contract.agreedTime) {
+      throw new BadRequestException(
+        "No se puede marcar como completado un contrato sin fecha y hora acordada"
+      );
+    }
+
+    const agreedDate = contract.agreedDate instanceof Date ? contract.agreedDate : new Date(contract.agreedDate);
+    const [hours, minutes] = contract.agreedTime.split(':').map(Number);
+    
+    const serviceDateTime = new Date(agreedDate);
+    serviceDateTime.setHours(hours, minutes, 0, 0);
+
+    const now = new Date();
+    if (now < serviceDateTime) {
+      throw new BadRequestException(
+        "No se puede marcar como completado un contrato antes de la fecha y hora acordada del servicio"
+      );
+    }
+
+    contract.status = ContractStatus.COMPLETED;
+    const updatedContract = await this.contractRepository.save(contract);
+
+    /*await this.emailService.sendContractNotification(
+      contract.client.email,
+      "Servicio completado",
+      `El servicio "${contract.publication.title}" ha sido marcado como completado por el proveedor.`,
+    );*/
+
+    return updatedContract;
+  }
+
   async getPublicationBids(
     publicationId: string,
   ): Promise<{ contracts: Contract[]; totalBids: number }> {
