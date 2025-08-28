@@ -10,6 +10,7 @@ import { Repository, IsNull, Not } from "typeorm";
 import {
   Contract,
   ContractBid,
+  ContractOTP,
   ContractStatus,
 } from "./entities/contract.entity";
 import {
@@ -56,6 +57,8 @@ export class ContractService {
     private contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
     @InjectRepository(ContractBid)
     private bidRepository: Repository<ContractBid>, // eslint-disable-line no-unused-vars
+    @InjectRepository(ContractOTP)
+    private otpRepository: Repository<ContractOTP>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
     private publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
@@ -594,11 +597,16 @@ export class ContractService {
     contract.status = ContractStatus.COMPLETED;
     const updatedContract = await this.contractRepository.save(contract);
 
-    /*await this.emailService.sendContractNotification(
-      contract.client.email,
-      "Servicio completado",
-      `El servicio "${contract.publication.title}" ha sido marcado como completado por el proveedor.`,
-    );*/
+    // Enviar notificación por email al cliente sobre la completación
+    try {
+      await this.emailService.sendContractNotification(
+        contract.client.email,
+        "Servicio completado",
+        `El servicio "${contract.publication.title}" ha sido marcado como completado por el proveedor. Para confirmar que el servicio se realizó satisfactoriamente y proceder con el pago, ve a la sección de contratos y haz clic en "Verificar Servicio (OTP)".`,
+      );
+    } catch (error) {
+      // No lanzar error para no interrumpir la completación del contrato
+    }
 
     return updatedContract;
   }
@@ -716,5 +724,162 @@ export class ContractService {
     }
 
     return await this.contractRepository.save(contract);
+  }
+
+  /**
+   * Genera un código OTP de 6 dígitos
+   */
+  private generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  /**
+   * Genera un OTP para un contrato completado
+   */
+  async generateContractOTP(contractId: string, userId?: number): Promise<ContractOTP> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    if (contract.status !== ContractStatus.COMPLETED) {
+      throw new BadRequestException("Solo se puede generar OTP para contratos completados");
+    }
+
+    // Si se proporciona userId, verificar que sea el cliente del contrato
+    if (userId && contract.client.id !== userId) {
+      throw new BadRequestException("Solo el cliente del contrato puede generar el OTP");
+    }
+
+    // Verificar si ya existe un OTP válido para este contrato
+    const existingOTP = await this.otpRepository.findOne({
+      where: {
+        contract: { id: contractId },
+        isUsed: false,
+        expiresAt: Not(IsNull()),
+      },
+      order: { createdAt: "DESC" },
+    });
+
+    if (existingOTP && existingOTP.expiresAt > new Date()) {
+      throw new BadRequestException("Ya existe un OTP válido para este contrato");
+    }
+
+    // Generar nuevo OTP
+    const otpCode = this.generateOTP();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Expira en 24 horas
+
+    const otp = this.otpRepository.create({
+      contract,
+      code: otpCode,
+      expiresAt,
+    });
+
+    const savedOTP = await this.otpRepository.save(otp);
+
+    // Enviar OTP por email al cliente
+    try {
+      await this.emailService.sendOTPNotification(
+        contract.client.email,
+        contract.client.name,
+        otpCode,
+        contract.publication.title,
+        contract.provider.name,
+      );
+    } catch (error) {
+      console.error("Error sending OTP email:", error);
+    }
+
+    return savedOTP;
+  }
+
+  /**
+   * Verifica un OTP para un contrato
+   */
+  async verifyContractOTP(contractId: string, otpCode: string, userId?: number): Promise<{ isValid: boolean; message: string }> {
+    
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+
+    if (contract.status !== ContractStatus.COMPLETED) {
+      throw new BadRequestException("Solo se puede verificar OTP para contratos completados");
+    }
+
+    // Si se proporciona userId, verificar que sea el cliente del contrato
+    if (userId && contract.client.id !== userId) {
+      throw new BadRequestException("Solo el cliente del contrato puede verificar el OTP");
+    }
+
+    
+    const otp = await this.otpRepository.findOne({
+      where: {
+        contract: { id: contractId },
+        code: otpCode,
+        isUsed: false,
+      },
+      order: { createdAt: "DESC" },
+    });
+
+    if (!otp) {
+      return { isValid: false, message: "Código OTP inválido" };
+    }
+
+    if (otp.expiresAt < new Date()) {
+      return { isValid: false, message: "Código OTP expirado" };
+    }
+
+    // Marcar OTP como usado
+    otp.isUsed = true;
+    await this.otpRepository.save(otp);
+
+    // Marcar el contrato como OTP verificado
+    contract.otpVerified = true;
+    await this.contractRepository.save(contract);
+
+    return { isValid: true, message: "OTP verificado correctamente" };
+  }
+
+  /**
+   * Reenvía un OTP para un contrato
+   */
+  async resendContractOTP(contractId: string, userId?: number): Promise<ContractOTP> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    if (contract.status !== ContractStatus.COMPLETED) {
+      throw new BadRequestException("Solo se puede reenviar OTP para contratos completados");
+    }
+
+    // Si se proporciona userId, verificar que sea el cliente del contrato
+    if (userId && contract.client.id !== userId) {
+      throw new BadRequestException("Solo el cliente del contrato puede reenviar el OTP");
+    }
+
+    // Invalidar OTPs anteriores
+    await this.otpRepository.update(
+      { contract: { id: contractId }, isUsed: false },
+      { isUsed: true }
+    );
+
+    // Generar nuevo OTP
+    return await this.generateContractOTP(contractId, userId);
   }
 }
