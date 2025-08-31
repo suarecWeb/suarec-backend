@@ -8,8 +8,11 @@ import {
   IsUUID,
   ValidateIf,
   IsBoolean,
+  isEnum,
+  IsEnum,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { UserPlan } from "../enums/user-plan.enum";
 
 // DTOs específicos para actualización que permiten el campo id
 export class UpdateEducationDto {
@@ -112,6 +115,10 @@ export class UpdateUserDto {
   @IsString({ each: true })
   @IsOptional()
   roles?: string[];
+
+  @IsEnum(UserPlan)
+  @IsOptional()
+  plan?: UserPlan;
 
   // Relación con la empresa como administrador (oneToOne)
   @IsString()
