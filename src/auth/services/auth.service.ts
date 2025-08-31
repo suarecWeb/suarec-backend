@@ -24,6 +24,7 @@ export class AuthService {
     const user = await this.userRepository
       .createQueryBuilder("user")
       .leftJoinAndSelect("user.roles", "role") // Esto asegura que los roles sean cargados
+      .leftJoinAndSelect("user.company", "company") // Cargar la empresa si existe
       .where("user.email = :email", { email })
       .getOne();
 
@@ -36,6 +37,14 @@ export class AuthService {
       throw new UnauthorizedException(
         "Please verify your email address before logging in. Check your inbox for the verification email.",
       );
+    }
+
+    if (user.company != null && !user.isVerify) {
+      throw new UnauthorizedException({
+        message: "Your company must be verified before logging in.",
+        error: "COMPANY_NOT_VERIFIED",
+        statusCode: 401,
+      });
     }
 
     const payload = {
