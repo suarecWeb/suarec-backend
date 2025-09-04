@@ -23,6 +23,7 @@ import { User } from "../user/entities/user.entity";
 import { EmailService } from "../email/email.service";
 import { PaymentService } from "../payment/services/payment.service";
 import { PaymentMethod } from "../enums/paymentMethod.enum";
+import { BalanceService } from "../user/services/balance.service";
 
 @Injectable()
 export class ContractService {
@@ -66,6 +67,8 @@ export class ContractService {
     private emailService: EmailService, // eslint-disable-line no-unused-vars
     @Inject(forwardRef(() => PaymentService))
     private paymentService: PaymentService, // eslint-disable-line no-unused-vars
+    @Inject(forwardRef(() => BalanceService))
+    private balanceService: BalanceService, // eslint-disable-line no-unused-vars
   ) {}
 
   /**
@@ -180,6 +183,12 @@ export class ContractService {
     // Verificar que el cliente no está contratando su propio servicio
     if (clientId === providerId) {
       throw new BadRequestException("No puedes contratar tu propio servicio");
+    }
+
+    // Verificar que el cliente no tiene saldo negativo (puede solicitar nuevos servicios)
+    const canRequestNewService = await this.balanceService.canRequestNewService(clientId);
+    if (!canRequestNewService) {
+      throw new BadRequestException("No puedes solicitar nuevos servicios. Tienes un saldo negativo pendiente de pago. Debes pagar tu saldo pendiente antes de solicitar nuevos servicios.");
     }
 
       // Crear la contratación usando los valores del frontend
@@ -844,11 +853,22 @@ export class ContractService {
     otp.isUsed = true;
     await this.otpRepository.save(otp);
 
-    // Marcar el contrato como OTP verificado
-    contract.otpVerified = true;
-    await this.contractRepository.save(contract);
+    try {
+      // Marcar el contrato como OTP verificado
+      contract.otpVerified = true;
+      await this.contractRepository.save(contract);
 
-    return { isValid: true, message: "OTP verificado correctamente" };
+      // Procesar balance: Cliente recibe saldo negativo, Proveedor recibe saldo positivo
+      await this.balanceService.processOTPVerificationBalance(contract);
+
+      return { isValid: true, message: "OTP verificado correctamente" };
+    } catch (error) {
+      console.error("Error al procesar verificación OTP:", error);
+      // Revertir el estado del contrato si hay error en el balance
+      contract.otpVerified = false;
+      await this.contractRepository.save(contract);
+      throw new BadRequestException("Error al procesar la verificación OTP");
+    }
   }
 
   /**

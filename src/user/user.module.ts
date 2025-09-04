@@ -32,6 +32,9 @@ import { WompiBanksService } from "./services/wompi-banks.service";
 import { BanksController } from "./controllers/banks.controller";
 import { IdPhotosService } from "./services/id-photos.service";
 import { UserIdPhotos } from "./entities/user-id-photos.entity";
+import { BalanceTransaction } from "./entities/balance-transaction.entity";
+import { BalanceService } from "./services/balance.service";
+import { BalanceController } from "./controllers/balance.controller";
 
 @Module({
   imports: [
@@ -56,6 +59,7 @@ import { UserIdPhotos } from "./entities/user-id-photos.entity";
       UserGallery,
       UserIdPhotos,
       BankInfo,
+      BalanceTransaction,
     ]),
     PermissionModule,
 
@@ -68,8 +72,8 @@ import { UserIdPhotos } from "./entities/user-id-photos.entity";
       signOptions: { expiresIn: "1h" }, // Opciones de firma (por ejemplo, expiración del token)
     }),
   ],
-  controllers: [UserController, ExperienceController, BankInfoController, BanksController],
-  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService],
-  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService],
+  controllers: [UserController, ExperienceController, BankInfoController, BanksController, BalanceController],
+  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService, BalanceService],
+  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService, BalanceService],
 })
 export class UserModule {}
