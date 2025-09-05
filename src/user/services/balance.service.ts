@@ -104,6 +104,8 @@ export class BalanceService {
 
       // Asegurar que los balances sean números válidos
       const clientCurrentDebit = Number(client.debit_balance) || 0;
+      const clientCurrentCredit = Number(client.credit_balance) || 0;
+      const providerCurrentDebit = Number(provider.debit_balance) || 0;
       const providerCurrentCredit = Number(provider.credit_balance) || 0;
 
       // Actualizar balance del cliente (incrementar deuda - recibe servicio)
@@ -122,8 +124,10 @@ export class BalanceService {
       const clientTransaction = this.balanceTransactionRepository.create({
         user: client,
         amount: -contractAmount,
-        balanceBefore: clientCurrentDebit,
-        balanceAfter: clientNewDebit,
+        debitBalanceBefore: clientCurrentDebit,
+        debitBalanceAfter: clientNewDebit,
+        creditBalanceBefore: clientCurrentCredit,
+        creditBalanceAfter: clientCurrentCredit, // No cambia el crédito del cliente
         type: BalanceTransactionType.OTP_VERIFICATION_DEBIT,
         status: BalanceTransactionStatus.COMPLETED,
         description: `Deuda por recibir servicio - Contrato ${contract.id}`,
@@ -134,8 +138,10 @@ export class BalanceService {
       const providerTransaction = this.balanceTransactionRepository.create({
         user: provider,
         amount: contractAmount,
-        balanceBefore: providerCurrentCredit,
-        balanceAfter: providerNewCredit,
+        debitBalanceBefore: providerCurrentDebit,
+        debitBalanceAfter: providerCurrentDebit, // No cambia el débito del proveedor
+        creditBalanceBefore: providerCurrentCredit,
+        creditBalanceAfter: providerNewCredit,
         type: BalanceTransactionType.OTP_VERIFICATION_CREDIT,
         status: BalanceTransactionStatus.COMPLETED,
         description: `Crédito por proveer servicio - Contrato ${contract.id}`,
@@ -198,12 +204,17 @@ export class BalanceService {
         debit_balance: newDebit,
       });
 
+      // Obtener balance de crédito actual del usuario
+      const currentCredit = Number(user.credit_balance) || 0;
+
       // Crear transacción de balance
       const balanceTransaction = this.balanceTransactionRepository.create({
         user: user,
         amount: amountToPay,
-        balanceBefore: currentDebit,
-        balanceAfter: newDebit,
+        debitBalanceBefore: currentDebit,
+        debitBalanceAfter: newDebit,
+        creditBalanceBefore: currentCredit,
+        creditBalanceAfter: currentCredit, // No cambia el crédito al pagar deuda
         type: BalanceTransactionType.PAYMENT_COMPLETED_CREDIT,
         status: BalanceTransactionStatus.COMPLETED,
         description: `Pago de deuda - Transacción ${paymentTransaction.id}`,

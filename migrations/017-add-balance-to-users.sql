@@ -1,5 +1,7 @@
 -- Migration: Add credit_balance and debit_balance fields to users table
--- Description: Adds separate balances to track credits (saldo a favor) and debits (saldo en contra) for service payments
+-- and create balance_transactions table with separate credit/debit tracking
+-- Description: Implements full support for separate balances (credit and debit)
+-- in both users and balance_transactions.
 
 -- Add credit_balance and debit_balance columns to users table
 ALTER TABLE users 
@@ -19,8 +21,13 @@ CREATE TABLE balance_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL,
-    balance_before DECIMAL(10,2) NOT NULL,
-    balance_after DECIMAL(10,2) NOT NULL,
+
+    -- Separate balances for tracking
+    credit_balance_before DECIMAL(10,2) NOT NULL DEFAULT 0,
+    credit_balance_after DECIMAL(10,2) NOT NULL DEFAULT 0,
+    debit_balance_before DECIMAL(10,2) NOT NULL DEFAULT 0,
+    debit_balance_after DECIMAL(10,2) NOT NULL DEFAULT 0,
+
     type VARCHAR(50) NOT NULL CHECK (
         type IN (
             'otp_verification_debit', 
@@ -38,10 +45,12 @@ CREATE TABLE balance_transactions (
 );
 
 -- Add comments to balance_transactions table
-COMMENT ON TABLE balance_transactions IS 'Transaction history for user account balance changes';
+COMMENT ON TABLE balance_transactions IS 'Transaction history for user account balance changes with separate credit and debit tracking';
 COMMENT ON COLUMN balance_transactions.amount IS 'Transaction amount (positive or negative)';
-COMMENT ON COLUMN balance_transactions.balance_before IS 'User balance before transaction';
-COMMENT ON COLUMN balance_transactions.balance_after IS 'User balance after transaction';
+COMMENT ON COLUMN balance_transactions.credit_balance_before IS 'User credit balance before transaction';
+COMMENT ON COLUMN balance_transactions.credit_balance_after IS 'User credit balance after transaction';
+COMMENT ON COLUMN balance_transactions.debit_balance_before IS 'User debit balance before transaction';
+COMMENT ON COLUMN balance_transactions.debit_balance_after IS 'User debit balance after transaction';
 COMMENT ON COLUMN balance_transactions.type IS 'Type of balance transaction';
 COMMENT ON COLUMN balance_transactions.reference IS 'Reference to related contract or payment';
 
@@ -51,6 +60,10 @@ CREATE INDEX idx_balance_transactions_type ON balance_transactions(type);
 CREATE INDEX idx_balance_transactions_created_at ON balance_transactions(created_at);
 CREATE INDEX idx_balance_transactions_contract_id ON balance_transactions(contract_id);
 CREATE INDEX idx_balance_transactions_payment_transaction_id ON balance_transactions(payment_transaction_id);
+CREATE INDEX idx_balance_transactions_credit_balance_before ON balance_transactions(credit_balance_before);
+CREATE INDEX idx_balance_transactions_credit_balance_after ON balance_transactions(credit_balance_after);
+CREATE INDEX idx_balance_transactions_debit_balance_before ON balance_transactions(debit_balance_before);
+CREATE INDEX idx_balance_transactions_debit_balance_after ON balance_transactions(debit_balance_after);
 
 -- Create trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_balance_transactions_updated_at()

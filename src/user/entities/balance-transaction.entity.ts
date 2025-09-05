@@ -33,11 +33,17 @@ export class BalanceTransaction {
   @Column("decimal", { precision: 10, scale: 2, nullable: false })
   amount: number; 
 
-  @Column("decimal", { precision: 10, scale: 2, nullable: false })
-  balanceBefore: number; 
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  creditBalanceBefore: number;
 
-  @Column("decimal", { precision: 10, scale: 2, nullable: false })
-  balanceAfter: number;
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  creditBalanceAfter: number;
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  debitBalanceBefore: number;
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  debitBalanceAfter: number;
 
   @Column({
     type: "enum",
