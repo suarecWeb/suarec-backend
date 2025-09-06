@@ -109,6 +109,12 @@ export class Contract {
   @OneToMany(() => ContractBid, (bid) => bid.contract)
   bids: ContractBid[];
 
+  @OneToMany(() => ContractOTP, (otp) => otp.contract)
+  otps: ContractOTP[];
+
+  @Column("boolean", { default: false })
+  otpVerified: boolean; // Si el OTP ha sido verificado por el cliente
+
   @Column("int", { nullable: true })
   quantity?: number; // Cantidad de unidades contratadas
 }
@@ -135,4 +141,28 @@ export class ContractBid {
 
   @CreateDateColumn()
   createdAt: Date;
+}
+
+@Entity()
+export class ContractOTP {
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
+
+  @ManyToOne(() => Contract, (contract) => contract.otps)
+  contract: Contract;
+
+  @Column("varchar", { length: 6, nullable: false })
+  code: string; // Código OTP de 6 dígitos
+
+  @Column("boolean", { default: false })
+  isUsed: boolean; // Si el OTP ya fue usado
+
+  @Column("timestamp", { nullable: true })
+  expiresAt: Date; // Fecha de expiración (24 horas)
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

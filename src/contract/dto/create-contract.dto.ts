@@ -135,3 +135,15 @@ export class ProviderResponseDto {
   @IsOptional()
   proposedTime?: string;
 }
+
+export class VerifyOTPDto {
+  @IsString()
+  @IsNotEmpty()
+  otpCode: string;
+}
+
+export class ResendOTPDto {
+  @IsUUID()
+  @IsNotEmpty()
+  contractId: string;
+}
