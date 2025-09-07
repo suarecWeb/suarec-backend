@@ -505,6 +505,19 @@ export class UserService {
     return user;
   }
 
+  async findByCellphone(cellphone: string) {
+    const user: User = await this.usersRepository.findOne({
+      where: { cellphone },
+      relations: ["roles"],
+    });
+    if (!user) {
+      throw new NotFoundException(
+        "Phone number not found, please register or try again.",
+      );
+    }
+    return user;
+  }
+
   async findAllCompanies(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<User>> {
