@@ -11,7 +11,7 @@ import {
   Patch,
 } from "@nestjs/common";
 import { ContractService } from "./contract.service";
-import { CreateContractDto, CreateBidDto, AcceptBidDto, ProviderResponseDto } from "./dto/create-contract.dto";
+import { CreateContractDto, CreateBidDto, AcceptBidDto, ProviderResponseDto, VerifyOTPDto, ResendOTPDto } from "./dto/create-contract.dto";
 import { UpdateContractDto } from "./dto/update-contract.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { RolesGuard } from "../auth/guard/roles.guard";
@@ -105,6 +105,18 @@ export class ContractController {
     return await this.contractService.getContractById(id);
   }
 
+  @Get(":id/check-penalty")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async checkPenaltyRequired(@Param("id") id: string, @Request() req) {
+    return await this.contractService.checkPenaltyRequired(id, req.user.id);
+  }
+
+  @Post(":id/cancellation-penalty")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async createCancellationPenaltyPayment(@Param("id") id: string, @Request() req) {
+    return await this.contractService.createCancellationPenaltyPayment(id, req.user.id);
+  }
+
   @Delete(":id/cancel")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   async cancelContract(@Param("id") id: string, @Request() req) {
@@ -121,5 +133,29 @@ export class ContractController {
   @Roles("ADMIN")
   async restoreContract(@Param("id") id: string) {
     return await this.contractService.restoreContract(id);
+  }
+
+  @Post(":id/complete")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async completeContract(@Param("id") id: string, @Request() req) {
+    return await this.contractService.completeContract(id, req.user.id);
+  }
+
+  @Post(":id/generate-otp")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async generateOTP(@Param("id") id: string, @Request() req) {
+    return await this.contractService.generateContractOTP(id, req.user.id);
+  }
+
+  @Post(":id/verify-otp")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async verifyOTP(@Param("id") id: string, @Body() verifyOTPDto: VerifyOTPDto, @Request() req) {
+    return await this.contractService.verifyContractOTP(id, verifyOTPDto.otpCode, req.user.id);
+  }
+
+  @Post(":id/resend-otp")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async resendOTP(@Param("id") id: string, @Request() req) {
+    return await this.contractService.resendContractOTP(id, req.user.id);
   }
 }

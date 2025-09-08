@@ -176,6 +176,20 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
+  @Get(":id/gallery")
+  @ApiOperation({ 
+    summary: "Get user gallery by ID",
+    description: "Get gallery images for a specific user"
+  })
+  @ApiParam({ name: "id", description: "User ID" })
+  @ApiResponse({ status: 200, description: "User gallery retrieved successfully" })
+  @ApiResponse({ status: 403, description: "Forbidden - Admin access required" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async getUserGalleryById(@Param("id") id: string) {
+    return this.galleryService.getUserGallery(+id);
+  }
+
+  @UseGuards(AuthGuard)
   @Post("me/gallery")
   async addImageToGallery(
     @Request() req,

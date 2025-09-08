@@ -29,6 +29,7 @@ import { UserGallery } from "./user-gallery.entity";
 import { UserIdPhotos } from "./user-id-photos.entity";
 import { CompanyHistory } from "../../company/entities/company-history.entity";
 import { BankInfo } from "./bank-info.entity";
+import { UserPlan } from "../enums/user-plan.enum";
 
 @Entity("users")
 export class User {
@@ -211,6 +212,17 @@ export class User {
 
   @Column("boolean", { default: false })
   isVerify: boolean;
+
+  @Column({
+    type: "enum",
+    enum: UserPlan,
+    default: UserPlan.FREE
+  })
+  plan: UserPlan;
+
+  // Fecha de expiración del plan (para futura funcionalidad)
+  @Column("timestamp", { nullable: true })
+  planExpiresAt: Date;
 
   // Relaciones para contrataciones y subastas
   @OneToMany(() => Contract, (contract) => contract.client)
