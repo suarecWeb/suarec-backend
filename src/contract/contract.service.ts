@@ -70,12 +70,15 @@ export class ContractService {
 
   /**
    * Calcula las comisiones de SUAREC basadas en el precio actual
+   * Solo aplica IVA si el proveedor es una empresa (persona jurídica)
    */
-  private calculateCommissions(currentPrice: number) {
+  private calculateCommissions(currentPrice: number, isProviderCompany: boolean = false) {
     const suarecCommission = currentPrice * this.SUAREC_COMMISSION_RATE;
     const priceWithoutCommission = currentPrice - suarecCommission;
-    const totalCommissionWithTax =
-      suarecCommission + currentPrice * this.TAX_RATE;
+    
+    // Solo aplicar IVA si el proveedor es una empresa
+    const taxAmount = isProviderCompany ? currentPrice * this.TAX_RATE : 0;
+    const totalCommissionWithTax = suarecCommission + taxAmount;
 
     return {
       suarecCommission: Number(suarecCommission.toFixed(2)),
@@ -167,11 +170,23 @@ export class ContractService {
 
       console.log("🔍 Debug - ProviderId obtenido de la publicación:", providerId);
 
-    // Verificar que el cliente y proveedor existen
-    const [client, provider] = await Promise.all([
-      this.userRepository.findOne({ where: { id: clientId } }),
-      this.userRepository.findOne({ where: { id: providerId } }),
-    ]);
+
+      // Verificar que el cliente y proveedor existen
+      const [client, provider] = await Promise.all([
+        this.userRepository.findOne({ 
+          where: { id: clientId },
+          relations: ["roles", "company"]
+        }),
+        this.userRepository.findOne({ 
+          where: { id: providerId },
+          relations: ["roles", "company"]
+        }),
+      ]);
+
+      console.log("🔍 Debug - Usuarios encontrados:", {
+        client: client ? client.id : "NO ENCONTRADO",
+        provider: provider ? provider.id : "NO ENCONTRADO"
+      });
 
     if (!client || !provider) {
       throw new NotFoundException("Usuario no encontrado");
@@ -316,8 +331,11 @@ export class ContractService {
     bid.isAccepted = true;
     await this.bidRepository.save(bid);
 
+    // Verificar si el proveedor es una empresa para aplicar IVA
+    const isProviderCompany = bid.contract.provider.roles?.some(role => role.name === 'BUSINESS') || false;
+    
     // Calcular las comisiones basadas en el precio de la oferta aceptada
-    const commissions = this.calculateCommissions(bid.amount);
+    const commissions = this.calculateCommissions(bid.amount, isProviderCompany);
 
     // Actualizar el estado del contrato con los nuevos campos calculados
     bid.contract.status = ContractStatus.ACCEPTED;
@@ -356,11 +374,11 @@ export class ContractService {
     const [asClient, asProvider] = await Promise.all([
       this.contractRepository.find({
         where: { client: { id: userId }, deleted_at: null }, // Solo contratos activos
-        relations: ["publication", "client", "provider", "bids", "bids.bidder"],
+        relations: ["publication", "client", "client.roles", "client.company", "provider", "provider.roles", "provider.company", "bids", "bids.bidder"],
       }),
       this.contractRepository.find({
         where: { provider: { id: userId }, deleted_at: null }, // Solo contratos activos
-        relations: ["publication", "client", "provider", "bids", "bids.bidder"],
+        relations: ["publication", "client", "client.roles", "client.company", "provider", "provider.roles", "provider.company", "bids", "bids.bidder"],
       }),
     ]);
 
@@ -370,7 +388,7 @@ export class ContractService {
   async getContractById(contractId: string): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null }, // Solo contratos activos
-      relations: ["publication", "client", "provider", "bids", "bids.bidder"],
+      relations: ["publication", "client", "client.roles", "client.company", "provider", "provider.roles", "provider.company", "bids", "bids.bidder"],
     });
 
     if (!contract) {
@@ -668,9 +686,13 @@ export class ContractService {
         contract.agreedDate = data.proposedDate || contract.requestedDate;
         contract.agreedTime = data.proposedTime || contract.requestedTime;
 
+        // Verificar si el proveedor es una empresa para aplicar IVA
+        const isProviderCompany = contract.provider.roles?.some(role => role.name === 'BUSINESS') || false;
+        
         // Calcular las comisiones basadas en el precio actual
         const acceptCommissions = this.calculateCommissions(
           contract.currentPrice,
+          isProviderCompany
         );
         contract.suarecCommission = acceptCommissions.suarecCommission;
         contract.priceWithoutCommission =
