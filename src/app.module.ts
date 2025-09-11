@@ -22,6 +22,7 @@ import { WorkContractModule } from "./work-contract/work-contract.module";
 import { EmailVerificationModule } from "./email-verification/email-verification.module";
 import { ContractModule } from "./contract/contract.module";
 import { PaymentModule } from "./payment/payment.module";
+import { BotModule } from "./bot/bot.module";
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { PaymentModule } from "./payment/payment.module";
     WorkContractModule,
     ContractModule,
     PaymentModule,
+    BotModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
