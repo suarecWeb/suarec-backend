@@ -66,4 +66,30 @@ export class UpdatePublicationDto {
   @IsOptional()
   @MaxLength(200)
   preferredSchedule?: string; // Horario preferido
+
+  // Nuevos campos de ubicación detallada
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  locationType?: string; // Tipo de ubicación: 'presencial' | 'virtual'
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  serviceLocation?: string; // Modalidad del servicio: 'domicilio' | 'sitio'
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  virtualMeetingLink?: string; // Link de videollamada
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  propertyType?: string; // Tipo de inmueble
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  references?: string; // Referencias de ubicación
 }
