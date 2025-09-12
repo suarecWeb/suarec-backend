@@ -1,6 +1,7 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from "class-validator";
-import { Type } from "class-transformer";
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray, IsNumber } from "class-validator";
+import { Type, Transform } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
+import { PublicationType } from "../../publication/entities/publication.entity";
 
 export class PaginationDto {
   @ApiProperty({
@@ -28,11 +29,12 @@ export class PaginationDto {
 
   @ApiProperty({
     description: "Tipo de publicación para filtrar",
+    enum: PublicationType,
     required: false,
   })
   @IsOptional()
-  @IsString()
-  type?: string;
+  @IsEnum(PublicationType)
+  type?: PublicationType;
 
   @ApiProperty({
     description: "Categoría para filtrar",
@@ -41,4 +43,64 @@ export class PaginationDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiProperty({
+    description: "Término de búsqueda en título y descripción",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({
+    description: "Precio mínimo",
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  minPrice?: number;
+
+  @ApiProperty({
+    description: "Precio máximo",
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  maxPrice?: number;
+
+  @ApiProperty({
+    description: "Filtrar por múltiples categorías",
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map(item => item.trim());
+    }
+    return value;
+  })
+  categories?: string[];
+
+  @ApiProperty({
+    description: "Ordenar por campo",
+    required: false,
+    enum: ['created_at', 'modified_at', 'price', 'visitors', 'title'],
+  })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'created_at';
+
+  @ApiProperty({
+    description: "Dirección del ordenamiento",
+    required: false,
+    enum: ['ASC', 'DESC'],
+  })
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'ASC' | 'DESC' = 'DESC';
 }

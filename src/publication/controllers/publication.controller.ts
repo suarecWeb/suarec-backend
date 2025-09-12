@@ -41,14 +41,22 @@ export class PublicationController {
   @Get()
   @Roles("ADMIN", "BUSINESS", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get all publications with pagination" })
+  @ApiOperation({ summary: "Get all publications with advanced filtering and pagination" })
   @ApiQuery({ type: PaginationDto })
   findAll(
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    console.log("🔍 Controller - Received type:", paginationDto.type);
-    console.log("🔍 Controller - Type is valid enum:", Object.values(PublicationType).includes(paginationDto.type as PublicationType));
-    return this.publicationService.findAll(paginationDto, paginationDto.type as PublicationType) as Promise<
+    console.log("🔍 Controller - Received filters:", {
+      type: paginationDto.type,
+      category: paginationDto.category,
+      categories: paginationDto.categories,
+      search: paginationDto.search,
+      minPrice: paginationDto.minPrice,
+      maxPrice: paginationDto.maxPrice,
+      sortBy: paginationDto.sortBy,
+      sortOrder: paginationDto.sortOrder
+    });
+    return this.publicationService.findAll(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
   }
@@ -126,5 +134,23 @@ export class PublicationController {
   @ApiOperation({ summary: "Restore a deleted publication (Admin only)" })
   restore(@Param("id") id: string, @Request() req): Promise<Publication> {
     return this.publicationService.restore(id, req.user);
+  }
+
+  @Get("filters/categories")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get available categories for filtering" })
+  @ApiResponse({ status: 200, description: "List of available categories" })
+  getAvailableCategories(): Promise<string[]> {
+    return this.publicationService.getAvailableCategories();
+  }
+
+  @Get("filters/types")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: "Get available publication types for filtering" })
+  @ApiResponse({ status: 200, description: "List of available publication types" })
+  getAvailableTypes(): Promise<PublicationType[]> {
+    return this.publicationService.getAvailableTypes();
   }
 }

@@ -39,6 +39,6 @@ async function bootstrap() {
   app.setGlobalPrefix("suarec");
   app.enableCors(corsOptions); // Habilitar CORS
 
-  await app.listen(3001);
+  await app.listen(3002);
 }
 bootstrap();

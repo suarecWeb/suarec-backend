@@ -639,7 +639,7 @@ export class PaymentService {
     userId: number,
     historyDto: PaymentHistoryDto,
   ): Promise<PaginationResponse<PaymentTransaction>> {
-    const { page, limit, type, status, startDate, endDate } = historyDto;
+    const { page, limit, paymentType, status, startDate, endDate } = historyDto;
     const skip = (page - 1) * limit;
 
     // Construir query base con QueryBuilder para mejor control
@@ -651,10 +651,10 @@ export class PaymentService {
       .leftJoinAndSelect("contract.publication", "publication");
 
     // Aplicar filtros por tipo de historial
-    if (type === PaymentHistoryType.SENT) {
+    if (paymentType === PaymentHistoryType.SENT) {
       // Solo pagos enviados (usuario como payer)
       queryBuilder.where("payer.id = :userId", { userId });
-    } else if (type === PaymentHistoryType.RECEIVED) {
+    } else if (paymentType === PaymentHistoryType.RECEIVED) {
       // Solo pagos recibidos (usuario como payee)
       queryBuilder.where("payee.id = :userId", { userId });
     } else {
