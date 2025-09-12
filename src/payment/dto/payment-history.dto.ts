@@ -18,7 +18,7 @@ export class PaymentHistoryDto extends PaginationDto {
   })
   @IsOptional()
   @IsEnum(PaymentHistoryType)
-  type?: PaymentHistoryType = PaymentHistoryType.ALL;
+  paymentType?: PaymentHistoryType = PaymentHistoryType.ALL;
 
   @ApiProperty({
     description: "Filtrar por estado del pago",
