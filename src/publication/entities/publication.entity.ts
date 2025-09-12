@@ -78,6 +78,22 @@ export class Publication {
   @Column("text", { nullable: true })
   preferredSchedule?: string; // Horario preferido
 
+  // Nuevos campos de ubicación detallada
+  @Column("text", { nullable: true })
+  locationType?: string; // Tipo de ubicación: 'presencial' | 'virtual'
+
+  @Column("text", { nullable: true })
+  serviceLocation?: string; // Modalidad del servicio: 'domicilio' | 'sitio'
+
+  @Column("text", { nullable: true })
+  virtualMeetingLink?: string; // Link de videollamada
+
+  @Column("text", { nullable: true })
+  propertyType?: string; // Tipo de inmueble
+
+  @Column("text", { nullable: true })
+  references?: string; // Referencias de ubicación
+
   @ManyToOne(() => User, (user) => user.publications)
   user: User;
 
