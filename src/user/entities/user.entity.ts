@@ -248,4 +248,12 @@ export class User {
 
   @Column("text", { nullable: true, unique: true })
   cedula: string;
+
+  // Saldo a favor (por proveer servicios) - No se puede usar para cancelar deudas
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  credit_balance: number;
+
+  // Saldo en contra (por recibir servicios) - Se cancela solo con pagos reales
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  debit_balance: number;
 }

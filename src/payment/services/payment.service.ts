@@ -22,6 +22,7 @@ import { User } from "../../user/entities/user.entity";
 import { Contract } from "../../contract/entities/contract.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import { ContractService } from "../../contract/contract.service";
+import { BalanceService } from "../../user/services/balance.service";
 
 @Injectable()
 export class PaymentService {
@@ -36,6 +37,8 @@ export class PaymentService {
     wompiService: WompiService,
     @Inject(forwardRef(() => ContractService))
     private contractService: ContractService, // eslint-disable-line no-unused-vars
+    @Inject(forwardRef(() => BalanceService))
+    private balanceService: BalanceService, // eslint-disable-line no-unused-vars
   ) {
     this.wompiService = wompiService;
   }
@@ -448,6 +451,10 @@ export class PaymentService {
   }
 
   async processWompiWebhook(webhookData: any): Promise<void> {
+    console.log("🔔 WEBHOOK WOMPI RECIBIDO - INICIO"); // eslint-disable-line no-console
+    console.log("🔔 Timestamp:", new Date().toISOString()); // eslint-disable-line no-console
+    console.log("🔔 Webhook data:", JSON.stringify(webhookData, null, 2)); // eslint-disable-line no-console
+    
     try {
       const { event, data } = webhookData;
       console.log("=== WEBHOOK WOMPI RECIBIDO ==="); // eslint-disable-line no-console
@@ -540,6 +547,7 @@ export class PaymentService {
     console.log("Transacción ID:", paymentTransaction.id); // eslint-disable-line no-console
     console.log("Estado actual:", paymentTransaction.status); // eslint-disable-line no-console
     console.log("Estado de Wompi:", wompiStatus); // eslint-disable-line no-console
+    console.log("Timestamp:", new Date().toISOString()); // eslint-disable-line no-console
 
     let newStatus: PaymentStatus;
 
@@ -558,6 +566,12 @@ export class PaymentService {
         break;
       default:
         newStatus = PaymentStatus.PENDING;
+    }
+
+    // Verificar si el estado ya es el mismo para evitar actualizaciones innecesarias
+    if (paymentTransaction.status === newStatus) {
+      console.log("⚠️ El estado ya es el mismo, no se actualizará:", newStatus); // eslint-disable-line no-console
+      return;
     }
 
     await this.update(paymentTransaction.id, {
@@ -589,6 +603,14 @@ export class PaymentService {
             fullPaymentTransaction.payer.id
           );
         } else {
+          console.log("💰 Procesando balance después del pago completado..."); // eslint-disable-line no-console
+          console.log("💰 Transacción ID:", fullPaymentTransaction.id); // eslint-disable-line no-console
+          console.log("💰 Payer ID:", fullPaymentTransaction.payer?.id); // eslint-disable-line no-console
+          console.log("💰 Amount:", fullPaymentTransaction.amount); // eslint-disable-line no-console
+          
+          // Procesar balance: Cliente recibe saldo positivo al completar el pago
+          await this.balanceService.processPaymentCompletedBalance(fullPaymentTransaction);
+          
           // Solo habilitar calificación para pagos normales
           await this.enableRatingAfterPayment(fullPaymentTransaction);
         }
@@ -664,9 +686,12 @@ export class PaymentService {
       });
     }
 
-    // Filtro por estado
+    // Filtro por estado - por defecto solo mostrar completadas
     if (status) {
       queryBuilder.andWhere("payment.status = :status", { status });
+    } else {
+      // Si no se especifica estado, mostrar solo las completadas
+      queryBuilder.andWhere("payment.status = :status", { status: PaymentStatus.COMPLETED });
     }
 
     // Filtros por fecha
