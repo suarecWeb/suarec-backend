@@ -27,6 +27,9 @@ async function bootstrap() {
       "http://localhost:19006", // Expo web alternativo
       "http://192.168.1.17:8081", // App móvil desde IP local
       "http://192.168.1.17:19006", // App móvil desde IP local alternativo
+      "http://192.168.1.17:3000", // App móvil desde IP local
+      "http://192.168.1.17:3001", // App móvil desde IP local
+      "http://localhost:3001", // App móvil desde IP local
       process.env.PUBLIC_FRONT_URL,
       "https://suarec-frontend-production.up.railway.app",
       "https://suarec.com",
@@ -39,6 +42,6 @@ async function bootstrap() {
   app.setGlobalPrefix("suarec");
   app.enableCors(corsOptions); // Habilitar CORS
 
-  await app.listen(3002);
+  await app.listen(3001);
 }
 bootstrap();

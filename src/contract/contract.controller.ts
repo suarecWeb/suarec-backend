@@ -43,8 +43,11 @@ export class ContractController {
       userId: req.user?.id
     });
     
-    // El cliente será el usuario autenticado
-    createContractDto.clientId = req.user.id;
+    // Si no se especifica clientId, el cliente será el usuario autenticado (flujo normal)
+    // Si se especifica clientId, respetarlo (flujo de SERVICE_REQUEST)
+    if (!createContractDto.clientId) {
+      createContractDto.clientId = req.user.id;
+    }
     
     console.log("🔍 Debug - DTO actualizado:", createContractDto);
     

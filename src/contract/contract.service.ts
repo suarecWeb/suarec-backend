@@ -159,13 +159,13 @@ export class ContractService {
         throw new NotFoundException("Publicación no encontrada");
       }
 
-      // Obtener el providerId de la publicación automáticamente
-      const providerId = publication.user?.id;
+      // Usar el providerId del DTO si se especifica, sino obtenerlo de la publicación
+      const providerId = createContractDto.providerId || publication.user?.id;
       if (!providerId) {
         throw new BadRequestException("La publicación no tiene un proveedor válido");
       }
 
-      console.log("🔍 Debug - ProviderId obtenido de la publicación:", providerId);
+      console.log("🔍 Debug - ProviderId final:", providerId, "del DTO:", createContractDto.providerId, "de publicación:", publication.user?.id);
 
     // Verificar que el cliente y proveedor existen
     const [client, provider] = await Promise.all([
@@ -200,7 +200,9 @@ export class ContractService {
         propertyType,
         neighborhood,
         locationDescription,
-        status: ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
+        status: createContractDto.clientMessage?.includes('Contrato creado automáticamente desde aplicación aceptada') 
+          ? ContractStatus.ACCEPTED // Si es desde aplicación aceptada, ya hay acuerdo
+          : ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
       });
 
     const savedContract = await this.contractRepository.save(contract);
