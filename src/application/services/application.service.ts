@@ -331,6 +331,14 @@ export class ApplicationService {
         application.message = updateApplicationDto.message;
       }
 
+      if (updateApplicationDto.price !== undefined) {
+        application.price = updateApplicationDto.price;
+      }
+
+      if (updateApplicationDto.priceUnit !== undefined) {
+        application.priceUnit = updateApplicationDto.priceUnit;
+      }
+
       await this.applicationRepository.save(application);
 
       // Devolver la aplicación actualizada con todas las relaciones
