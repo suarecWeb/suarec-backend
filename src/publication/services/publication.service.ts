@@ -9,7 +9,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull, Not } from "typeorm";
+import { Repository, IsNull, Not, Like, Between, In } from "typeorm";
 import { Publication, PublicationType } from "../entities/publication.entity";
 import { CreatePublicationDto } from "../dto/create-publication.dto";
 import { UpdatePublicationDto } from "../dto/update-publication.dto";
@@ -58,24 +58,71 @@ export class PublicationService {
 
   async findAll(
     paginationDto: PaginationDto,
-    type?: PublicationType,
   ): Promise<PaginationResponse<Publication>> {
     try {
-      const { page = 1, limit = 5 } = paginationDto;
+      const { 
+        page = 1, 
+        limit = 5, 
+        type, 
+        category, 
+        categories, 
+        search, 
+        minPrice, 
+        maxPrice, 
+        sortBy = 'created_at', 
+        sortOrder = 'DESC' 
+      } = paginationDto;
       const skip = (page - 1) * limit;
 
-      const whereCondition: any = { deleted_at: IsNull() };
+      // Siempre usar query builder para mayor flexibilidad y consistencia
+      const queryBuilder = this.publicationRepository
+        .createQueryBuilder('publication')
+        .leftJoinAndSelect('publication.user', 'user')
+        .leftJoinAndSelect('user.company', 'company')
+        .leftJoinAndSelect('user.employer', 'employer')
+        .where('publication.deleted_at IS NULL');
+
+      // Aplicar filtros
       if (type) {
-        whereCondition.type = type;
+        queryBuilder.andWhere('publication.type = :type', { type });
       }
 
-      const [data, total] = await this.publicationRepository.findAndCount({
-        skip,
-        take: limit,
-        relations: ["user", "user.company", "user.employer"],
-        where: whereCondition,
-        order: { created_at: "DESC" },
-      });
+      if (category) {
+        queryBuilder.andWhere('publication.category = :category', { category });
+      }
+
+      if (categories && categories.length > 0) {
+        queryBuilder.andWhere('publication.category IN (:...categories)', { categories });
+      }
+
+      // Filtro por rango de precios (mejorado)
+      if (minPrice !== undefined || maxPrice !== undefined) {
+        if (minPrice !== undefined && maxPrice !== undefined) {
+          queryBuilder.andWhere('publication.price BETWEEN :minPrice AND :maxPrice', { minPrice, maxPrice });
+        } else if (minPrice !== undefined) {
+          queryBuilder.andWhere('publication.price >= :minPrice AND publication.price IS NOT NULL', { minPrice });
+        } else if (maxPrice !== undefined) {
+          queryBuilder.andWhere('publication.price <= :maxPrice AND publication.price IS NOT NULL', { maxPrice });
+        }
+      }
+
+      // Búsqueda en título o descripción (mejorado)
+      if (search) {
+        queryBuilder.andWhere(
+          '(publication.title ILIKE :search OR publication.description ILIKE :search OR publication.category ILIKE :search)',
+          { search: `%${search}%` }
+        );
+      }
+
+      // Ordenamiento (mejorado con validación)
+      const validSortFields = ['created_at', 'modified_at', 'price', 'visitors', 'title'];
+      const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+      queryBuilder.orderBy(`publication.${sortField}`, sortOrder);
+
+      // Paginación
+      queryBuilder.skip(skip).take(limit);
+
+      const [data, total] = await queryBuilder.getManyAndCount();
 
       const totalPages = Math.ceil(total / limit);
 
@@ -98,13 +145,13 @@ export class PublicationService {
   async findServiceOffers(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    return this.findAll(paginationDto, PublicationType.SERVICE);
+    return this.findAll({ ...paginationDto, type: PublicationType.SERVICE });
   }
 
   async findServiceRequests(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    return this.findAll(paginationDto, PublicationType.SERVICE_REQUEST);
+    return this.findAll({ ...paginationDto, type: PublicationType.SERVICE_REQUEST });
   }
 
   async findOne(id: string): Promise<Publication> {
@@ -261,6 +308,55 @@ export class PublicationService {
           hasPrevPage: page > 1,
         },
       };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  // Método para obtener categorías únicas disponibles
+  async getAvailableCategories(): Promise<string[]> {
+    try {
+      // Categorías predefinidas que siempre deben estar disponibles
+      const predefinedCategories = [
+        "Tecnología",
+        "Construcción", 
+        "Salud",
+        "Educación",
+        "Servicios",
+        "Gastronomía",
+        "Transporte",
+        "Manufactura",
+        "Finanzas",
+        "Agricultura",
+        "Otro"
+      ];
+
+      // Obtener categorías únicas de la base de datos
+      const dbCategories = await this.publicationRepository
+        .createQueryBuilder('publication')
+        .select('DISTINCT publication.category', 'category')
+        .where('publication.deleted_at IS NULL')
+        .andWhere('publication.category IS NOT NULL')
+        .andWhere('publication.category != :empty', { empty: '' })
+        .orderBy('publication.category', 'ASC')
+        .getRawMany();
+
+      const dbCategoryList = dbCategories.map(item => item.category);
+      
+      // Combinar categorías predefinidas con las de la BD, eliminando duplicados
+      const allCategories = [...new Set([...predefinedCategories, ...dbCategoryList])];
+      
+      return allCategories.sort();
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  // Método para obtener tipos de publicaciones disponibles
+  async getAvailableTypes(): Promise<PublicationType[]> {
+    try {
+      // Devolver todos los tipos posibles del enum, no solo los que existen en la BD
+      return Object.values(PublicationType);
     } catch (error) {
       this.handleDBErrors(error);
     }

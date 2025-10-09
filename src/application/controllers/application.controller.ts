@@ -126,11 +126,11 @@ export class CompanyApplicationController {
   constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Get()
-  @Roles("BUSINESS", "ADMIN")
-  @ApiOperation({ summary: "Get applications for company publications" })
+  @Roles("BUSINESS", "PERSON", "ADMIN")
+  @ApiOperation({ summary: "Get applications for user publications" })
   @ApiParam({
     name: "companyId",
-    description: "Company ID (User ID of company owner)",
+    description: "User ID to get applications for their publications",
   })
   @ApiQuery({ type: PaginationDto })
   getCompanyApplications(
