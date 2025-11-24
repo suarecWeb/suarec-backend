@@ -6,6 +6,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { User } from "./entities/user.entity";
+import { Comment } from "../comment/entities/comment.entity";
+import { Publication } from "../publication/entities/publication.entity";
+import { Message } from "../message/entities/message.entity";
+import { Contract, ContractBid, ContractOTP } from "../contract/entities/contract.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -604,8 +608,122 @@ export class UserService {
   }
 
   async remove(id: number) {
-    const user = await this.findOne(id);
-    await this.usersRepository.remove(user);
+    // To safely delete a user and avoid FK constraint violations, remove dependent
+    // records that reference the user first within a transaction. We intentionally
+    // delete comments, publications and messages here so the user removal does
+    // not fail when DB constraints do not have ON DELETE CASCADE.
+    return await this.usersRepository.manager.transaction(async (manager) => {
+      // Ensure the user exists
+      const user = await manager.findOne(User, { where: { id } });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+
+      // 1) Delete comments authored by the user
+      try {
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from(Comment)
+          .where('"userId" = :userId', { userId: id })
+          .execute();
+      } catch (err) {
+        this.logger.error('Error deleting user comments', err);
+        throw err;
+      }
+
+      // 2) Delete publications created by the user (this will cascade to publication-related rows if configured)
+      try {
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from(Publication)
+          .where('"userId" = :userId', { userId: id })
+          .execute();
+      } catch (err) {
+        this.logger.error('Error deleting user publications', err);
+        throw err;
+      }
+
+      // 3) Delete messages where the user is sender or recipient
+      try {
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from(Message)
+          .where('"senderId" = :userId OR "recipientId" = :userId', { userId: id })
+          .execute();
+      } catch (err) {
+        this.logger.error('Error deleting user messages', err);
+        throw err;
+      }
+
+      // 4) Delete contract-related records where the user participates
+      try {
+        // Delete bids made by the user
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from(ContractBid)
+          .where('"bidderId" = :userId', { userId: id })
+          .execute();
+
+        // Delete OTPs for contracts that belong to the user as client or provider
+        // First, find contract ids where user is client or provider
+        const contractIdsResult: { id: string }[] = await manager
+          .createQueryBuilder()
+          .select('contract.id', 'id')
+          .from(Contract, 'contract')
+          .where('"clientId" = :userId OR "providerId" = :userId', { userId: id })
+          .getRawMany();
+
+        const contractIds = contractIdsResult.map((r) => r.id);
+        if (contractIds.length > 0) {
+          // Delete OTPs for those contracts
+          await manager
+            .createQueryBuilder()
+            .delete()
+            .from(ContractOTP)
+            .where('"contractId" IN (:...ids)', { ids: contractIds })
+            .execute();
+
+          // Delete bids linked to those contracts (if any remain)
+          await manager
+            .createQueryBuilder()
+            .delete()
+            .from(ContractBid)
+            .where('"contractId" IN (:...ids)', { ids: contractIds })
+            .execute();
+
+          // Delete the contracts themselves
+          await manager
+            .createQueryBuilder()
+            .delete()
+            .from(Contract)
+            .where('"id" IN (:...ids)', { ids: contractIds })
+            .execute();
+        }
+      } catch (err) {
+        this.logger.error('Error deleting user contracts and related records', err);
+        throw err;
+      }
+
+      // 4) Finally remove the user entity (this will also remove role mappings)
+      try {
+        // Remove explicit join table rows in case the join table has restrictive FK
+        await manager.query('DELETE FROM roles_users_users WHERE user_id = $1', [id]);
+
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from(User)
+          .where('id = :id', { id })
+          .execute();
+      } catch (err) {
+        this.logger.error('Error deleting user', err);
+        throw err;
+      }
+    });
   }
 
   private handleDBErrors(error: any) {
