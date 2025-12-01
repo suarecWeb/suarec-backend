@@ -9,8 +9,8 @@ export class CreateContentReportDto {
   @IsEnum(ReportContentType)
   content_type: ReportContentType;
 
-  @IsNumber()
-  content_id: number;
+  @IsString()
+  content_id: string; // Changed to string to support UUIDs (publications) and numbers (comments, messages)
 
   @IsEnum(ReportReason)
   reason: ReportReason;
