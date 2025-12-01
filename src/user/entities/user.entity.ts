@@ -256,4 +256,14 @@ export class User {
   // Saldo en contra (por recibir servicios) - Se cancela solo con pagos reales
   @Column("decimal", { precision: 10, scale: 2, default: 0 })
   debit_balance: number;
+
+  // Terms and Conditions acceptance (required for Apple App Store compliance)
+  @Column("boolean", { default: false })
+  has_accepted_terms: boolean;
+
+  @Column("timestamp", { nullable: true })
+  terms_accepted_at: Date;
+
+  @Column("text", { nullable: true, default: '1.0' })
+  terms_version: string;
 }
