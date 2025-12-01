@@ -84,7 +84,7 @@ export class ModerationService {
   async checkIfReported(
     userId: number,
     contentType: string,
-    contentId: number,
+    contentId: string, // Changed to string to support UUIDs
   ): Promise<boolean> {
     const report = await this.contentReportRepository.findOne({
       where: {

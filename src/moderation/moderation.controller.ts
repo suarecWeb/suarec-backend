@@ -57,7 +57,7 @@ export class ModerationController {
   async checkIfReported(
     @Request() req,
     @Param('contentType') contentType: string,
-    @Param('contentId') contentId: number,
+    @Param('contentId') contentId: string, // Changed to string to support UUIDs
   ) {
     const hasReported = await this.moderationService.checkIfReported(
       req.user.id,

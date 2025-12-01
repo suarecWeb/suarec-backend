@@ -39,8 +39,8 @@ export class ContentReport {
   })
   content_type: ReportContentType;
 
-  @Column()
-  content_id: number;
+  @Column({ type: 'varchar', length: 255 })
+  content_id: string; // Changed to string to support UUIDs and numbers
 
   @Column({
     type: 'enum',
