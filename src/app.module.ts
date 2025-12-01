@@ -23,6 +23,7 @@ import { EmailVerificationModule } from "./email-verification/email-verification
 import { ContractModule } from "./contract/contract.module";
 import { PaymentModule } from "./payment/payment.module";
 import { BotModule } from "./bot/bot.module";
+import { ModerationModule } from "./moderation/moderation.module";
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { BotModule } from "./bot/bot.module";
     ContractModule,
     PaymentModule,
     BotModule,
+    ModerationModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
