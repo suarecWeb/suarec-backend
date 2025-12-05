@@ -17,6 +17,7 @@ import { PaginationDto } from "../../common/dto/pagination.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
+import { Public } from "../../auth/decorators/public.decorator";
 import { Publication } from "../entities/publication.entity";
 import { PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
@@ -39,9 +40,8 @@ export class PublicationController {
   }
 
   @Get()
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get all publications with advanced filtering and pagination" })
+  @Public()
+  @ApiOperation({ summary: "Get all publications with advanced filtering and pagination (Public)" })
   @ApiQuery({ type: PaginationDto })
   findAll(
     @Query() paginationDto: PaginationDto,
@@ -62,9 +62,8 @@ export class PublicationController {
   }
 
   @Get("service-offers")
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get service offers only" })
+  @Public()
+  @ApiOperation({ summary: "Get service offers only (Public)" })
   @ApiQuery({ type: PaginationDto })
   findServiceOffers(
     @Query() paginationDto: PaginationDto,
@@ -75,9 +74,8 @@ export class PublicationController {
   }
 
   @Get("service-requests")
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get service requests only" })
+  @Public()
+  @ApiOperation({ summary: "Get service requests only (Public)" })
   @ApiQuery({ type: PaginationDto })
   findServiceRequests(
     @Query() paginationDto: PaginationDto,
@@ -101,9 +99,8 @@ export class PublicationController {
   }
 
   @Get(":id")
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get a publication by id" })
+  @Public()
+  @ApiOperation({ summary: "Get a publication by id (Public)" })
   findOne(@Param("id") id: string): Promise<Publication> {
     return this.publicationService.findOne(id);
   }
@@ -137,18 +134,16 @@ export class PublicationController {
   }
 
   @Get("filters/categories")
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get available categories for filtering" })
+  @Public()
+  @ApiOperation({ summary: "Get available categories for filtering (Public)" })
   @ApiResponse({ status: 200, description: "List of available categories" })
   getAvailableCategories(): Promise<string[]> {
     return this.publicationService.getAvailableCategories();
   }
 
   @Get("filters/types")
-  @Roles("ADMIN", "BUSINESS", "PERSON")
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiOperation({ summary: "Get available publication types for filtering" })
+  @Public()
+  @ApiOperation({ summary: "Get available publication types for filtering (Public)" })
   @ApiResponse({ status: 200, description: "List of available publication types" })
   getAvailableTypes(): Promise<PublicationType[]> {
     return this.publicationService.getAvailableTypes();
