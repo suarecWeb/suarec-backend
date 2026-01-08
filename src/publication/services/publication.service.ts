@@ -88,11 +88,16 @@ export class PublicationService {
       }
 
       if (category) {
-        queryBuilder.andWhere('publication.category = :category', { category });
+        queryBuilder.andWhere('LOWER(publication.category) = :category', {
+          category: category.toLowerCase(),
+        });
       }
 
       if (categories && categories.length > 0) {
-        queryBuilder.andWhere('publication.category IN (:...categories)', { categories });
+        const normalizedCategories = categories.map((item) => item.toLowerCase());
+        queryBuilder.andWhere('LOWER(publication.category) IN (:...categories)', {
+          categories: normalizedCategories,
+        });
       }
 
       // Filtro por rango de precios (mejorado)
