@@ -207,6 +207,22 @@ export class PaymentController {
     return this.paymentService.update(id, updatePaymentDto);
   }
 
+  @Post(":contractId/confirm-cash")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @ApiOperation({ summary: "Confirm a cash payment for a contract" })
+  @ApiResponse({ status: 200, description: "Cash payment confirmed" })
+  @ApiBearerAuth()
+  async confirmCashPayment(
+    @Param("contractId") contractId: string,
+    @Request() req,
+  ) {
+    return this.paymentService.confirmCashPayment(
+      contractId,
+      req.user.id,
+      req.user.roles,
+    );
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a payment transaction" })
   @ApiResponse({

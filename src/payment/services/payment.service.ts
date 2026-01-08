@@ -23,6 +23,10 @@ import { Contract } from "../../contract/entities/contract.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
 import { ContractService } from "../../contract/contract.service";
 import { BalanceService } from "../../user/services/balance.service";
+import {
+  PlatformFeeLedger,
+  PlatformFeeStatus,
+} from "../../fees/platform-fee-ledger.entity";
 
 @Injectable()
 export class PaymentService {
@@ -34,6 +38,8 @@ export class PaymentService {
     private userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Contract)
     private contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
+    @InjectRepository(PlatformFeeLedger)
+    private platformFeeLedgerRepository: Repository<PlatformFeeLedger>, // eslint-disable-line no-unused-vars
     wompiService: WompiService,
     @Inject(forwardRef(() => ContractService))
     private contractService: ContractService, // eslint-disable-line no-unused-vars
@@ -430,6 +436,13 @@ export class PaymentService {
     const paymentTransaction = await this.findOne(id);
 
     Object.assign(paymentTransaction, updatePaymentDto);
+    if (
+      updatePaymentDto.status &&
+      this.isProcessedPaymentStatus(updatePaymentDto.status) &&
+      !paymentTransaction.paid_at
+    ) {
+      paymentTransaction.paid_at = new Date();
+    }
     await this.paymentTransactionRepository.save(paymentTransaction);
 
     return paymentTransaction;
@@ -443,11 +456,124 @@ export class PaymentService {
 
     // Actualizar el status y el comentario
     paymentTransaction.status = updateStatusDto.status;
+    if (
+      this.isProcessedPaymentStatus(updateStatusDto.status) &&
+      !paymentTransaction.paid_at
+    ) {
+      paymentTransaction.paid_at = new Date();
+    }
 
     // Guardar la fecha de actualización automáticamente por el decorator
     await this.paymentTransactionRepository.save(paymentTransaction);
 
     return this.findOne(id);
+  }
+
+  async confirmCashPayment(
+    contractId: string,
+    actorUserId: number,
+    actorRoles: Array<{ name: string }> = [],
+  ): Promise<{
+    contractId: string;
+    paymentTransactionId: string;
+    paymentStatus: PaymentStatus;
+    feeDebtCreated: boolean;
+  }> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    const isAdmin = actorRoles.some((role) => role.name === "ADMIN");
+    if (!isAdmin && contract.client.id !== actorUserId) {
+      throw new BadRequestException(
+        "Solo el cliente o un administrador puede confirmar el pago en efectivo",
+      );
+    }
+
+    let paymentTransaction = await this.paymentTransactionRepository.findOne({
+      where: {
+        contract: { id: contractId },
+        payment_method: PaymentMethod.Cash,
+      },
+      relations: ["payer", "payee", "contract"],
+      order: { created_at: "DESC" },
+    });
+
+    if (!paymentTransaction) {
+      paymentTransaction = await this.paymentTransactionRepository.findOne({
+        where: { contract: { id: contractId } },
+        relations: ["payer", "payee", "contract"],
+        order: { created_at: "DESC" },
+      });
+    }
+
+    if (paymentTransaction) {
+      if (paymentTransaction.status !== PaymentStatus.COMPLETED) {
+        paymentTransaction.status = PaymentStatus.COMPLETED;
+        if (!paymentTransaction.paid_at) {
+          paymentTransaction.paid_at = new Date();
+        }
+        paymentTransaction.payment_method = PaymentMethod.Cash;
+        paymentTransaction =
+          await this.paymentTransactionRepository.save(paymentTransaction);
+      }
+    } else {
+      const amount = this.getContractAmount(contract);
+      paymentTransaction = this.paymentTransactionRepository.create({
+        amount,
+        currency: "COP",
+        payment_method: PaymentMethod.Cash,
+        status: PaymentStatus.COMPLETED,
+        payer: contract.client,
+        payee: contract.provider,
+        contract,
+        description: "Pago en efectivo confirmado",
+        reference: `CASH-${contract.id.substring(0, 8)}`,
+        paid_at: new Date(),
+      });
+      paymentTransaction =
+        await this.paymentTransactionRepository.save(paymentTransaction);
+    }
+
+    const feeAmount = this.getContractFeeAmount(contract);
+    let feeDebtCreated = false;
+    if (feeAmount > 0) {
+      const existingLedger = await this.platformFeeLedgerRepository.findOne({
+        where: {
+          contract: { id: contract.id },
+          provider: { id: contract.provider.id },
+        },
+        relations: ["contract", "provider"],
+      });
+
+      if (!existingLedger) {
+        const dueAt = new Date();
+        dueAt.setDate(dueAt.getDate() + 30);
+
+        const ledgerEntry = this.platformFeeLedgerRepository.create({
+          provider: contract.provider,
+          contract,
+          amount: feeAmount,
+          status: PlatformFeeStatus.PENDING,
+          due_at: dueAt,
+        });
+
+        await this.platformFeeLedgerRepository.save(ledgerEntry);
+        feeDebtCreated = true;
+      }
+    }
+
+    return {
+      contractId: contract.id,
+      paymentTransactionId: paymentTransaction.id,
+      paymentStatus: paymentTransaction.status,
+      feeDebtCreated,
+    };
   }
 
   async processWompiWebhook(webhookData: any): Promise<void> {
@@ -969,5 +1095,38 @@ export class PaymentService {
       hasActivePayments,
       latestStatus: latestPayment.status,
     };
+  }
+
+  private getContractAmount(contract: Contract): number {
+    if (contract.currentPrice != null) {
+      return Number(contract.currentPrice);
+    }
+    if (contract.totalPrice != null) {
+      return Number(contract.totalPrice);
+    }
+    if (contract.initialPrice != null) {
+      return Number(contract.initialPrice);
+    }
+    return 0;
+  }
+
+  private getContractFeeAmount(contract: Contract): number {
+    if (contract.suarecCommission != null) {
+      return Number(contract.suarecCommission);
+    }
+
+    const baseAmount = this.getContractAmount(contract);
+    if (!Number.isFinite(baseAmount) || baseAmount <= 0) {
+      return 0;
+    }
+
+    return Number((baseAmount * 0.08).toFixed(2));
+  }
+
+  private isProcessedPaymentStatus(status: PaymentStatus): boolean {
+    return (
+      status === PaymentStatus.COMPLETED ||
+      status === PaymentStatus.FINISHED
+    );
   }
 }

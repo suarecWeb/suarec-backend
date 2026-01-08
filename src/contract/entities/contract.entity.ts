@@ -103,6 +103,12 @@ export class Contract {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column("timestamp", { name: "completed_at", nullable: true })
+  completedAt?: Date;
+
+  @Column("timestamp", { name: "cancelled_at", nullable: true })
+  cancelledAt?: Date;
+
   @Column("timestamp", { nullable: true })
   deleted_at?: Date;
 

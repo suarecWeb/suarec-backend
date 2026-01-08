@@ -475,6 +475,9 @@ export class ContractService {
 
     // Proceder con la cancelación del contrato (con o sin penalización)
     contract.status = ContractStatus.CANCELLED;
+    if (!contract.cancelledAt) {
+      contract.cancelledAt = new Date();
+    }
     return await this.contractRepository.save(contract);
   }
 
@@ -624,6 +627,9 @@ export class ContractService {
     }
 
     contract.status = ContractStatus.COMPLETED;
+    if (!contract.completedAt) {
+      contract.completedAt = new Date();
+    }
     const updatedContract = await this.contractRepository.save(contract);
 
     // Enviar notificación por email al cliente sobre la completación

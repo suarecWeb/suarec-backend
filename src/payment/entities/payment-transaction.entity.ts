@@ -77,6 +77,9 @@ export class PaymentTransaction {
   @UpdateDateColumn()
   updated_at: Date;
 
+  @Column("timestamp", { nullable: true })
+  paid_at?: Date;
+
   // Relations
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   payer: User; // User making the payment
