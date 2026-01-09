@@ -24,6 +24,8 @@ import { ContractModule } from "./contract/contract.module";
 import { PaymentModule } from "./payment/payment.module";
 import { BotModule } from "./bot/bot.module";
 import { ModerationModule } from "./moderation/moderation.module";
+import { LevelsModule } from "./levels/levels.module";
+import { BadgesModule } from "./badges/badges.module";
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { ModerationModule } from "./moderation/moderation.module";
     PaymentModule,
     BotModule,
     ModerationModule,
+    LevelsModule,
+    BadgesModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],

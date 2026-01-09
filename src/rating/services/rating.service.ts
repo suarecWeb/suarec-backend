@@ -7,15 +7,17 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Rating } from "../entities/rating.entity";
 import { CreateRatingDto } from "../dto/create-rating.dto";
 import { UpdateRatingDto } from "../dto/update-rating.dto";
 import { User } from "../../user/entities/user.entity";
 import { WorkContract } from "../../work-contract/entities/work-contract.entity";
 import { Contract, ContractStatus } from "../../contract/entities/contract.entity";
+import { PaymentTransaction } from "../../payment/entities/payment-transaction.entity";
 import { PaginationDto } from "../../common/dto/pagination.dto";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
+import { PROCESSED_PAYMENT_STATUSES } from "../../levels/level.rules";
 
 @Injectable()
 export class RatingService {
@@ -30,11 +32,13 @@ export class RatingService {
     private readonly workContractRepository: Repository<WorkContract>, // eslint-disable-line no-unused-vars
     @InjectRepository(Contract)
     private readonly contractRepository: Repository<Contract>, // eslint-disable-line no-unused-vars
+    @InjectRepository(PaymentTransaction)
+    private readonly paymentTransactionRepository: Repository<PaymentTransaction>, // eslint-disable-line no-unused-vars
   ) {}
 
   async create(createRatingDto: CreateRatingDto): Promise<Rating> {
     try {
-      const { reviewerId, revieweeId, stars, comment, category } =
+      const { reviewerId, revieweeId, stars, comment, category, contractId } =
         createRatingDto;
 
       // Validar que las estrellas estén entre 1 y 5
@@ -67,16 +71,67 @@ export class RatingService {
         throw new BadRequestException("Cannot rate yourself");
       }
 
-      // Verificar que no haya calificado ya a este usuario
+      const contract = await this.contractRepository.findOne({
+        where: { id: contractId },
+        relations: ["client", "provider"],
+      });
+      if (!contract) {
+        throw new BadRequestException(
+          `Contract with ID ${contractId} not found`,
+        );
+      }
+
+      if (contract.status !== ContractStatus.COMPLETED) {
+        throw new BadRequestException(
+          "The contract must be completed before rating",
+        );
+      }
+
+      const reviewerIsClient = contract.client.id === reviewerId;
+      const reviewerIsProvider = contract.provider.id === reviewerId;
+
+      if (!reviewerIsClient && !reviewerIsProvider) {
+        throw new BadRequestException(
+          "Reviewer is not a participant of this contract",
+        );
+      }
+
+      const expectedRevieweeId = reviewerIsClient
+        ? contract.provider.id
+        : contract.client.id;
+
+      if (revieweeId !== expectedRevieweeId) {
+        throw new BadRequestException(
+          "Reviewee does not match the other contract participant",
+        );
+      }
+
+      const hasProcessedPayment =
+        await this.paymentTransactionRepository.findOne({
+          where: {
+            contract: { id: contractId },
+            status: In(PROCESSED_PAYMENT_STATUSES),
+          },
+        });
+
+      if (!hasProcessedPayment) {
+        throw new BadRequestException(
+          "Contract is not ready for rating without a processed payment",
+        );
+      }
+
+      // Verificar que no haya calificado ya este contrato
       const existingRating = await this.ratingRepository.findOne({
         where: {
+          contract: { id: contractId },
           reviewer: { id: reviewerId },
-          reviewee: { id: revieweeId },
         },
       });
 
       if (existingRating) {
-        throw new BadRequestException("You have already rated this user");
+        throw new BadRequestException(
+          "You have already rated this contract",
+        );
       }
 
       // Crear la calificación (sin workContract por ahora)
@@ -86,13 +141,13 @@ export class RatingService {
         category,
         reviewer,
         reviewee,
-        workContract: null, // No requerimos workContract
+        contract,
       });
 
-      await this.ratingRepository.save(rating);
+      const savedRating = await this.ratingRepository.save(rating);
 
       // Retornar con las relaciones cargadas
-      return this.findOne(rating.id);
+      return this.findOne(savedRating.id);
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -106,7 +161,7 @@ export class RatingService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.ratingRepository.findAndCount({
-        relations: ["reviewer", "reviewee", "workContract"],
+        relations: ["reviewer", "reviewee", "contract", "workContract"],
         skip,
         take: limit,
         order: { created_at: "DESC" },
@@ -140,7 +195,7 @@ export class RatingService {
 
       const [data, total] = await this.ratingRepository.findAndCount({
         where: { reviewee: { id: userId } },
-        relations: ["reviewer", "reviewee", "workContract"],
+        relations: ["reviewer", "reviewee", "contract", "workContract"],
         skip,
         take: limit,
         order: { created_at: "DESC" },
@@ -234,7 +289,7 @@ export class RatingService {
     try {
       const rating = await this.ratingRepository.findOne({
         where: { id },
-        relations: ["reviewer", "reviewee", "workContract"],
+        relations: ["reviewer", "reviewee", "contract", "workContract"],
       });
 
       if (!rating) {
@@ -296,7 +351,7 @@ export class RatingService {
         .leftJoinAndSelect("contract.provider", "provider")
         .leftJoinAndSelect("contract.publication", "publication")
         .where("contract.client.id = :userId", { userId }) // SOLO contratos donde el usuario es cliente
-        .andWhere("contract.status = :status", { status: ContractStatus.ACCEPTED }) // Estado correcto usando enum
+        .andWhere("contract.status = :status", { status: ContractStatus.COMPLETED }) // Estado correcto usando enum
         .getMany();
 
       console.log(`📋 Contratos con status 'completed' encontrados: ${contracts.length}`); // eslint-disable-line no-console
@@ -312,7 +367,7 @@ export class RatingService {
             `
             SELECT COUNT(*) as count 
             FROM payment_transactions 
-            WHERE "contractId" = $1 AND status = 'COMPLETED'
+            WHERE "contractId" = $1 AND status IN ('COMPLETED', 'FINISHED')
           `,
             [contract.id],
           );
@@ -337,8 +392,8 @@ export class RatingService {
             
             const existingRating = await this.ratingRepository.findOne({
               where: {
+                contract: { id: contract.id },
                 reviewer: { id: userId }, // Cliente como reviewer
-                reviewee: { id: providerId }, // Proveedor como reviewee
               },
             });
 
@@ -355,7 +410,7 @@ export class RatingService {
               userRole: "CLIENT", // Siempre será CLIENT ya que filtramos por client.id
               canRate: !existingRating,
               alreadyRated: !!existingRating,
-              completedAt: contract.updatedAt,
+              completedAt: contract.completedAt || contract.updatedAt,
               ratingCategory: "SERVICE", // Cliente califica el servicio del proveedor
             };
           } catch (ratingError) {

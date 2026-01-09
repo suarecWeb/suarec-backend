@@ -247,6 +247,11 @@ export class UserController {
     summary: "Get user statistics",
     description: "Get basic statistics about user performance and activity",
   })
+  @ApiQuery({
+    name: "period",
+    required: false,
+    description: "week|month|quarter|year|total (default: month)",
+  })
   @ApiResponse({
     status: 200,
     description: "User statistics retrieved successfully",
@@ -269,8 +274,8 @@ export class UserController {
       },
     },
   })
-  async getMyStats(@Request() req) {
-    return this.userService.getUserStats(req.user.id);
+  async getMyStats(@Request() req, @Query("period") period?: string) {
+    return this.userService.getUserStats(req.user.id, period);
   }
 
   @Get(":id/stats")
@@ -304,13 +309,21 @@ export class UserController {
       },
     },
   })
+  @ApiQuery({
+    name: "period",
+    required: false,
+    description: "week|month|quarter|year|total (default: month)",
+  })
   @ApiResponse({
     status: 403,
     description: "Forbidden - Admin access required",
   })
   @ApiResponse({ status: 404, description: "User not found" })
-  async getUserStats(@Param("id") id: number) {
-    return this.userService.getUserStats(+id);
+  async getUserStats(
+    @Param("id") id: number,
+    @Query("period") period?: string,
+  ) {
+    return this.userService.getUserStats(+id, period);
   }
 
   @UseGuards(AuthGuard)
