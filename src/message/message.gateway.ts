@@ -26,6 +26,7 @@ import { Repository, Like } from "typeorm";
       process.env.PUBLIC_FRONT_URL,
       "https://suarec-frontend-production.up.railway.app",
       "https://suarec.com",
+      "https://www.suarec.com",
     ],
     credentials: true,
   },

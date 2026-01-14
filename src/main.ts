@@ -34,6 +34,7 @@ async function bootstrap() {
       process.env.PUBLIC_FRONT_URL,
       "https://suarec-frontend-production.up.railway.app",
       "https://suarec.com",
+      "https://www.suarec.com",
     ], // ✅ Especifica el origen permitido
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
