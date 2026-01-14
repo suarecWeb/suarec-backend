@@ -58,6 +58,7 @@ export class PublicationService {
 
   async findAll(
     paginationDto: PaginationDto,
+    userId?: number,
   ): Promise<PaginationResponse<Publication>> {
     try {
       const { 
@@ -81,6 +82,10 @@ export class PublicationService {
         .leftJoinAndSelect('user.company', 'company')
         .leftJoinAndSelect('user.employer', 'employer')
         .where('publication.deleted_at IS NULL');
+
+      if (typeof userId === "number") {
+        queryBuilder.andWhere('user.id = :userId', { userId });
+      }
 
       // Aplicar filtros
       if (type) {

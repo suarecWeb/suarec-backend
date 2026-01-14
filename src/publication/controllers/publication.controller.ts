@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  ParseIntPipe,
   Delete,
   UseGuards,
   Query,
@@ -21,7 +22,7 @@ import { Public } from "../../auth/decorators/public.decorator";
 import { Publication } from "../entities/publication.entity";
 import { PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from "@nestjs/swagger";
 
 @ApiTags("Publications")
 @Controller("publications")
@@ -59,6 +60,29 @@ export class PublicationController {
     return this.publicationService.findAll(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
+  }
+
+  @Get("me")
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: "Get publications created by the current user" })
+  @ApiQuery({ type: PaginationDto })
+  findMyPublications(
+    @Request() req,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findAll(paginationDto, req.user.id);
+  }
+
+  @Get("user/:id")
+  @Public()
+  @ApiOperation({ summary: "Get publications created by a user (Public)" })
+  @ApiParam({ name: "id", description: "User ID" })
+  @ApiQuery({ type: PaginationDto })
+  findPublicationsByUser(
+    @Param("id", ParseIntPipe) id: number,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findAll(paginationDto, id);
   }
 
   @Get("service-offers")
