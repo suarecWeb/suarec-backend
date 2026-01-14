@@ -366,7 +366,34 @@ export class PublicationService {
   async getAvailableTypes(): Promise<PublicationType[]> {
     try {
       // Devolver todos los tipos posibles del enum, no solo los que existen en la BD
-      return Object.values(PublicationType);
+      return Promise.resolve(Object.values(PublicationType));
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async getPublicationComments(id: string) {
+    try {
+      const publication = await this.publicationRepository.findOne({
+        where: { id, deleted_at: IsNull() },
+        relations: ["comments", "comments.user"],
+      });
+
+      if (!publication) {
+        throw new NotFoundException(`Publication with ID ${id} not found`);
+      }
+
+      return {
+        data: publication.comments || [],
+        meta: {
+          total: publication.comments?.length || 0,
+          page: 1,
+          limit: publication.comments?.length || 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      };
     } catch (error) {
       this.handleDBErrors(error);
     }

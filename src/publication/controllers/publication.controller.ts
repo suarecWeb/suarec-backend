@@ -172,4 +172,12 @@ export class PublicationController {
   getAvailableTypes(): Promise<PublicationType[]> {
     return this.publicationService.getAvailableTypes();
   }
+
+  @Get(":id/comments")
+  @Public()
+  @ApiOperation({ summary: "Get comments for a specific publication (Public)" })
+  @ApiResponse({ status: 200, description: "List of comments for the publication" })
+  getPublicationComments(@Param("id") id: string) {
+    return this.publicationService.getPublicationComments(id);
+  }
 }
