@@ -20,8 +20,7 @@ async function bootstrap() {
 
   app.use(cookieParser()); // Permitir leer cookies
 
-  const corsOptions: CorsOptions = {
-    origin: [
+  const allowedOrigins = [
       "http://localhost:3000",
       "http://localhost:8081", // Expo web
       "http://localhost:8080", // Expo web
@@ -31,10 +30,15 @@ async function bootstrap() {
       "http://192.168.1.17:3000", // App móvil desde IP local
       "http://192.168.1.17:3001", // App móvil desde IP local
       "http://localhost:3001", // App móvil desde IP local
+      process.env.FRONTEND_URL,
       process.env.PUBLIC_FRONT_URL,
       "https://suarec-frontend-production.up.railway.app",
       "https://suarec.com",
-    ], // ✅ Especifica el origen permitido
+      "https://www.suarec.com",
+    ].filter(Boolean);
+
+  const corsOptions: CorsOptions = {
+    origin: allowedOrigins, // ✅ Especifica el origen permitido
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
     allowedHeaders: "Content-Type, Accept, Authorization",
