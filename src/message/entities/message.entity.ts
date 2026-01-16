@@ -12,10 +12,10 @@ export class Message {
   @Column("boolean", { default: false })
   read: boolean;
 
-  @Column("timestamp", { default: () => "CURRENT_TIMESTAMP" })
+  @Column("timestamptz", { default: () => "CURRENT_TIMESTAMP" })
   sent_at: Date;
 
-  @Column("timestamp", { nullable: true })
+  @Column("timestamptz", { nullable: true })
   read_at: Date;
 
   @Column("varchar", { length: 20, default: "open" })

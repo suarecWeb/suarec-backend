@@ -361,6 +361,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "open", // Cambiar a "open" para tickets nuevos
         ticket_id: null, // Se establecerá después
       });
@@ -374,6 +375,7 @@ export class MessageService {
         content: `🎫 **Ticket #${ticket.id}** creado exitosamente.\n\nHemos recibido tu solicitud y nuestro equipo de soporte te responderá pronto.`,
         sender: { id: 0 },
         recipient: { id: userId },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticket.id,
       });
@@ -483,6 +485,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       };
@@ -526,6 +529,7 @@ export class MessageService {
         content,
         sender: { id: 0 }, // Suarec
         recipient: { id: ticket.sender.id },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       });
