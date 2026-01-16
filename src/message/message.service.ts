@@ -695,6 +695,8 @@ export class MessageService {
       // Emitir actualización de conversación
       gateway.server.to(`user_${createMessageDto.recipientId}`).emit("conversation_updated", {
         conversationId: `${Math.min(createMessageDto.senderId, createMessageDto.recipientId)}_${Math.max(createMessageDto.senderId, createMessageDto.recipientId)}`,
+        senderId: createMessageDto.senderId,
+        recipientId: createMessageDto.recipientId,
         lastMessage: message,
       });
 
