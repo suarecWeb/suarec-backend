@@ -127,7 +127,15 @@ export class MessageGateway
       // this.server.to(`user_${data.senderId}`).emit("new_message", messageData);
 
       // Confirmar al remitente
-      client.emit("message_sent", { message });
+      const messageSentPayload = { message };
+      console.log("message_sent payload:", {
+        messageId: message?.id,
+        senderId: message?.sender?.id ?? (message as any)?.senderId,
+        recipientId: message?.recipient?.id ?? (message as any)?.recipientId,
+        hasSender: !!message?.sender,
+        hasRecipient: !!message?.recipient,
+      });
+      client.emit("message_sent", messageSentPayload);
 
       // Emitir actualización de conversación
       this.server.to(`user_${data.senderId}`).emit("conversation_updated", {
