@@ -47,16 +47,6 @@ export class PublicationController {
   findAll(
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    console.log("🔍 Controller - Received filters:", {
-      type: paginationDto.type,
-      category: paginationDto.category,
-      categories: paginationDto.categories,
-      search: paginationDto.search,
-      minPrice: paginationDto.minPrice,
-      maxPrice: paginationDto.maxPrice,
-      sortBy: paginationDto.sortBy,
-      sortOrder: paginationDto.sortOrder
-    });
     return this.publicationService.findAll(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
