@@ -47,16 +47,6 @@ export class PublicationController {
   findAll(
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    console.log("🔍 Controller - Received filters:", {
-      type: paginationDto.type,
-      category: paginationDto.category,
-      categories: paginationDto.categories,
-      search: paginationDto.search,
-      minPrice: paginationDto.minPrice,
-      maxPrice: paginationDto.maxPrice,
-      sortBy: paginationDto.sortBy,
-      sortOrder: paginationDto.sortOrder
-    });
     return this.publicationService.findAll(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
@@ -171,5 +161,13 @@ export class PublicationController {
   @ApiResponse({ status: 200, description: "List of available publication types" })
   getAvailableTypes(): Promise<PublicationType[]> {
     return this.publicationService.getAvailableTypes();
+  }
+
+  @Get(":id/comments")
+  @Public()
+  @ApiOperation({ summary: "Get comments for a specific publication (Public)" })
+  @ApiResponse({ status: 200, description: "List of comments for the publication" })
+  getPublicationComments(@Param("id") id: string) {
+    return this.publicationService.getPublicationComments(id);
   }
 }
