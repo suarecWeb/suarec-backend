@@ -34,6 +34,12 @@ export class PublicationService {
     try {
       const publication =
         this.publicationRepository.create(createPublicationDto);
+      
+      // Normalizar categoría para consistencia (eliminar tildes y caracteres especiales)
+      if (publication.category) {
+        publication.category = this.normalizeCategory(publication.category);
+      }
+      
       const user = await this.userRepository.findOne({
         where: { id: createPublicationDto.userId },
         relations: ["company", "employer"],
@@ -93,16 +99,32 @@ export class PublicationService {
       }
 
       if (category) {
-        queryBuilder.andWhere('LOWER(publication.category) = :category', {
-          category: category.toLowerCase(),
-        });
+        // Normalizar la categoría del filtro para comparar correctamente
+        const normalizedFilterCategory = this.normalizeCategory(category);
+        
+        // Buscar tanto la versión normalizada como las variaciones con tildes
+        queryBuilder.andWhere(
+          '(UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(publication.category, \'Á\', \'A\'), \'É\', \'E\'), \'Í\', \'I\'), \'Ó\', \'O\'), \'Ú\', \'U\')) = :normalizedCategory OR UPPER(publication.category) = :originalCategory)',
+          { 
+            normalizedCategory: normalizedFilterCategory,
+            originalCategory: category.toUpperCase()
+          }
+        );
       }
 
       if (categories && categories.length > 0) {
-        const normalizedCategories = categories.map((item) => item.toLowerCase());
-        queryBuilder.andWhere('LOWER(publication.category) IN (:...categories)', {
-          categories: normalizedCategories,
-        });
+        // Normalizar todas las categorías del filtro
+        const normalizedCategories = categories.map((item) => this.normalizeCategory(item));
+        const originalCategories = categories.map((item) => item.toUpperCase());
+        
+        // Buscar tanto versiones normalizadas como originales
+        queryBuilder.andWhere(
+          '(UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(publication.category, \'Á\', \'A\'), \'É\', \'E\'), \'Í\', \'I\'), \'Ó\', \'O\'), \'Ú\', \'U\')) IN (:...normalizedCategories) OR UPPER(publication.category) IN (:...originalCategories))',
+          { 
+            normalizedCategories,
+            originalCategories
+          }
+        );
       }
 
       // Filtro por rango de precios (mejorado)
@@ -205,6 +227,11 @@ export class PublicationService {
       // Verificar si el usuario puede editar esta publicación
       if (user && publication.user.id !== user.id && !user.roles?.some((role: any) => role.name === "ADMIN")) {
         throw new BadRequestException("You can only edit your own publications");
+      }
+
+      // Normalizar categoría si se está actualizando
+      if (updatePublicationDto.category) {
+        updatePublicationDto.category = this.normalizeCategory(updatePublicationDto.category);
       }
 
       // Actualizar la publicación
@@ -323,25 +350,36 @@ export class PublicationService {
     }
   }
 
+  // Función auxiliar para normalizar categorías (eliminar tildes y caracteres especiales)
+  private normalizeCategory(category: string): string {
+    return category
+      .trim()
+      .toUpperCase()
+      .normalize('NFD') // Descompone caracteres con tildes
+      .replace(/[\u0300-\u036f]/g, '') // Elimina los diacríticos (tildes)
+      .replace(/[^A-Z0-9\s]/g, '') // Elimina caracteres especiales
+      .trim();
+  }
+
   // Método para obtener categorías únicas disponibles
   async getAvailableCategories(): Promise<string[]> {
     try {
       // Categorías predefinidas que siempre deben estar disponibles
       const predefinedCategories = [
-        "Tecnología",
-        "Construcción", 
-        "Salud",
-        "Educación",
-        "Servicios",
-        "Gastronomía",
-        "Transporte",
-        "Manufactura",
-        "Finanzas",
-        "Agricultura",
-        "Otro"
+        "TECNOLOGIA",
+        "CONSTRUCCION", 
+        "SALUD",
+        "EDUCACION",
+        "SERVICIOS",
+        "GASTRONOMIA",
+        "TRANSPORTE",
+        "MANUFACTURA",
+        "FINANZAS",
+        "AGRICULTURA",
+        "OTRO"
       ];
 
-      // Obtener categorías únicas de la base de datos
+      // Obtener categorías de la base de datos
       const dbCategories = await this.publicationRepository
         .createQueryBuilder('publication')
         .select('DISTINCT publication.category', 'category')
@@ -351,12 +389,30 @@ export class PublicationService {
         .orderBy('publication.category', 'ASC')
         .getRawMany();
 
-      const dbCategoryList = dbCategories.map(item => item.category);
+      const dbCategoryList = dbCategories
+        .map(item => item.category)
+        .filter(category => category && category.trim().length > 0);
       
-      // Combinar categorías predefinidas con las de la BD, eliminando duplicados
-      const allCategories = [...new Set([...predefinedCategories, ...dbCategoryList])];
+      // Normalizar y eliminar duplicados usando Map
+      const normalizedCategoriesMap = new Map<string, string>();
       
-      return allCategories.sort();
+      // Agregar categorías predefinidas
+      predefinedCategories.forEach(category => {
+        const normalized = this.normalizeCategory(category);
+        normalizedCategoriesMap.set(normalized, category);
+      });
+      
+      // Agregar categorías de la BD, normalizadas
+      dbCategoryList.forEach(category => {
+        const normalized = this.normalizeCategory(category);
+        if (!normalizedCategoriesMap.has(normalized)) {
+          normalizedCategoriesMap.set(normalized, normalized);
+        }
+      });
+      
+      // Convertir a array y ordenar
+      const uniqueCategories = Array.from(normalizedCategoriesMap.values());
+      return uniqueCategories.sort();
     } catch (error) {
       this.handleDBErrors(error);
     }
