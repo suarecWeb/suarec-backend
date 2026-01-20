@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
 } from "@nestjs/common";
 import { MessageService } from "./message.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
@@ -117,11 +118,13 @@ export class MessageController {
     @Param("user1Id") user1Id: string,
     @Param("user2Id") user2Id: string,
     @Query() paginationDto: PaginationDto,
+    @Request() req: any,
   ): Promise<PaginationResponse<Message>> {
     return this.messageService.findBetweenUsers(
       +user1Id,
       +user2Id,
       paginationDto,
+      req?.user?.id,
     );
   }
 

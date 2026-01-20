@@ -201,10 +201,19 @@ export class MessageService {
     user1Id: number,
     user2Id: number,
     paginationDto: PaginationDto,
+    viewerId?: number,
   ): Promise<PaginationResponse<Message>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
+
+      if (viewerId !== undefined) {
+        const otherUserId =
+          viewerId === user1Id ? user2Id : viewerId === user2Id ? user1Id : null;
+        if (otherUserId !== null) {
+          await this.markConversationAsRead(viewerId, otherUserId);
+        }
+      }
 
       // Consulta para obtener mensajes entre dos usuarios (en ambas direcciones)
       const queryBuilder = this.messageRepository
