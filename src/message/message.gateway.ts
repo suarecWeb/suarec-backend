@@ -398,6 +398,54 @@ export class MessageGateway
     }
   }
 
+  @SubscribeMessage("mark_conversation_as_read")
+  async handleMarkConversationAsRead(
+    @MessageBody() data: { senderId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const token = client.handshake.auth.token;
+      const recipientId = this.extractUserIdFromToken(token);
+
+      if (!recipientId) {
+        client.emit("mark_read_error", { error: "Usuario no autenticado" });
+        return;
+      }
+
+      if (data?.senderId === undefined || data?.senderId === null) {
+        client.emit("mark_read_error", { error: "senderId es requerido" });
+        return;
+      }
+
+      const result = await this.messageService.markConversationAsRead(
+        recipientId,
+        data.senderId,
+      );
+
+      const conversationId = `${Math.min(recipientId, data.senderId)}_${Math.max(recipientId, data.senderId)}`;
+
+      if (result.updated > 0) {
+        this.server.to(`user_${data.senderId}`).emit("conversation_read", {
+          conversationId,
+          readerId: recipientId,
+          readAt: result.readAt,
+          updated: result.updated,
+        });
+      }
+
+      client.emit("conversation_marked_read", {
+        conversationId,
+        updated: result.updated,
+        readAt: result.readAt,
+      });
+    } catch (error) {
+      console.error("Error en handleMarkConversationAsRead:", error);
+      client.emit("mark_read_error", {
+        error: "Error al marcar conversacion como leida",
+      });
+    }
+  }
+
   @SubscribeMessage("typing")
   async handleTyping(
     @MessageBody() data: { recipientId: number; isTyping: boolean },

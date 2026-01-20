@@ -160,6 +160,17 @@ export class MessageController {
     return this.messageService.markAsRead(id);
   }
 
+  @Patch("conversation/:userId/:senderId/read")
+  @Roles("ADMIN", "PERSON", "BUSINESS")
+  @ApiOperation({ summary: "Mark a conversation as read" })
+  @ApiResponse({ status: 200, description: "Conversation marked as read" })
+  markConversationAsRead(
+    @Param("userId") userId: string,
+    @Param("senderId") senderId: string,
+  ): Promise<{ updated: number; readAt: Date }> {
+    return this.messageService.markConversationAsRead(+userId, +senderId);
+  }
+
   @Patch(":id")
   @Roles("ADMIN", "PERSON", "BUSINESS")
   @ApiOperation({ summary: "Update a message" })

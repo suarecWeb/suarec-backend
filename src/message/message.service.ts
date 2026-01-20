@@ -144,6 +144,27 @@ export class MessageService {
     }
   }
 
+  async markConversationAsRead(
+    recipientId: number,
+    senderId: number,
+  ): Promise<{ updated: number; readAt: Date }> {
+    try {
+      const readAt = new Date();
+      const result = await this.messageRepository
+        .createQueryBuilder()
+        .update(Message)
+        .set({ read: true, read_at: readAt })
+        .where('"recipientId" = :recipientId', { recipientId })
+        .andWhere('"senderId" = :senderId', { senderId })
+        .andWhere('"read" = :read', { read: false })
+        .execute();
+
+      return { updated: result.affected ?? 0, readAt };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
   async findAll(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Message>> {
@@ -634,6 +655,9 @@ export class MessageService {
       // Solo permitir actualizar ciertos campos
       if (updateMessageDto.read !== undefined) {
         message.read = updateMessageDto.read;
+        if (updateMessageDto.read && !updateMessageDto.read_at) {
+          message.read_at = new Date();
+        }
       }
 
       if (updateMessageDto.read_at) {
