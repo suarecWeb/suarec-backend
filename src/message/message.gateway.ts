@@ -117,10 +117,16 @@ export class MessageGateway
       // Crear el mensaje normalmente
       const message = await this.messageService.create(data);
 
+      const senderId = message?.sender?.id ?? (message as any)?.senderId ?? data.senderId;
+      const recipientId = message?.recipient?.id ?? (message as any)?.recipientId ?? data.recipientId;
+      const conversationId = `${Math.min(senderId, recipientId)}_${Math.max(senderId, recipientId)}`;
+
       // Emitir el mensaje
       const messageData = {
         message,
-        conversationId: `${Math.min(data.senderId, data.recipientId)}_${Math.max(data.senderId, data.recipientId)}`,
+        senderId,
+        recipientId,
+        conversationId,
       };
 
       // Emitir solo al destinatario, no al remitente
@@ -128,16 +134,26 @@ export class MessageGateway
       // this.server.to(`user_${data.senderId}`).emit("new_message", messageData);
 
       // Confirmar al remitente
-      client.emit("message_sent", { message });
+      const messageSentPayload = {
+        message,
+        senderId,
+        recipientId,
+        conversationId,
+      };
+      client.emit("message_sent", messageSentPayload);
 
       // Emitir actualización de conversación
       this.server.to(`user_${data.senderId}`).emit("conversation_updated", {
-        conversationId: `${Math.min(data.senderId, data.recipientId)}_${Math.max(data.senderId, data.recipientId)}`,
+        conversationId,
+        senderId,
+        recipientId,
         lastMessage: message,
       });
 
       this.server.to(`user_${data.recipientId}`).emit("conversation_updated", {
-        conversationId: `${Math.min(data.senderId, data.recipientId)}_${Math.max(data.senderId, data.recipientId)}`,
+        conversationId,
+        senderId,
+        recipientId,
         lastMessage: message,
       });
 
@@ -151,6 +167,8 @@ export class MessageGateway
 
         const autoResponseData = {
           message: autoResponse,
+          senderId: 0,
+          recipientId: data.senderId,
           conversationId: `${Math.min(0, data.senderId)}_${Math.max(0, data.senderId)}`,
         };
 
@@ -193,6 +211,8 @@ export class MessageGateway
       // Emitir el mensaje
       const messageData = {
         message,
+        senderId: userId,
+        recipientId: 0,
         conversationId: `${Math.min(0, userId)}_${Math.max(0, userId)}`,
       };
 
@@ -204,11 +224,18 @@ export class MessageGateway
       // Emitir actualización de conversación
       this.server.to(`user_${userId}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, userId)}_${Math.max(0, userId)}`,
+        senderId: userId,
+        recipientId: 0,
         lastMessage: message,
       });
 
       // Confirmar al remitente
-      client.emit("message_sent", { message });
+      client.emit("message_sent", {
+        message,
+        senderId: userId,
+        recipientId: 0,
+        conversationId: `${Math.min(0, userId)}_${Math.max(0, userId)}`,
+      });
 
       console.log("✅ Mensaje agregado al ticket:", data.ticketId);
     } catch (error) {
@@ -247,6 +274,8 @@ export class MessageGateway
       // Emitir el mensaje del usuario que creó el ticket
       const userMessageData = {
         message: ticket,
+        senderId: data.userId,
+        recipientId: 0,
         conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
       };
       
@@ -256,6 +285,8 @@ export class MessageGateway
       // Emitir actualización de conversación
       this.server.to(`user_${data.userId}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
+        senderId: data.userId,
+        recipientId: 0,
         lastMessage: ticket,
       });
       
@@ -275,6 +306,8 @@ export class MessageGateway
         
         const autoResponseData = {
           message: autoResponse,
+          senderId: 0,
+          recipientId: data.userId,
           conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
         };
 
@@ -284,6 +317,8 @@ export class MessageGateway
         // Emitir actualización de conversación
         this.server.to(`user_${data.userId}`).emit("conversation_updated", {
           conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
+          senderId: 0,
+          recipientId: data.userId,
           lastMessage: autoResponse,
         });
       }
@@ -309,6 +344,8 @@ export class MessageGateway
       // Emitir el mensaje al usuario
       const messageData = {
         message,
+        senderId: 0,
+        recipientId: message.recipient.id,
         conversationId: `${Math.min(0, message.recipient.id)}_${Math.max(0, message.recipient.id)}`,
       };
 
@@ -318,6 +355,8 @@ export class MessageGateway
       // Emitir actualización de conversación
       this.server.to(`user_${message.recipient.id}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, message.recipient.id)}_${Math.max(0, message.recipient.id)}`,
+        senderId: 0,
+        recipientId: message.recipient.id,
         lastMessage: message,
       });
 
@@ -359,6 +398,54 @@ export class MessageGateway
     }
   }
 
+  @SubscribeMessage("mark_conversation_as_read")
+  async handleMarkConversationAsRead(
+    @MessageBody() data: { senderId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const token = client.handshake.auth.token;
+      const recipientId = this.extractUserIdFromToken(token);
+
+      if (!recipientId) {
+        client.emit("mark_read_error", { error: "Usuario no autenticado" });
+        return;
+      }
+
+      if (data?.senderId === undefined || data?.senderId === null) {
+        client.emit("mark_read_error", { error: "senderId es requerido" });
+        return;
+      }
+
+      const result = await this.messageService.markConversationAsRead(
+        recipientId,
+        data.senderId,
+      );
+
+      const conversationId = `${Math.min(recipientId, data.senderId)}_${Math.max(recipientId, data.senderId)}`;
+
+      if (result.updated > 0) {
+        this.server.to(`user_${data.senderId}`).emit("conversation_read", {
+          conversationId,
+          readerId: recipientId,
+          readAt: result.readAt,
+          updated: result.updated,
+        });
+      }
+
+      client.emit("conversation_marked_read", {
+        conversationId,
+        updated: result.updated,
+        readAt: result.readAt,
+      });
+    } catch (error) {
+      console.error("Error en handleMarkConversationAsRead:", error);
+      client.emit("mark_read_error", {
+        error: "Error al marcar conversacion como leida",
+      });
+    }
+  }
+
   @SubscribeMessage("typing")
   async handleTyping(
     @MessageBody() data: { recipientId: number; isTyping: boolean },
@@ -378,6 +465,8 @@ export class MessageGateway
     const recipientRoom = `user_${recipientId}`;
     this.server.to(recipientRoom).emit("new_message", {
       message,
+      senderId: message.sender?.id ?? (message as any)?.senderId,
+      recipientId: message.recipient?.id ?? (message as any)?.recipientId,
       conversationId: `${Math.min(message.sender.id, message.recipient.id)}_${Math.max(message.sender.id, message.recipient.id)}`,
     });
   }

@@ -40,7 +40,7 @@ import { BadgesModule } from "./badges/badges.module";
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      synchronize: process.env.NODE_ENV === "development", // Enable sync only in development
+      synchronize: process.env.DB_SYNC === "true",
       autoLoadEntities: true,
       logging: process.env.NODE_ENV === "development", // Enable logging in development mode only
     }),

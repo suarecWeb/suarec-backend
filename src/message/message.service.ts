@@ -144,6 +144,27 @@ export class MessageService {
     }
   }
 
+  async markConversationAsRead(
+    recipientId: number,
+    senderId: number,
+  ): Promise<{ updated: number; readAt: Date }> {
+    try {
+      const readAt = new Date();
+      const result = await this.messageRepository
+        .createQueryBuilder()
+        .update(Message)
+        .set({ read: true, read_at: readAt })
+        .where('"recipientId" = :recipientId', { recipientId })
+        .andWhere('"senderId" = :senderId', { senderId })
+        .andWhere('"read" = :read', { read: false })
+        .execute();
+
+      return { updated: result.affected ?? 0, readAt };
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
   async findAll(
     paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Message>> {
@@ -180,10 +201,19 @@ export class MessageService {
     user1Id: number,
     user2Id: number,
     paginationDto: PaginationDto,
+    viewerId?: number,
   ): Promise<PaginationResponse<Message>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
+
+      if (viewerId !== undefined) {
+        const otherUserId =
+          viewerId === user1Id ? user2Id : viewerId === user2Id ? user1Id : null;
+        if (otherUserId !== null) {
+          await this.markConversationAsRead(viewerId, otherUserId);
+        }
+      }
 
       // Consulta para obtener mensajes entre dos usuarios (en ambas direcciones)
       const queryBuilder = this.messageRepository
@@ -361,6 +391,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "open", // Cambiar a "open" para tickets nuevos
         ticket_id: null, // Se establecerá después
       });
@@ -374,6 +405,7 @@ export class MessageService {
         content: `🎫 **Ticket #${ticket.id}** creado exitosamente.\n\nHemos recibido tu solicitud y nuestro equipo de soporte te responderá pronto.`,
         sender: { id: 0 },
         recipient: { id: userId },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticket.id,
       });
@@ -483,6 +515,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       };
@@ -526,6 +559,7 @@ export class MessageService {
         content,
         sender: { id: 0 }, // Suarec
         recipient: { id: ticket.sender.id },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       });
@@ -630,6 +664,9 @@ export class MessageService {
       // Solo permitir actualizar ciertos campos
       if (updateMessageDto.read !== undefined) {
         message.read = updateMessageDto.read;
+        if (updateMessageDto.read && !updateMessageDto.read_at) {
+          message.read_at = new Date();
+        }
       }
 
       if (updateMessageDto.read_at) {
@@ -691,6 +728,8 @@ export class MessageService {
       // Emitir actualización de conversación
       gateway.server.to(`user_${createMessageDto.recipientId}`).emit("conversation_updated", {
         conversationId: `${Math.min(createMessageDto.senderId, createMessageDto.recipientId)}_${Math.max(createMessageDto.senderId, createMessageDto.recipientId)}`,
+        senderId: createMessageDto.senderId,
+        recipientId: createMessageDto.recipientId,
         lastMessage: message,
       });
 
