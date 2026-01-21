@@ -143,11 +143,17 @@ export class MessageGateway
       client.emit("message_sent", messageSentPayload);
 
       // Emitir actualización de conversación
+      const [senderUnreadCount, recipientUnreadCount] = await Promise.all([
+        this.messageService.countUnreadMessages(senderId, recipientId),
+        this.messageService.countUnreadMessages(recipientId, senderId),
+      ]);
+
       this.server.to(`user_${data.senderId}`).emit("conversation_updated", {
         conversationId,
         senderId,
         recipientId,
         lastMessage: message,
+        unreadCount: senderUnreadCount,
       });
 
       this.server.to(`user_${data.recipientId}`).emit("conversation_updated", {
@@ -155,6 +161,7 @@ export class MessageGateway
         senderId,
         recipientId,
         lastMessage: message,
+        unreadCount: recipientUnreadCount,
       });
 
       // Si es un ticket nuevo (mensaje a Suarec), crear respuesta automática
@@ -222,11 +229,16 @@ export class MessageGateway
       // this.server.to(`user_${userId}`).emit("new_message", messageData);
       
       // Emitir actualización de conversación
+      const unreadCount = await this.messageService.countUnreadMessages(
+        userId,
+        0,
+      );
       this.server.to(`user_${userId}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, userId)}_${Math.max(0, userId)}`,
         senderId: userId,
         recipientId: 0,
         lastMessage: message,
+        unreadCount,
       });
 
       // Confirmar al remitente
@@ -283,11 +295,16 @@ export class MessageGateway
       this.server.to(`user_${data.userId}`).emit("new_message", userMessageData);
       
       // Emitir actualización de conversación
+      const ticketUnreadCount = await this.messageService.countUnreadMessages(
+        data.userId,
+        0,
+      );
       this.server.to(`user_${data.userId}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
         senderId: data.userId,
         recipientId: 0,
         lastMessage: ticket,
+        unreadCount: ticketUnreadCount,
       });
       
       // Buscar el mensaje automático que se creó junto con el ticket
@@ -315,11 +332,14 @@ export class MessageGateway
         this.server.to(`user_${data.userId}`).emit("new_message", autoResponseData);
         
         // Emitir actualización de conversación
+        const autoResponseUnreadCount =
+          await this.messageService.countUnreadMessages(data.userId, 0);
         this.server.to(`user_${data.userId}`).emit("conversation_updated", {
           conversationId: `${Math.min(0, data.userId)}_${Math.max(0, data.userId)}`,
           senderId: 0,
           recipientId: data.userId,
           lastMessage: autoResponse,
+          unreadCount: autoResponseUnreadCount,
         });
       }
     } catch (error) {
@@ -353,11 +373,16 @@ export class MessageGateway
       this.server.to(`user_${message.recipient.id}`).emit("new_message", messageData);
       
       // Emitir actualización de conversación
+      const adminReplyUnreadCount = await this.messageService.countUnreadMessages(
+        message.recipient.id,
+        0,
+      );
       this.server.to(`user_${message.recipient.id}`).emit("conversation_updated", {
         conversationId: `${Math.min(0, message.recipient.id)}_${Math.max(0, message.recipient.id)}`,
         senderId: 0,
         recipientId: message.recipient.id,
         lastMessage: message,
+        unreadCount: adminReplyUnreadCount,
       });
 
       // Confirmar al admin
