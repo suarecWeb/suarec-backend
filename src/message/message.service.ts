@@ -726,11 +726,16 @@ export class MessageService {
       gateway.server.to(recipientRoom).emit("new_message", messageData);
       
       // Emitir actualización de conversación
+      const unreadCount = await this.countUnreadMessages(
+        createMessageDto.recipientId,
+        createMessageDto.senderId,
+      );
       gateway.server.to(`user_${createMessageDto.recipientId}`).emit("conversation_updated", {
         conversationId: `${Math.min(createMessageDto.senderId, createMessageDto.recipientId)}_${Math.max(createMessageDto.senderId, createMessageDto.recipientId)}`,
         senderId: createMessageDto.senderId,
         recipientId: createMessageDto.recipientId,
         lastMessage: message,
+        unreadCount,
       });
 
       return message;
