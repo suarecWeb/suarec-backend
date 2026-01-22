@@ -4,7 +4,7 @@ import { SendCodeDto } from './dto/send-code.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
-@Controller('suarec/forgot-password')
+@Controller('forgot-password')
 export class ForgotPasswordController {
   constructor(private readonly forgotPasswordService: ForgotPasswordService) {}
 
