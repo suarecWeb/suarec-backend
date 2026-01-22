@@ -26,6 +26,7 @@ import { BotModule } from "./bot/bot.module";
 import { ModerationModule } from "./moderation/moderation.module";
 import { LevelsModule } from "./levels/levels.module";
 import { BadgesModule } from "./badges/badges.module";
+import { ForgotPasswordModule } from "./forgot-password/forgot-password.module";
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { BadgesModule } from "./badges/badges.module";
     ModerationModule,
     LevelsModule,
     BadgesModule,
+    ForgotPasswordModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
