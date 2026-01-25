@@ -38,10 +38,10 @@ describe("PaymentService confirmCashPayment", () => {
     id: "contract-1",
     client: { id: 10 },
     provider: { id: 20 },
-    currentPrice: 100,
-    totalPrice: 100,
-    initialPrice: 100,
-    suarecCommission: 8,
+    currentPrice: 20000,
+    totalPrice: 20000,
+    initialPrice: 20000,
+    suarecCommission: 7000,
   };
 
   it("creates payment transaction COMPLETED and fee ledger PENDING", async () => {
@@ -88,7 +88,7 @@ describe("PaymentService confirmCashPayment", () => {
     expect(platformFeeLedgerRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         status: PlatformFeeStatus.PENDING,
-        amount: 8,
+        amount: 7000,
       }),
     );
     expect(result.feeDebtCreated).toBe(true);
@@ -109,7 +109,7 @@ describe("PaymentService confirmCashPayment", () => {
       id: "ledger-1",
       provider: baseContract.provider,
       contract: baseContract,
-      amount: 8,
+      amount: 7000,
       status: PlatformFeeStatus.PENDING,
     };
 

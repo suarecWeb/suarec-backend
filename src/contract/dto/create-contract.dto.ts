@@ -6,6 +6,7 @@ import {
   IsUUID,
   IsEnum,
   IsDateString,
+  Min,
 } from "class-validator";
 import { Transform } from "class-transformer";
 import { ContractStatus } from "../entities/contract.entity";
@@ -25,11 +26,13 @@ export class CreateContractDto {
 
   @IsNumber()
   @IsNotEmpty()
+  @Min(20000)
   @Transform(({ value }) => parseFloat(value))
   initialPrice: number;
 
   @IsNumber()
   @IsNotEmpty()
+  @Min(20000)
   @Transform(({ value }) => parseFloat(value))
   totalPrice: number;
 
@@ -63,8 +66,18 @@ export class CreateContractDto {
   originalPaymentMethod?: string;
 
   @IsString()
+  @IsNotEmpty()
+  serviceAddress: string;
+
+  @IsNumber()
   @IsOptional()
-  serviceAddress?: string;
+  @Transform(({ value }) => value ? parseFloat(value) : undefined)
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Transform(({ value }) => value ? parseFloat(value) : undefined)
+  longitude?: number;
 
   @IsString()
   @IsOptional()
@@ -90,6 +103,7 @@ export class CreateBidDto {
 
   @IsNumber()
   @IsNotEmpty()
+  @Min(20000)
   amount: number;
 
   @IsString()
@@ -125,6 +139,7 @@ export class ProviderResponseDto {
 
   @IsNumber()
   @IsOptional()
+  @Min(20000)
   counterOffer?: number;
 
   @IsDateString()
