@@ -36,8 +36,55 @@ export class ContractService {
     if (contract.provider.id !== userId && contract.client.id !== userId) {
       throw new BadRequestException("No tienes permisos para editar este contrato");
     }
+    const frozenStatuses = [
+      ContractStatus.ACCEPTED,
+      ContractStatus.COMPLETED,
+      ContractStatus.CANCELLED,
+    ];
+    const frozenFields = [
+      "initialPrice",
+      "totalPrice",
+      "currentPrice",
+      "priceUnit",
+      "serviceAddress",
+      "propertyType",
+      "neighborhood",
+      "locationDescription",
+      "latitude",
+      "longitude",
+    ];
+    if (frozenStatuses.includes(contract.status)) {
+      const attemptedFrozenUpdate = frozenFields.filter(
+        (field) => typeof updateContractDto?.[field] !== "undefined",
+      );
+      if (attemptedFrozenUpdate.length > 0) {
+        throw new BadRequestException(
+          "No puedes modificar precio, tarifa o ubicacion cuando el contrato esta aceptado.",
+        );
+      }
+    }
+    const priceFields = ["initialPrice", "totalPrice", "currentPrice"];
+    for (const field of priceFields) {
+      if (
+        typeof updateContractDto?.[field] === "number" &&
+        updateContractDto[field] < this.MIN_SERVICE_PRICE
+      ) {
+        throw new BadRequestException(
+          `El precio minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
+        );
+      }
+    }
     Object.assign(contract, updateContractDto);
-    return await this.contractRepository.save(contract);
+    const updatedContract = await this.contractRepository.save(contract);
+    if (updatedContract.status === ContractStatus.ACCEPTED) {
+      try {
+        await this.paymentService.ensureWompiPaymentForContract(updatedContract.id);
+      } catch (error) {
+        console.error("Error creating payment link:", error);
+      }
+    }
+
+    return updatedContract;
   }
   async updateProviderMessage(contractId: string, providerId: number, providerMessage: string): Promise<Contract> {
     const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider"] });
@@ -51,6 +98,8 @@ export class ContractService {
     return await this.contractRepository.save(contract);
   }
   private readonly SUAREC_COMMISSION_RATE = 0.08; // 8%
+  private readonly MIN_SUAREC_COMMISSION = 7000;
+  private readonly MIN_SERVICE_PRICE = 20000;
   private readonly TAX_RATE = 0.19; // 19% IVA
 
   constructor(
@@ -76,7 +125,8 @@ export class ContractService {
    * Solo aplica IVA si el proveedor es una empresa (persona jurídica)
    */
   private calculateCommissions(currentPrice: number, isProviderCompany: boolean = false) {
-    const suarecCommission = currentPrice * this.SUAREC_COMMISSION_RATE;
+    const rawCommission = currentPrice * this.SUAREC_COMMISSION_RATE;
+    const suarecCommission = Math.max(rawCommission, this.MIN_SUAREC_COMMISSION);
     const priceWithoutCommission = currentPrice - suarecCommission;
     
     // Solo aplicar IVA si el proveedor es una empresa
@@ -145,7 +195,24 @@ export class ContractService {
         propertyType,
         neighborhood,
         locationDescription,
+        latitude,
+        longitude,
       } = createContractDto;
+
+      if (
+        initialPrice < this.MIN_SERVICE_PRICE ||
+        totalPrice < this.MIN_SERVICE_PRICE
+      ) {
+        throw new BadRequestException(
+          `El precio minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
+        );
+      }
+
+      if (!serviceAddress) {
+        throw new BadRequestException(
+          "Se requiere direccion para crear la orden.",
+        );
+      }
 
       console.log("🔍 Debug - Datos extraídos:", {
         publicationId,
@@ -200,6 +267,8 @@ export class ContractService {
       throw new BadRequestException("No puedes contratar tu propio servicio");
     }
 
+    await this.paymentService.ensureProviderCanOffer(provider.id);
+
     // Verificar que el cliente no tiene saldo negativo (puede solicitar nuevos servicios)
     const canRequestNewService = await this.balanceService.canRequestNewService(clientId);
     if (!canRequestNewService) {
@@ -224,10 +293,28 @@ export class ContractService {
         propertyType,
         neighborhood,
         locationDescription,
+        latitude,
+        longitude,
         status: createContractDto.clientMessage?.includes('Contrato creado automáticamente desde aplicación aceptada') 
           ? ContractStatus.ACCEPTED // Si es desde aplicación aceptada, ya hay acuerdo
           : ContractStatus.PENDING, // Estado inicial: PENDING para que el proveedor lo revise
       });
+
+      if (contract.status === ContractStatus.ACCEPTED) {
+        const isProviderCompany =
+          provider.roles?.some((role) => role.name === "BUSINESS") || false;
+        const commissions = this.calculateCommissions(
+          Number(
+            contract.currentPrice ||
+              contract.totalPrice ||
+              contract.initialPrice,
+          ),
+          isProviderCompany,
+        );
+        contract.suarecCommission = commissions.suarecCommission;
+        contract.priceWithoutCommission = commissions.priceWithoutCommission;
+        contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
+      }
 
     const savedContract = await this.contractRepository.save(contract);
 
@@ -237,6 +324,14 @@ export class ContractService {
         "Nueva solicitud de contratación pendiente",
         `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}". Por favor, revisa los detalles y responde aceptando, rechazando o proponiendo una contraoferta.`,
       );
+
+    if (savedContract.status === ContractStatus.ACCEPTED) {
+      try {
+        await this.paymentService.ensureWompiPaymentForContract(savedContract.id);
+      } catch (error) {
+        console.error("Error creating payment link:", error);
+      }
+    }
 
     return savedContract;
     } catch (error) {
@@ -272,6 +367,12 @@ export class ContractService {
     ) {
       throw new BadRequestException(
         "El contrato no está disponible para ofertas",
+      );
+    }
+
+    if (amount < this.MIN_SERVICE_PRICE) {
+      throw new BadRequestException(
+        `El monto minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
       );
     }
 
@@ -338,6 +439,14 @@ export class ContractService {
       );
     }
 
+    if (bid.amount < this.MIN_SERVICE_PRICE) {
+      throw new BadRequestException(
+        `El monto minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
+      );
+    }
+
+    await this.paymentService.ensureProviderCanOffer(bid.contract.provider.id);
+
     // Marcar la oferta como aceptada
     bid.isAccepted = true;
     await this.bidRepository.save(bid);
@@ -356,6 +465,11 @@ export class ContractService {
     bid.contract.priceWithoutCommission = commissions.priceWithoutCommission;
     bid.contract.totalCommissionWithTax = commissions.totalCommissionWithTax;
     const updatedContract = await this.contractRepository.save(bid.contract);
+    try {
+      await this.paymentService.ensureWompiPaymentForContract(updatedContract.id);
+    } catch (error) {
+      console.error("Error creating payment link:", error);
+    }
 
     // Enviar notificación por email al otro participante
     // const recipient =
@@ -696,8 +810,21 @@ export class ContractService {
       );
     }
 
+    if (action !== ContractStatus.REJECTED) {
+      await this.paymentService.ensureProviderCanOffer(contract.provider.id);
+    }
+
     switch (action) {
       case ContractStatus.ACCEPTED: {
+        const acceptedPrice = Number(
+          contract.currentPrice || contract.totalPrice || contract.initialPrice,
+        );
+        if (acceptedPrice < this.MIN_SERVICE_PRICE) {
+          throw new BadRequestException(
+            `El precio minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
+          );
+        }
+
         contract.status = ContractStatus.ACCEPTED;
         contract.providerMessage = data.providerMessage;
         contract.agreedDate = data.proposedDate || contract.requestedDate;
@@ -739,6 +866,15 @@ export class ContractService {
         break;
 
       case ContractStatus.NEGOTIATING: {
+        if (
+          typeof data.counterOffer === "number" &&
+          data.counterOffer < this.MIN_SERVICE_PRICE
+        ) {
+          throw new BadRequestException(
+            `El monto minimo del servicio es ${this.MIN_SERVICE_PRICE}`,
+          );
+        }
+
         contract.status = ContractStatus.NEGOTIATING;
         contract.providerMessage = data.providerMessage;
         contract.currentPrice = data.counterOffer || contract.initialPrice;

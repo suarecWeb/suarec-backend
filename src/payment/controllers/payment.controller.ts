@@ -223,6 +223,19 @@ export class PaymentController {
     );
   }
 
+  @Post(":id/confirm-card")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  @ApiOperation({ summary: "Confirm a card payment intent" })
+  @ApiResponse({ status: 200, description: "Card payment confirmed" })
+  @ApiBearerAuth()
+  async confirmCardPayment(@Param("id") id: string, @Request() req) {
+    return this.paymentService.confirmCardPayment(
+      id,
+      req.user.id,
+      req.user.roles,
+    );
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a payment transaction" })
   @ApiResponse({

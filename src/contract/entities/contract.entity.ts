@@ -72,6 +72,12 @@ export class Contract {
   @Column("text", { nullable: true })
   locationDescription?: string; // Descripción adicional de la ubicación
 
+  @Column("decimal", { precision: 10, scale: 8, nullable: true })
+  latitude?: number;
+
+  @Column("decimal", { precision: 11, scale: 8, nullable: true })
+  longitude?: number;
+
   @Column({
     type: "enum",
     enum: ContractStatus,
