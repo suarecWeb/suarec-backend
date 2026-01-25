@@ -26,6 +26,7 @@ import { BotModule } from "./bot/bot.module";
 import { ModerationModule } from "./moderation/moderation.module";
 import { LevelsModule } from "./levels/levels.module";
 import { BadgesModule } from "./badges/badges.module";
+import { VerifiedGuard } from "./auth/guard/verified.guard";
 
 @Module({
   imports: [
@@ -70,9 +71,14 @@ import { BadgesModule } from "./badges/badges.module";
   providers: [
     AppService,
     AuthGuard,
+    VerifiedGuard,
     {
       provide: APP_GUARD,
       useClass: AuthGuard, // Guard global para proteger las rutas
+    },
+    {
+      provide: APP_GUARD,
+      useClass: VerifiedGuard,
     },
   ],
   exports: [TypeOrmModule],

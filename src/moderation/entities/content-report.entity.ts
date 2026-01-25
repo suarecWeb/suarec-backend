@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Check,
+  Unique,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { ReportContentType } from '../../enums/report-content-type.enum';
@@ -14,6 +15,7 @@ import { ReportReason } from '../../enums/report-reason.enum';
 import { ReportStatus } from '../../enums/report-status.enum';
 
 @Entity('content_reports')
+@Unique('uq_reporter_content', ['reporter_id', 'content_type', 'content_id'])
 @Check(`"reporter_id" != "reported_user_id"`)
 export class ContentReport {
   @PrimaryGeneratedColumn()

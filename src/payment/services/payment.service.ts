@@ -17,7 +17,11 @@ import {
 } from "../dto/payment-history.dto";
 import { AdminPaymentFilterDto } from "../dto/admin-payment-filter.dto";
 import { WompiService } from "./wompi.service";
-import { PaymentMethod, PaymentStatus } from "../../enums/paymentMethod.enum";
+import {
+  PaymentMethod,
+  PaymentStatus,
+  WompiPaymentType,
+} from "../../enums/paymentMethod.enum";
 import { User } from "../../user/entities/user.entity";
 import { Contract } from "../../contract/entities/contract.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
@@ -30,6 +34,8 @@ import {
 
 @Injectable()
 export class PaymentService {
+  private readonly SUAREC_COMMISSION_RATE = 0.08;
+  private readonly MIN_SUAREC_COMMISSION = 7000;
   public wompiService: WompiService;
   constructor(
     @InjectRepository(PaymentTransaction)
@@ -72,6 +78,17 @@ export class PaymentService {
         accept_personal_auth,
         ...paymentData
       } = createPaymentDto;
+
+      const requiresCardIntent =
+        paymentData.payment_method === PaymentMethod.Credit_card;
+      if (requiresCardIntent && !paymentData.wompi_payment_type) {
+        paymentData.wompi_payment_type = WompiPaymentType.CARD;
+      }
+      if (requiresCardIntent && (!acceptance_token || !accept_personal_auth)) {
+        throw new BadRequestException(
+          "Acceptance token y autorizacion personal son requeridos para tarjeta.",
+        );
+      }
 
       console.log('📦 Destructured data:');
       console.log('  contract_id:', contract_id, 'type:', typeof contract_id);
@@ -207,12 +224,19 @@ export class PaymentService {
       }
 
 
+      if (requiresCardIntent) {
+        await this.processWompiPayment(
+          paymentTransaction,
+          acceptance_token,
+          accept_personal_auth,
+        );
+      }
+
       // Check if should create Wompi link
-      const shouldCreateWompiLink = (
+      const shouldCreateWompiLink = !requiresCardIntent && (
         paymentData.payment_method === PaymentMethod.Wompi ||
         paymentData.payment_method === PaymentMethod.Cash ||
-        paymentData.payment_method === PaymentMethod.Bank_transfer ||
-        paymentData.payment_method === PaymentMethod.Credit_card
+        paymentData.payment_method === PaymentMethod.Bank_transfer
       );
       
       console.log('🔍 Step 7: Checking if should create Wompi link...');
@@ -469,6 +493,42 @@ export class PaymentService {
     return this.findOne(id);
   }
 
+  async confirmCardPayment(
+    paymentTransactionId: string,
+    actorUserId: number,
+    actorRoles: Array<{ name: string }> = [],
+  ): Promise<PaymentTransaction> {
+    const paymentTransaction = await this.findOne(paymentTransactionId);
+
+    const isAdmin = actorRoles.some((role) => role.name === "ADMIN");
+    if (!isAdmin && paymentTransaction.payer.id !== actorUserId) {
+      throw new BadRequestException(
+        "Solo el cliente o un administrador puede confirmar el pago",
+      );
+    }
+
+    if (paymentTransaction.payment_method !== PaymentMethod.Credit_card) {
+      throw new BadRequestException("Este pago no es de tarjeta.");
+    }
+
+    if (!paymentTransaction.wompi_transaction_id) {
+      throw new BadRequestException(
+        "No hay transaccion de Wompi asociada.",
+      );
+    }
+
+    const wompiTransaction = await this.wompiService.getTransaction(
+      paymentTransaction.wompi_transaction_id,
+    );
+
+    await this.updatePaymentStatus(
+      paymentTransaction,
+      wompiTransaction.data.status,
+    );
+
+    return this.findOne(paymentTransactionId);
+  }
+
   async confirmCashPayment(
     contractId: string,
     actorUserId: number,
@@ -574,6 +634,76 @@ export class PaymentService {
       paymentStatus: paymentTransaction.status,
       feeDebtCreated,
     };
+  }
+
+  async ensureWompiPaymentForContract(
+    contractId: string,
+  ): Promise<PaymentTransaction | null> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    const paymentMethod =
+      (contract.paymentMethod as PaymentMethod | undefined) ??
+      PaymentMethod.Wompi;
+
+    if (paymentMethod !== PaymentMethod.Wompi) {
+      return null;
+    }
+
+    const existingPayment = await this.paymentTransactionRepository.findOne({
+      where: { contract: { id: contractId }, payment_method: PaymentMethod.Wompi },
+      order: { created_at: "DESC" },
+    });
+
+    if (existingPayment?.wompi_payment_link) {
+      return existingPayment;
+    }
+
+    const amount = this.getContractAmount(contract);
+    const createPaymentDto: CreatePaymentDto = {
+      amount,
+      currency: "COP",
+      payment_method: PaymentMethod.Wompi,
+      contract_id: contract.id,
+      payee_id: contract.provider.id,
+      description: "Pago por servicio",
+    };
+
+    return this.createPayment(createPaymentDto, contract.client.id);
+  }
+
+  private async markOverdueFees(providerId: number): Promise<void> {
+    await this.platformFeeLedgerRepository
+      .createQueryBuilder()
+      .update(PlatformFeeLedger)
+      .set({ status: PlatformFeeStatus.OVERDUE })
+      .where("status = :status", { status: PlatformFeeStatus.PENDING })
+      .andWhere("due_at IS NOT NULL")
+      .andWhere("due_at < :now", { now: new Date() })
+      .andWhere("providerId = :providerId", { providerId })
+      .execute();
+  }
+
+  async ensureProviderCanOffer(providerId: number): Promise<void> {
+    await this.markOverdueFees(providerId);
+    const overdueCount = await this.platformFeeLedgerRepository.count({
+      where: {
+        provider: { id: providerId },
+        status: PlatformFeeStatus.OVERDUE,
+      },
+    });
+
+    if (overdueCount > 0) {
+      throw new BadRequestException(
+        "No puedes prestar servicios porque tienes tarifas SUAREC vencidas.",
+      );
+    }
   }
 
   async processWompiWebhook(webhookData: any): Promise<void> {
@@ -1112,7 +1242,10 @@ export class PaymentService {
 
   private getContractFeeAmount(contract: Contract): number {
     if (contract.suarecCommission != null) {
-      return Number(contract.suarecCommission);
+      return Math.max(
+        Number(contract.suarecCommission),
+        this.MIN_SUAREC_COMMISSION,
+      );
     }
 
     const baseAmount = this.getContractAmount(contract);
@@ -1120,7 +1253,10 @@ export class PaymentService {
       return 0;
     }
 
-    return Number((baseAmount * 0.08).toFixed(2));
+    const rawFee = Number(
+      (baseAmount * this.SUAREC_COMMISSION_RATE).toFixed(2),
+    );
+    return Math.max(rawFee, this.MIN_SUAREC_COMMISSION);
   }
 
   private isProcessedPaymentStatus(status: PaymentStatus): boolean {

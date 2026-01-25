@@ -86,6 +86,15 @@ export class UserController {
     return this.userService.searchUsers(query, +limit, req.user.id);
   }
 
+  @Get("me")
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: "Get current user profile" })
+  @ApiResponse({ status: 200, description: "User profile retrieved successfully" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  getMyProfile(@Request() req): Promise<User> {
+    return this.userService.findOne(req.user.id);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get a user by id" })
   findOne(@Param("id") id: number): Promise<User> {
