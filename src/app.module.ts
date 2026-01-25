@@ -27,6 +27,7 @@ import { ModerationModule } from "./moderation/moderation.module";
 import { LevelsModule } from "./levels/levels.module";
 import { BadgesModule } from "./badges/badges.module";
 import { VerifiedGuard } from "./auth/guard/verified.guard";
+import { ForgotPasswordModule } from "./forgot-password/forgot-password.module";
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { VerifiedGuard } from "./auth/guard/verified.guard";
     ModerationModule,
     LevelsModule,
     BadgesModule,
+    ForgotPasswordModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
