@@ -83,7 +83,7 @@ export class CreatePublicationDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
-  location?: string; // Ubicación del trabajo
+  location: string; // Ubicación del trabajo
 
   @IsString()
   @IsOptional()
