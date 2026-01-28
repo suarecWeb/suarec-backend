@@ -633,7 +633,26 @@ export class UserService {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
 
-      // 1) Delete comments authored by the user
+      // 1) Delete user-related entities with explicit user_id column
+      try {
+        // Terms acceptance
+        await manager.query('DELETE FROM user_terms_acceptance WHERE user_id = $1', [id]);
+        // Gallery (user_id column)
+        await manager.query('DELETE FROM user_gallery WHERE user_id = $1', [id]);
+        // ID Photos (user_id column)
+        await manager.query('DELETE FROM user_id_photos WHERE user_id = $1', [id]);
+        // Education (user_id column)
+        await manager.query('DELETE FROM education WHERE user_id = $1', [id]);
+        // References (user_id column)
+        await manager.query('DELETE FROM reference WHERE user_id = $1', [id]);
+        // Social Links (user_id column)
+        await manager.query('DELETE FROM social_link WHERE user_id = $1', [id]);
+      } catch (err) {
+        this.logger.error('Error deleting user profile data', err);
+        throw err;
+      }
+
+      // 2) Delete comments authored by the user
       try {
         await manager
           .createQueryBuilder()
