@@ -523,6 +523,33 @@ export class ContractService {
     return contract;
   }
 
+  async generatePaymentLinkForContract(
+    contractId: string,
+    userId: number,
+    roles: string[],
+  ) {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    const isAdmin = roles?.includes("ADMIN");
+    const isClient = contract.client?.id === userId;
+    const isProvider = contract.provider?.id === userId;
+
+    if (!isAdmin && !isClient && !isProvider) {
+      throw new BadRequestException(
+        "No tienes permisos para generar el link de pago de este contrato",
+      );
+    }
+
+    return this.paymentService.ensureWompiPaymentForContract(contract.id);
+  }
+
   async checkPenaltyRequired(contractId: string, userId: number): Promise<{ requiresPenalty: boolean; message?: string }> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null },
@@ -850,6 +877,11 @@ export class ContractService {
           "Tu solicitud de contratación fue aceptada",
           `Tu solicitud para "${contract.publication.title}" ha sido aceptada por el proveedor.`,
         );
+        try {
+          await this.paymentService.ensureWompiPaymentForContract(contract.id);
+        } catch (error) {
+          console.error("Error creating payment link:", error);
+        }
         break;
       }
 

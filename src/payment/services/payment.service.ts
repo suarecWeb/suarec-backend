@@ -232,12 +232,8 @@ export class PaymentService {
         );
       }
 
-      // Check if should create Wompi link
-      const shouldCreateWompiLink = !requiresCardIntent && (
-        paymentData.payment_method === PaymentMethod.Wompi ||
-        paymentData.payment_method === PaymentMethod.Cash ||
-        paymentData.payment_method === PaymentMethod.Bank_transfer
-      );
+      // Always create a Wompi payment link regardless of payment method
+      const shouldCreateWompiLink = true;
       
       console.log('🔍 Step 7: Checking if should create Wompi link...');
       console.log('  Payment method:', paymentData.payment_method);
@@ -646,14 +642,6 @@ export class PaymentService {
 
     if (!contract) {
       throw new NotFoundException("Contrato no encontrado");
-    }
-
-    const paymentMethod =
-      (contract.paymentMethod as PaymentMethod | undefined) ??
-      PaymentMethod.Wompi;
-
-    if (paymentMethod !== PaymentMethod.Wompi) {
-      return null;
     }
 
     const existingPayment = await this.paymentTransactionRepository.findOne({
