@@ -146,6 +146,16 @@ export class ContractController {
     return await this.contractService.completeContract(id, req.user.id);
   }
 
+  @Post(":id/create-payment-link")
+  @Roles("ADMIN", "BUSINESS", "PERSON")
+  async createPaymentLink(@Param("id") id: string, @Request() req) {
+    return await this.contractService.generatePaymentLinkForContract(
+      id,
+      req.user.id,
+      req.user.roles,
+    );
+  }
+
   @Post(":id/generate-otp")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   async generateOTP(@Param("id") id: string, @Request() req) {
