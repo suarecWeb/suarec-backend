@@ -24,11 +24,12 @@ import { EmailService } from "../email/email.service";
 import { PaymentService } from "../payment/services/payment.service";
 import { PaymentMethod } from "../enums/paymentMethod.enum";
 import { BalanceService } from "../user/services/balance.service";
+import { PushService } from "../push/push.service";
 
 @Injectable()
 export class ContractService {
   async updateContract(contractId: string, userId: number, updateContractDto: any): Promise<Contract> {
-    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider", "client"] });
+    const contract = await this.contractRepository.findOne({ where: { id: contractId }, relations: ["provider", "client", "publication"] });
     if (!contract) {
       throw new NotFoundException("Contrato no encontrado");
     }
@@ -74,6 +75,7 @@ export class ContractService {
         );
       }
     }
+    const previousStatus = contract.status;
     Object.assign(contract, updateContractDto);
     const updatedContract = await this.contractRepository.save(contract);
     if (updatedContract.status === ContractStatus.ACCEPTED) {
@@ -81,6 +83,21 @@ export class ContractService {
         await this.paymentService.ensureWompiPaymentForContract(updatedContract.id);
       } catch (error) {
         console.error("Error creating payment link:", error);
+      }
+    }
+
+    if (updateContractDto.status && updateContractDto.status !== previousStatus) {
+      const recipientId =
+        updatedContract.client?.id === userId
+          ? updatedContract.provider?.id
+          : updatedContract.client?.id;
+      if (recipientId) {
+        await this.sendContractPush(
+          updatedContract,
+          recipientId,
+          "Estado de contrato actualizado",
+          `El estado del contrato cambió a ${updatedContract.status}.`,
+        );
       }
     }
 
@@ -118,6 +135,7 @@ export class ContractService {
     private paymentService: PaymentService, // eslint-disable-line no-unused-vars
     @Inject(forwardRef(() => BalanceService))
     private balanceService: BalanceService, // eslint-disable-line no-unused-vars
+    private pushService: PushService, // eslint-disable-line no-unused-vars
   ) {}
 
   /**
@@ -325,6 +343,15 @@ export class ContractService {
         `Has recibido una nueva solicitud de contratación para tu servicio "${publication.title}". Por favor, revisa los detalles y responde aceptando, rechazando o proponiendo una contraoferta.`,
       );
 
+      await this.sendContractPush(
+        savedContract,
+        provider.id,
+        savedContract.status === ContractStatus.ACCEPTED
+          ? "Nueva contratación aceptada"
+          : "Nueva solicitud de contratación",
+        `Tienes una nueva solicitud para "${publication.title}".`,
+      );
+
     if (savedContract.status === ContractStatus.ACCEPTED) {
       try {
         await this.paymentService.ensureWompiPaymentForContract(savedContract.id);
@@ -417,7 +444,7 @@ export class ContractService {
     // Verificar que la oferta existe
     const bid = await this.bidRepository.findOne({
       where: { id: bidId },
-      relations: ["contract", "contract.client", "contract.provider", "bidder"],
+      relations: ["contract", "contract.client", "contract.provider", "contract.publication", "bidder"],
     });
 
     if (!bid) {
@@ -470,6 +497,17 @@ export class ContractService {
     } catch (error) {
       console.error("Error creating payment link:", error);
     }
+
+    const recipientId =
+      bid.contract.client.id === acceptorId
+        ? bid.contract.provider.id
+        : bid.contract.client.id;
+    await this.sendContractPush(
+      updatedContract,
+      recipientId,
+      "Oferta aceptada",
+      `La oferta para "${bid.contract.publication?.title || "tu contrato"}" fue aceptada.`,
+    );
 
     // Enviar notificación por email al otro participante
     // const recipient =
@@ -582,7 +620,7 @@ export class ContractService {
   async cancelContract(contractId: string, userId: number): Promise<Contract> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null }, // Solo contratos activos
-      relations: ["client", "provider"],
+      relations: ["client", "provider", "publication"],
     });
 
     if (!contract) {
@@ -619,7 +657,18 @@ export class ContractService {
     if (!contract.cancelledAt) {
       contract.cancelledAt = new Date();
     }
-    return await this.contractRepository.save(contract);
+    const cancelledContract = await this.contractRepository.save(contract);
+
+    const recipientId =
+      contract.client.id === userId ? contract.provider.id : contract.client.id;
+    await this.sendContractPush(
+      cancelledContract,
+      recipientId,
+      "Contrato cancelado",
+      `El contrato "${contract.publication?.title || contract.id}" fue cancelado.`,
+    );
+
+    return cancelledContract;
   }
 
   async createCancellationPenaltyPayment(contractId: string, userId: number): Promise<any> {
@@ -784,6 +833,13 @@ export class ContractService {
       // No lanzar error para no interrumpir la completación del contrato
     }
 
+    await this.sendContractPush(
+      updatedContract,
+      contract.client.id,
+      "Servicio completado",
+      `El servicio "${contract.publication.title}" fue marcado como completado.`,
+    );
+
     return updatedContract;
   }
 
@@ -877,6 +933,12 @@ export class ContractService {
           "Tu solicitud de contratación fue aceptada",
           `Tu solicitud para "${contract.publication.title}" ha sido aceptada por el proveedor.`,
         );
+        await this.sendContractPush(
+          contract,
+          contract.client.id,
+          "Solicitud aceptada",
+          `Tu solicitud para "${contract.publication.title}" fue aceptada.`,
+        );
         try {
           await this.paymentService.ensureWompiPaymentForContract(contract.id);
         } catch (error) {
@@ -894,6 +956,12 @@ export class ContractService {
           contract.client.email,
           "Tu solicitud de contratación fue rechazada",
           `Tu solicitud para "${contract.publication.title}" ha sido rechazada por el proveedor.`,
+        );
+        await this.sendContractPush(
+          contract,
+          contract.client.id,
+          "Solicitud rechazada",
+          `Tu solicitud para "${contract.publication.title}" fue rechazada.`,
         );
         break;
 
@@ -925,6 +993,12 @@ export class ContractService {
           contract.client.email,
           "Nueva propuesta en tu contratación",
           `El proveedor ha enviado una nueva propuesta para "${contract.publication.title}".`,
+        );
+        await this.sendContractPush(
+          contract,
+          contract.client.id,
+          "Nueva propuesta",
+          `El proveedor envió una nueva propuesta para "${contract.publication.title}".`,
         );
         break;
       }
@@ -1099,5 +1173,26 @@ export class ContractService {
 
     // Generar nuevo OTP
     return await this.generateContractOTP(contractId, userId);
+  }
+
+  private async sendContractPush(
+    contract: Contract,
+    recipientId: number,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    try {
+      await this.pushService.sendToUser(recipientId, {
+        title,
+        body,
+        data: {
+          type: "contract",
+          contractId: contract.id,
+          status: contract.status,
+        },
+      });
+    } catch (error) {
+      console.error("Error sending contract push notification:", error);
+    }
   }
 }
