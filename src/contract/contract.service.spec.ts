@@ -16,6 +16,10 @@ describe("ContractService timestamps", () => {
       findByContract: jest.fn().mockResolvedValue([]),
     };
 
+    const pushService = {
+      sendToUser: jest.fn().mockResolvedValue(undefined),
+    };
+
     const service = new ContractService(
       contractRepository as any,
       {} as any,
@@ -25,6 +29,7 @@ describe("ContractService timestamps", () => {
       emailService as any,
       paymentService as any,
       {} as any,
+      pushService as any,
     );
 
     return { service, contractRepository };
