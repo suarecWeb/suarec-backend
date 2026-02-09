@@ -28,6 +28,7 @@ import { LevelsModule } from "./levels/levels.module";
 import { BadgesModule } from "./badges/badges.module";
 import { ForgotPasswordModule } from "./forgot-password/forgot-password.module";
 import { VerifiedGuard } from "./auth/guard/verified.guard";
+import { PushModule } from "./push/push.module";
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { VerifiedGuard } from "./auth/guard/verified.guard";
     LevelsModule,
     BadgesModule,
     ForgotPasswordModule,
+    PushModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
