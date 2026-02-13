@@ -767,6 +767,19 @@ export class UserService {
       throw error;
     }
 
+    // Manejar errores de constraint unique de la BD (ej: email o cédula duplicada)
+    if (error.code === "23505") {
+      const detail = error.detail || '';
+      if (detail.includes('cedula')) {
+        throw new BadRequestException("Esta cédula ya está registrada");
+      }
+      if (detail.includes('email')) {
+        throw new BadRequestException("Este correo ya está en uso");
+      }
+      throw new BadRequestException(detail || "Ya existe un registro con estos datos");
+    }
+
+    this.logger.error(error);
     throw new InternalServerErrorException("Please check server logs");
   }
 
