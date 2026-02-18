@@ -6,9 +6,11 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from "typeorm";
 import { User } from "../../user/entities/user.entity";
 import { WorkContract } from "../../work-contract/entities/work-contract.entity";
+import { Contract } from "../../contract/entities/contract.entity";
 
 @Entity("ratings")
 export class Rating {
@@ -37,6 +39,11 @@ export class Rating {
   // Usuario que recibe la calificación
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   reviewee: User;
+
+  // Contrato de trabajo asociado (opcional)
+  @ManyToOne(() => Contract, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "contractId" })
+  contract?: Contract;
 
   // Contrato de trabajo asociado (opcional)
   @ManyToOne(() => WorkContract, (contract) => contract.ratings, {

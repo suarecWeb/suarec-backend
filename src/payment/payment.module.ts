@@ -7,12 +7,13 @@ import { WompiService } from "./services/wompi.service";
 import { PaymentTransaction } from "./entities/payment-transaction.entity";
 import { User } from "../user/entities/user.entity";
 import { Contract } from "../contract/entities/contract.entity";
+import { PlatformFeeLedger } from "../fees/platform-fee-ledger.entity";
 import { ContractModule } from "../contract/contract.module";
 import { UserModule } from "../user/user.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PaymentTransaction, User, Contract]),
+    TypeOrmModule.forFeature([PaymentTransaction, User, Contract, PlatformFeeLedger]),
     forwardRef(() => ContractModule),
     forwardRef(() => UserModule),
   ],

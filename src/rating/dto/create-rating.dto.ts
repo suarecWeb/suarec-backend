@@ -7,6 +7,7 @@ import {
   Min,
   Max,
   IsEnum,
+  IsUUID,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
@@ -62,6 +63,14 @@ export class CreateRatingDto {
   @IsEnum(RatingCategory)
   @IsNotEmpty()
   category: RatingCategory;
+
+  @ApiProperty({
+    description: "ID del contrato asociado (orden canónica)",
+    example: "uuid-contract-id",
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  contractId: string;
 
   @ApiProperty({
     description: "ID del contrato de trabajo relacionado",

@@ -19,6 +19,14 @@ export class UpdateContractDto {
   locationDescription?: string;
 
   @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
   @IsString()
   clientMessage?: string;
 

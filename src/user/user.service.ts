@@ -9,7 +9,12 @@ import { User } from "./entities/user.entity";
 import { Comment } from "../comment/entities/comment.entity";
 import { Publication } from "../publication/entities/publication.entity";
 import { Message } from "../message/entities/message.entity";
-import { Contract, ContractBid, ContractOTP } from "../contract/entities/contract.entity";
+import {
+  Contract,
+  ContractBid,
+  ContractOTP,
+  ContractStatus,
+} from "../contract/entities/contract.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -23,6 +28,15 @@ import { Company } from "../company/entities/company.entity";
 import { Education } from "./entities/education.entity";
 import { Reference } from "./entities/reference.entity";
 import { SocialLink } from "./entities/social-link.entity";
+import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
+import { PROCESSED_PAYMENT_STATUSES } from "../levels/level.rules";
+import {
+  StatsPeriod,
+  buildPeriodRanges,
+  computeCancelRate,
+  computeGrowthState,
+  toIsoOrNull,
+} from "./stats.utils";
 
 @Injectable()
 export class UserService {
@@ -619,7 +633,26 @@ export class UserService {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
 
-      // 1) Delete comments authored by the user
+      // 1) Delete user-related entities with explicit user_id column
+      try {
+        // Terms acceptance
+        await manager.query('DELETE FROM user_terms_acceptance WHERE user_id = $1', [id]);
+        // Gallery (user_id column)
+        await manager.query('DELETE FROM user_gallery WHERE user_id = $1', [id]);
+        // ID Photos (user_id column)
+        await manager.query('DELETE FROM user_id_photos WHERE user_id = $1', [id]);
+        // Education (user_id column)
+        await manager.query('DELETE FROM education WHERE user_id = $1', [id]);
+        // References (user_id column)
+        await manager.query('DELETE FROM reference WHERE user_id = $1', [id]);
+        // Social Links (user_id column)
+        await manager.query('DELETE FROM social_link WHERE user_id = $1', [id]);
+      } catch (err) {
+        this.logger.error('Error deleting user profile data', err);
+        throw err;
+      }
+
+      // 2) Delete comments authored by the user
       try {
         await manager
           .createQueryBuilder()
@@ -817,45 +850,78 @@ export class UserService {
     }
   }
 
-  async getUserStats(userId: number) {
+  async getUserStats(userId: number, period?: string) {
     try {
-      // Usar Repository para hacer las consultas de manera más directa
-      const contractRepository =
-        this.usersRepository.manager.getRepository("Contract");
+      const normalizedPeriod = this.normalizeStatsPeriod(period);
+      const range = buildPeriodRanges(normalizedPeriod);
 
-      // 1. Total ganado - Contratos completados como proveedor
-      const earningsResult = await contractRepository
-        .createQueryBuilder("contract")
-        .where("contract.providerId = :userId", { userId })
-        .andWhere("contract.status = :status", { status: "accepted" })
-        .select(
-          "COALESCE(SUM(contract.currentPrice - (contract.currentPrice * 0.08)), 0)",
-          "total_earnings",
-        )
+      const userRatings = await this.usersRepository
+        .createQueryBuilder("user")
+        .select(["user.average_rating", "user.total_ratings"])
+        .where("user.id = :userId", { userId })
         .getRawOne();
 
-      // 2. Total contratos completados con status 'accepted'
-      const contractsResult = await contractRepository
-        .createQueryBuilder("contract")
-        .where("contract.providerId = :userId", { userId })
-        .andWhere("contract.status = :status", { status: "accepted" })
-        .select("COUNT(contract.id)", "total_contracts")
-        .getRawOne();
+      const ratingAvg = Number(userRatings?.user_average_rating ?? 0);
+      const ratingCount = Number(userRatings?.user_total_ratings ?? 0);
 
-      // 3. Total publicaciones del usuario
-      const publicationRepository =
-        this.usersRepository.manager.getRepository("Publication");
-      const publicationsResult = await publicationRepository
-        .createQueryBuilder("publication")
-        .where("publication.userId = :userId", { userId })
-        .select("COUNT(publication.id)", "total_publications")
-        .getRawOne();
+      const emptyStats = {
+        earnings_gross: 0,
+        contracts_successful: 0,
+        contracts_cancelled: 0,
+        publications_total: 0,
+      };
+
+      const [currentStats, previousStats, totalStats] = await Promise.all([
+        this.getPeriodStats(userId, range.from, range.to),
+        normalizedPeriod === "total"
+          ? Promise.resolve(emptyStats)
+          : this.getPeriodStats(userId, range.previousFrom, range.previousTo),
+        normalizedPeriod === "total"
+          ? Promise.resolve(null)
+          : this.getPeriodStats(userId, null, null),
+      ]);
+
+      const currentPeriod = {
+        from: toIsoOrNull(range.from),
+        to: toIsoOrNull(range.to),
+        earnings_gross: currentStats.earnings_gross,
+        contracts_successful: currentStats.contracts_successful,
+        contracts_cancelled: currentStats.contracts_cancelled,
+        cancel_rate: computeCancelRate(
+          currentStats.contracts_successful,
+          currentStats.contracts_cancelled,
+        ),
+        rating_avg: ratingAvg,
+        rating_count: ratingCount,
+        publications_total: currentStats.publications_total,
+      };
+
+      const previousPeriod = {
+        from: toIsoOrNull(range.previousFrom),
+        to: toIsoOrNull(range.previousTo),
+        earnings_gross: previousStats.earnings_gross,
+        contracts_successful: previousStats.contracts_successful,
+        contracts_cancelled: previousStats.contracts_cancelled,
+        cancel_rate: computeCancelRate(
+          previousStats.contracts_successful,
+          previousStats.contracts_cancelled,
+        ),
+        rating_avg: ratingAvg,
+        rating_count: ratingCount,
+        publications_total: previousStats.publications_total,
+      };
+
+      const totals = normalizedPeriod === "total" ? currentStats : totalStats;
 
       return {
         userId,
-        totalEarnings: Number(earningsResult.total_earnings) || 0,
-        totalContractsCompleted: Number(contractsResult.total_contracts) || 0,
-        totalPublications: Number(publicationsResult.total_publications) || 0,
+        period: normalizedPeriod,
+        current_period: currentPeriod,
+        previous_period: previousPeriod,
+        growth_state: computeGrowthState(currentPeriod, previousPeriod),
+        totalEarnings: totals?.earnings_gross ?? 0,
+        totalContractsCompleted: totals?.contracts_successful ?? 0,
+        totalPublications: totals?.publications_total ?? 0,
       };
     } catch (error) {
       this.logger.error("Error getting user stats:", error);
@@ -864,5 +930,123 @@ export class UserService {
         "Error retrieving user statistics",
       );
     }
+  }
+
+  private normalizeStatsPeriod(value?: string): StatsPeriod {
+    const period = (value || "month").toLowerCase();
+    const allowed: StatsPeriod[] = ["week", "month", "quarter", "year", "total"];
+    if (!allowed.includes(period as StatsPeriod)) {
+      throw new BadRequestException(
+        `Invalid period "${value}". Use week|month|quarter|year|total.`,
+      );
+    }
+    return period as StatsPeriod;
+  }
+
+  private async getPeriodStats(
+    userId: number,
+    from: Date | null,
+    to: Date | null,
+  ): Promise<{
+    earnings_gross: number;
+    contracts_successful: number;
+    contracts_cancelled: number;
+    publications_total: number;
+  }> {
+    const paymentRepository =
+      this.usersRepository.manager.getRepository(PaymentTransaction);
+    const contractRepository =
+      this.usersRepository.manager.getRepository(Contract);
+    const publicationRepository =
+      this.usersRepository.manager.getRepository(Publication);
+
+    const useRange = Boolean(from && to);
+
+    const earningsQuery = paymentRepository
+      .createQueryBuilder("payment")
+      .select("COALESCE(SUM(payment.amount), 0)", "earnings_gross")
+      .where("payment.payeeId = :userId", { userId })
+      .andWhere("payment.status IN (:...statuses)", {
+        statuses: PROCESSED_PAYMENT_STATUSES,
+      });
+
+    if (useRange) {
+      earningsQuery.andWhere(
+        "COALESCE(payment.paid_at, payment.updated_at) BETWEEN :from AND :to",
+        { from, to },
+      );
+    }
+
+    const successfulQuery = contractRepository
+      .createQueryBuilder("contract")
+      .select("COUNT(contract.id)", "contracts_successful")
+      .where("contract.providerId = :userId", { userId })
+      .andWhere("contract.status = :status", {
+        status: ContractStatus.COMPLETED,
+      })
+      .andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select("1")
+          .from(PaymentTransaction, "payment")
+          .where("payment.contractId = contract.id")
+          .andWhere("payment.status IN (:...processedStatuses)")
+          .getQuery();
+        return `EXISTS ${subQuery}`;
+      })
+      .setParameter("processedStatuses", PROCESSED_PAYMENT_STATUSES);
+
+    if (useRange) {
+      successfulQuery.andWhere(
+        "COALESCE(contract.completed_at, contract.\"updatedAt\") BETWEEN :from AND :to",
+        { from, to },
+      );
+    }
+
+    const cancelledQuery = contractRepository
+      .createQueryBuilder("contract")
+      .select("COUNT(contract.id)", "contracts_cancelled")
+      .where("contract.providerId = :userId", { userId })
+      .andWhere("contract.status = :status", {
+        status: ContractStatus.CANCELLED,
+      });
+
+    if (useRange) {
+      cancelledQuery.andWhere(
+        "COALESCE(contract.cancelled_at, contract.\"updatedAt\") BETWEEN :from AND :to",
+        { from, to },
+      );
+    }
+
+    const publicationsQuery = publicationRepository
+      .createQueryBuilder("publication")
+      .select("COUNT(publication.id)", "publications_total")
+      .where("publication.userId = :userId", { userId });
+
+    if (useRange) {
+      publicationsQuery.andWhere(
+        "publication.created_at BETWEEN :from AND :to",
+        { from, to },
+      );
+    }
+
+    const [
+      earningsResult,
+      contractsResult,
+      cancelledResult,
+      publicationsResult,
+    ] = await Promise.all([
+      earningsQuery.getRawOne(),
+      successfulQuery.getRawOne(),
+      cancelledQuery.getRawOne(),
+      publicationsQuery.getRawOne(),
+    ]);
+
+    return {
+      earnings_gross: Number(earningsResult?.earnings_gross ?? 0),
+      contracts_successful: Number(contractsResult?.contracts_successful ?? 0),
+      contracts_cancelled: Number(cancelledResult?.contracts_cancelled ?? 0),
+      publications_total: Number(publicationsResult?.publications_total ?? 0),
+    };
   }
 }

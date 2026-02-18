@@ -7,11 +7,18 @@ import { Rating } from "./entities/rating.entity";
 import { User } from "../user/entities/user.entity";
 import { WorkContract } from "../work-contract/entities/work-contract.entity";
 import { Contract } from "../contract/entities/contract.entity";
+import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
 
 @Module({
   imports: [
     // Importar TypeOrmModule para las entidades necesarias
-    TypeOrmModule.forFeature([Rating, User, WorkContract, Contract]),
+    TypeOrmModule.forFeature([
+      Rating,
+      User,
+      WorkContract,
+      Contract,
+      PaymentTransaction,
+    ]),
   ],
   controllers: [RatingController], // Registrar el controlador
   providers: [RatingService], // Registrar el servicio

@@ -8,6 +8,7 @@ import {
   MaxLength,
   IsArray,
   IsEnum,
+  Min,
 } from "class-validator";
 
 export enum PublicationType {
@@ -57,6 +58,7 @@ export class CreatePublicationDto {
 
   @IsNumber()
   @IsOptional()
+  @Min(20000)
   price?: number;
 
   @IsString()
@@ -79,9 +81,9 @@ export class CreatePublicationDto {
   requirements?: string; // Requisitos del trabajo
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(200)
-  location?: string; // Ubicación del trabajo
+  location: string; // Ubicación del trabajo
 
   @IsString()
   @IsOptional()

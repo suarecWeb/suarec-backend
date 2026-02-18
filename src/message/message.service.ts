@@ -13,6 +13,7 @@ import { UpdateMessageDto } from "./dto/update-message.dto";
 import { User } from "../user/entities/user.entity";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { PaginationResponse } from "../common/interfaces/paginated-response.interface";
+import { PushService } from "../push/push.service";
 
 @Injectable()
 export class MessageService {
@@ -23,6 +24,7 @@ export class MessageService {
     private readonly messageRepository: Repository<Message>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
+    private readonly pushService: PushService, // eslint-disable-line no-unused-vars
   ) {}
 
   private server: any = null;
@@ -106,6 +108,10 @@ export class MessageService {
         (savedMessage as any).recipientId = savedMessage.recipient?.id;
       }
 
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
+      }
+
       return savedMessage;
     } catch (error) {
       this.handleDBErrors(error);
@@ -139,6 +145,27 @@ export class MessageService {
       }
 
       return savedMessage;
+    } catch (error) {
+      this.handleDBErrors(error);
+    }
+  }
+
+  async markConversationAsRead(
+    recipientId: number,
+    senderId: number,
+  ): Promise<{ updated: number; readAt: Date }> {
+    try {
+      const readAt = new Date();
+      const result = await this.messageRepository
+        .createQueryBuilder()
+        .update(Message)
+        .set({ read: true, read_at: readAt })
+        .where('"recipientId" = :recipientId', { recipientId })
+        .andWhere('"senderId" = :senderId', { senderId })
+        .andWhere('"read" = :read', { read: false })
+        .execute();
+
+      return { updated: result.affected ?? 0, readAt };
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -180,10 +207,19 @@ export class MessageService {
     user1Id: number,
     user2Id: number,
     paginationDto: PaginationDto,
+    viewerId?: number,
   ): Promise<PaginationResponse<Message>> {
     try {
       const { page = 1, limit = 10 } = paginationDto;
       const skip = (page - 1) * limit;
+
+      if (viewerId !== undefined) {
+        const otherUserId =
+          viewerId === user1Id ? user2Id : viewerId === user2Id ? user1Id : null;
+        if (otherUserId !== null) {
+          await this.markConversationAsRead(viewerId, otherUserId);
+        }
+      }
 
       // Consulta para obtener mensajes entre dos usuarios (en ambas direcciones)
       const queryBuilder = this.messageRepository
@@ -361,6 +397,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "open", // Cambiar a "open" para tickets nuevos
         ticket_id: null, // Se establecerá después
       });
@@ -374,12 +411,22 @@ export class MessageService {
         content: `🎫 **Ticket #${ticket.id}** creado exitosamente.\n\nHemos recibido tu solicitud y nuestro equipo de soporte te responderá pronto.`,
         sender: { id: 0 },
         recipient: { id: userId },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticket.id,
       });
 
       console.log(`🎫 Ticket creado: ${ticket.id}`);
       console.log(`📨 Auto-response creado: ${autoResponse.id} con ticket_id: ${autoResponse.ticket_id}`);
+
+      const autoResponseWithRelations = await this.messageRepository.findOne({
+        where: { id: autoResponse.id },
+        relations: ["sender", "recipient"],
+      });
+
+      if (autoResponseWithRelations) {
+        await this.notifyRecipient(autoResponseWithRelations);
+      }
 
       return ticket;
     } catch (error) {
@@ -483,6 +530,7 @@ export class MessageService {
         content,
         sender: { id: userId },
         recipient: { id: 0 },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       };
@@ -500,6 +548,10 @@ export class MessageService {
 
       console.log(`📨 Mensaje agregado al ticket ${ticketId}: ${savedMessage?.id} con ticket_id: ${savedMessage?.ticket_id}`);
       console.log(`📨 Mensaje completo:`, JSON.stringify(savedMessage, null, 2));
+
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
+      }
 
       return savedMessage;
     } catch (error) {
@@ -526,6 +578,7 @@ export class MessageService {
         content,
         sender: { id: 0 }, // Suarec
         recipient: { id: ticket.sender.id },
+        sent_at: new Date(),
         status: "message",
         ticket_id: ticketId,
       });
@@ -537,6 +590,10 @@ export class MessageService {
       });
 
       console.log(`📨 Respuesta de admin al ticket ${ticketId}: ${savedMessage?.id} con ticket_id: ${savedMessage?.ticket_id}`);
+
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
+      }
 
       return savedMessage;
     } catch (error) {
@@ -630,6 +687,9 @@ export class MessageService {
       // Solo permitir actualizar ciertos campos
       if (updateMessageDto.read !== undefined) {
         message.read = updateMessageDto.read;
+        if (updateMessageDto.read && !updateMessageDto.read_at) {
+          message.read_at = new Date();
+        }
       }
 
       if (updateMessageDto.read_at) {
@@ -672,6 +732,35 @@ export class MessageService {
     );
   }
 
+  private async notifyRecipient(message: Message): Promise<void> {
+    try {
+      const recipientId = message.recipient?.id ?? (message as any)?.recipientId;
+      const senderName = message.sender?.name || "Suarec";
+
+      if (!recipientId || recipientId === 0) {
+        return;
+      }
+
+      const truncatedContent =
+        message.content && message.content.length > 120
+          ? `${message.content.slice(0, 117)}...`
+          : message.content;
+
+      await this.pushService.sendToUser(recipientId, {
+        title: `Nuevo mensaje de ${senderName}`,
+        body: truncatedContent || "Tienes un nuevo mensaje",
+        data: {
+          type: "message",
+          messageId: message.id,
+          senderId: message.sender?.id ?? null,
+          recipientId,
+        },
+      });
+    } catch (error) {
+      this.logger.error("Error sending push notification for message", error);
+    }
+  }
+
   // Método para emitir mensaje manualmente (para respuestas de admin)
   async createAndEmit(createMessageDto: CreateMessageDto, gateway: any): Promise<Message> {
     try {
@@ -689,9 +778,16 @@ export class MessageService {
       gateway.server.to(recipientRoom).emit("new_message", messageData);
       
       // Emitir actualización de conversación
+      const unreadCount = await this.countUnreadMessages(
+        createMessageDto.recipientId,
+        createMessageDto.senderId,
+      );
       gateway.server.to(`user_${createMessageDto.recipientId}`).emit("conversation_updated", {
         conversationId: `${Math.min(createMessageDto.senderId, createMessageDto.recipientId)}_${Math.max(createMessageDto.senderId, createMessageDto.recipientId)}`,
+        senderId: createMessageDto.senderId,
+        recipientId: createMessageDto.recipientId,
         lastMessage: message,
+        unreadCount,
       });
 
       return message;

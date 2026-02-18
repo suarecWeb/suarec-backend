@@ -14,6 +14,7 @@ export enum ContractStatus {
   PENDING = "pending", // eslint-disable-line no-unused-vars
   NEGOTIATING = "negotiating", // eslint-disable-line no-unused-vars
   ACCEPTED = "accepted", // eslint-disable-line no-unused-vars
+  IN_PROGRESS = "in_progress", // eslint-disable-line no-unused-vars
   REJECTED = "rejected", // eslint-disable-line no-unused-vars
   CANCELLED = "cancelled", // eslint-disable-line no-unused-vars
   COMPLETED = "completed", // eslint-disable-line no-unused-vars
@@ -72,6 +73,12 @@ export class Contract {
   @Column("text", { nullable: true })
   locationDescription?: string; // Descripción adicional de la ubicación
 
+  @Column("decimal", { precision: 10, scale: 8, nullable: true })
+  latitude?: number;
+
+  @Column("decimal", { precision: 11, scale: 8, nullable: true })
+  longitude?: number;
+
   @Column({
     type: "enum",
     enum: ContractStatus,
@@ -103,6 +110,12 @@ export class Contract {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column("timestamp", { name: "completed_at", nullable: true })
+  completedAt?: Date;
+
+  @Column("timestamp", { name: "cancelled_at", nullable: true })
+  cancelledAt?: Date;
+
   @Column("timestamp", { nullable: true })
   deleted_at?: Date;
 
@@ -114,6 +127,9 @@ export class Contract {
 
   @Column("boolean", { default: false })
   otpVerified: boolean; // Si el OTP ha sido verificado por el cliente
+
+  @Column("timestamp", { name: "otp_verified_at", nullable: true })
+  otpVerifiedAt?: Date;
 
   @Column("int", { nullable: true })
   quantity?: number; // Cantidad de unidades contratadas
@@ -151,8 +167,20 @@ export class ContractOTP {
   @ManyToOne(() => Contract, (contract) => contract.otps)
   contract: Contract;
 
-  @Column("varchar", { length: 6, nullable: false })
-  code: string; // Código OTP de 6 dígitos
+  @Column("varchar", { length: 6, nullable: true })
+  code?: string; // Campo legacy, ya no almacena OTP plano
+
+  @Column("text", { nullable: true })
+  codeHash?: string; // Hash del OTP real
+
+  @Column("int", { default: 0 })
+  attempts: number; // Intentos fallidos acumulados
+
+  @Column("int", { default: 5 })
+  maxAttempts: number; // Máximo de intentos permitidos
+
+  @Column("int", { default: 4 })
+  otpLength: number; // Longitud configurada del OTP
 
   @Column("boolean", { default: false })
   isUsed: boolean; // Si el OTP ya fue usado

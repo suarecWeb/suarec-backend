@@ -45,6 +45,13 @@ SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
+## Configuración de Push (Expo)
+```
+PUSH_PROVIDER=expo
+# Opcional: token de acceso de Expo (si se requiere)
+EXPO_ACCESS_TOKEN=
+```
+
 ## Uso de MOCK_PAYMENT_SUCCESS
 
 Para habilitar el modo mock de pagos exitosos:

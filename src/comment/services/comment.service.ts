@@ -26,7 +26,7 @@ export class CommentService {
     private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
     @InjectRepository(Publication)
     private readonly publicationRepository: Repository<Publication>, // eslint-disable-line no-unused-vars
-  ) {}
+  ) { }
 
   async create(createCommentDto: CreateCommentDto): Promise<Comment> {
     try {
@@ -109,7 +109,7 @@ export class CommentService {
       }
 
       const [comments, total] = await this.commentRepository.findAndCount({
-        where: { publication: publication, deleted_at: null }, // Solo comentarios activos
+        where: { publication: { id: publicationId }, deleted_at: null }, // Solo comentarios activos
         relations: ["publication", "user"],
         skip,
         take: limit,

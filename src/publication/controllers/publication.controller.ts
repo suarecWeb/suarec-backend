@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  ParseIntPipe,
   Delete,
   UseGuards,
   Query,
@@ -13,22 +14,30 @@ import {
 import { PublicationService } from "../services/publication.service";
 import { CreatePublicationDto } from "../dto/create-publication.dto";
 import { UpdatePublicationDto } from "../dto/update-publication.dto";
+import { ReportPublicationDto } from "../dto/report-publication.dto";
 import { PaginationDto } from "../../common/dto/pagination.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
 import { Public } from "../../auth/decorators/public.decorator";
+import { Verified } from "../../auth/decorators/verified.decorator";
 import { Publication } from "../entities/publication.entity";
 import { PublicationType } from "../entities/publication.entity";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from "@nestjs/swagger";
+import { ModerationService } from "../../moderation/moderation.service";
+import { ReportContentType } from "../../enums/report-content-type.enum";
 
 @ApiTags("Publications")
 @Controller("publications")
 export class PublicationController {
-  constructor(private readonly publicationService: PublicationService) {} // eslint-disable-line no-unused-vars
+  constructor(
+    private readonly publicationService: PublicationService, // eslint-disable-line no-unused-vars
+    private readonly moderationService: ModerationService, // eslint-disable-line no-unused-vars
+  ) {}
 
   @Post()
+  @Verified("Debes estar verificado para publicar.")
   @Roles("ADMIN", "PERSON", "BUSINESS")
   @UseGuards(AuthGuard, RolesGuard)
   @ApiOperation({ summary: "Create a new publication" })
@@ -46,19 +55,32 @@ export class PublicationController {
   findAll(
     @Query() paginationDto: PaginationDto,
   ): Promise<PaginationResponse<Publication>> {
-    console.log("🔍 Controller - Received filters:", {
-      type: paginationDto.type,
-      category: paginationDto.category,
-      categories: paginationDto.categories,
-      search: paginationDto.search,
-      minPrice: paginationDto.minPrice,
-      maxPrice: paginationDto.maxPrice,
-      sortBy: paginationDto.sortBy,
-      sortOrder: paginationDto.sortOrder
-    });
     return this.publicationService.findAll(paginationDto) as Promise<
       PaginationResponse<Publication>
     >;
+  }
+
+  @Get("me")
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: "Get publications created by the current user" })
+  @ApiQuery({ type: PaginationDto })
+  findMyPublications(
+    @Request() req,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findAll(paginationDto, req.user.id);
+  }
+
+  @Get("user/:id")
+  @Public()
+  @ApiOperation({ summary: "Get publications created by a user (Public)" })
+  @ApiParam({ name: "id", description: "User ID" })
+  @ApiQuery({ type: PaginationDto })
+  findPublicationsByUser(
+    @Param("id", ParseIntPipe) id: number,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginationResponse<Publication>> {
+    return this.publicationService.findAll(paginationDto, id);
   }
 
   @Get("service-offers")
@@ -105,6 +127,31 @@ export class PublicationController {
     return this.publicationService.findOne(id);
   }
 
+  @Post(":id/report")
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: "Report a publication" })
+  @ApiParam({ name: "id", description: "Publication ID" })
+  @ApiResponse({ status: 201, description: "Report submitted successfully" })
+  async reportPublication(
+    @Param("id") id: string,
+    @Request() req,
+    @Body() reportDto: ReportPublicationDto,
+  ) {
+    const publication = await this.publicationService.findOne(id);
+    const report = await this.moderationService.createReport(req.user.id, {
+      reported_user_id: publication.user?.id,
+      content_type: ReportContentType.PUBLICATION,
+      content_id: publication.id,
+      reason: reportDto.reason,
+      description: reportDto.description,
+    });
+
+    return {
+      message: "Report submitted successfully",
+      data: report,
+    };
+  }
+
   @Patch(":id")
   @Roles("ADMIN", "BUSINESS", "PERSON")
   @UseGuards(AuthGuard, RolesGuard)
@@ -147,5 +194,13 @@ export class PublicationController {
   @ApiResponse({ status: 200, description: "List of available publication types" })
   getAvailableTypes(): Promise<PublicationType[]> {
     return this.publicationService.getAvailableTypes();
+  }
+
+  @Get(":id/comments")
+  @Public()
+  @ApiOperation({ summary: "Get comments for a specific publication (Public)" })
+  @ApiResponse({ status: 200, description: "List of comments for the publication" })
+  getPublicationComments(@Param("id") id: string) {
+    return this.publicationService.getPublicationComments(id);
   }
 }

@@ -24,6 +24,11 @@ import { ContractModule } from "./contract/contract.module";
 import { PaymentModule } from "./payment/payment.module";
 import { BotModule } from "./bot/bot.module";
 import { ModerationModule } from "./moderation/moderation.module";
+import { LevelsModule } from "./levels/levels.module";
+import { BadgesModule } from "./badges/badges.module";
+import { ForgotPasswordModule } from "./forgot-password/forgot-password.module";
+import { VerifiedGuard } from "./auth/guard/verified.guard";
+import { PushModule } from "./push/push.module";
 
 @Module({
   imports: [
@@ -38,7 +43,7 @@ import { ModerationModule } from "./moderation/moderation.module";
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      synchronize: process.env.NODE_ENV === "development", // Enable sync only in development
+      synchronize: process.env.DB_SYNC === "true",
       autoLoadEntities: true,
       logging: process.env.NODE_ENV === "development", // Enable logging in development mode only
     }),
@@ -60,15 +65,24 @@ import { ModerationModule } from "./moderation/moderation.module";
     PaymentModule,
     BotModule,
     ModerationModule,
+    LevelsModule,
+    BadgesModule,
+    ForgotPasswordModule,
+    PushModule,
     //RolePermissionModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     AuthGuard,
+    VerifiedGuard,
     {
       provide: APP_GUARD,
       useClass: AuthGuard, // Guard global para proteger las rutas
+    },
+    {
+      provide: APP_GUARD,
+      useClass: VerifiedGuard,
     },
   ],
   exports: [TypeOrmModule],

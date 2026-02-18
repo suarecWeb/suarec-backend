@@ -17,6 +17,7 @@ import { UpdateApplicationDto } from "../dto/update-application.dto";
 import { AuthGuard } from "../../auth/guard/auth.guard";
 import { RolesGuard } from "../../auth/guard/roles.guard";
 import { Roles } from "../../auth/decorators/role.decorator";
+import { Verified } from "../../auth/decorators/verified.decorator";
 import { Application } from "../entities/application.entity";
 import { PaginationDto } from "../../common/dto/pagination.dto";
 import { PaginationResponse } from "../../common/interfaces/paginated-response.interface";
@@ -35,6 +36,7 @@ export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Post()
+  @Verified("Debes estar verificado para postularte.")
   @Roles("PERSON", "ADMIN")
   @ApiOperation({ summary: "Create a new application" })
   @ApiResponse({ status: 201, description: "Application created successfully" })

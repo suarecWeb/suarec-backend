@@ -1,0 +1,57 @@
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME || 'suarec',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+});
+
+async function runMigration() {
+  const client = await pool.connect();
+  
+  try {
+    console.log('🚀 Iniciando migración 030: create-password-reset-codes...');
+    
+    const migrationPath = path.join(__dirname, 'migrations', '030-create-password-reset-codes.sql');
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    
+    console.log('📖 Ejecutando migración...');
+    await client.query(migrationSQL);
+    
+    console.log('✅ Migración completada exitosamente');
+    console.log('📋 Tabla creada: password_reset_codes');
+    
+    const result = await client.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'password_reset_codes'
+      ORDER BY ordinal_position;
+    `);
+    
+    console.log('\n🔍 Verificación de campos:');
+    result.rows.forEach(row => {
+      console.log(`   ✅ ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
+    });
+    
+  } catch (error) {
+    console.error('❌ Error durante la migración:', error);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+runMigration()
+  .then(() => {
+    console.log('\n🎉 Migración completada exitosamente');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('\n💥 Error en la migración:', error);
+    process.exit(1);
+  });
