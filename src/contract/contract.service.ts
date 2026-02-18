@@ -2,6 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  GoneException,
+  UnprocessableEntityException,
   Inject,
   forwardRef,
 } from "@nestjs/common";
@@ -22,9 +26,11 @@ import { Publication } from "../publication/entities/publication.entity";
 import { User } from "../user/entities/user.entity";
 import { EmailService } from "../email/email.service";
 import { PaymentService } from "../payment/services/payment.service";
-import { PaymentMethod } from "../enums/paymentMethod.enum";
+import { PaymentMethod, PaymentStatus } from "../enums/paymentMethod.enum";
 import { BalanceService } from "../user/services/balance.service";
 import { PushService } from "../push/push.service";
+import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
+import { createHash, timingSafeEqual } from "crypto";
 
 @Injectable()
 export class ContractService {
@@ -118,6 +124,9 @@ export class ContractService {
   private readonly MIN_SUAREC_COMMISSION = 7000;
   private readonly MIN_SERVICE_PRICE = 20000;
   private readonly TAX_RATE = 0.19; // 19% IVA
+  private readonly DEFAULT_OTP_LENGTH = 4;
+  private readonly OTP_EXPIRES_HOURS = 24;
+  private readonly OTP_MAX_ATTEMPTS = 5;
 
   constructor(
     @InjectRepository(Contract)
@@ -533,7 +542,7 @@ export class ContractService {
 
   async getContractsByUser(
     userId: number,
-  ): Promise<{ asClient: Contract[]; asProvider: Contract[] }> {
+  ): Promise<{ asClient: any[]; asProvider: any[] }> {
     const [asClient, asProvider] = await Promise.all([
       this.contractRepository.find({
         where: { client: { id: userId }, deleted_at: null }, // Solo contratos activos
@@ -545,10 +554,19 @@ export class ContractService {
       }),
     ]);
 
-    return { asClient, asProvider };
+    const [asClientWithPaymentData, asProviderWithPaymentData] =
+      await Promise.all([
+        Promise.all(asClient.map((contract) => this.decorateContractReadModel(contract))),
+        Promise.all(asProvider.map((contract) => this.decorateContractReadModel(contract))),
+      ]);
+
+    return {
+      asClient: asClientWithPaymentData,
+      asProvider: asProviderWithPaymentData,
+    };
   }
 
-  async getContractById(contractId: string): Promise<Contract> {
+  async getContractById(contractId: string): Promise<any> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null }, // Solo contratos activos
       relations: ["publication", "client", "client.roles", "client.company", "provider", "provider.roles", "provider.company", "bids", "bids.bidder"],
@@ -558,7 +576,7 @@ export class ContractService {
       throw new NotFoundException("Contrato no encontrado");
     }
 
-    return contract;
+    return this.decorateContractReadModel(contract);
   }
 
   async generatePaymentLinkForContract(
@@ -1007,146 +1025,190 @@ export class ContractService {
     return await this.contractRepository.save(contract);
   }
 
-  /**
-   * Genera un código OTP de 6 dígitos
-   */
-  private generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+  private generateNumericOTP(length: number): string {
+    const max = 10 ** length;
+    return Math.floor(Math.random() * max)
+      .toString()
+      .padStart(length, "0");
   }
 
-  /**
-   * Genera un OTP para un contrato completado
-   */
-  async generateContractOTP(contractId: string, userId?: number): Promise<ContractOTP> {
-    const contract = await this.contractRepository.findOne({
-      where: { id: contractId, deleted_at: null },
-      relations: ["client", "provider", "publication"],
-    });
+  private hashOTP(contractId: string, otpCode: string): string {
+    return createHash("sha256")
+      .update(`${contractId}:${otpCode}`)
+      .digest("hex");
+  }
 
-    if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
+  private isWompiApproved(wompiResponse: any): boolean {
+    if (!wompiResponse) {
+      return false;
     }
 
-    if (contract.status !== ContractStatus.COMPLETED) {
-      throw new BadRequestException("Solo se puede generar OTP para contratos completados");
+    try {
+      const parsed =
+        typeof wompiResponse === "string"
+          ? JSON.parse(wompiResponse)
+          : wompiResponse;
+      const status = String(parsed?.status || "").toUpperCase();
+      return status === "APPROVED" || status === "FINISHED";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private getReadablePaymentStatus(payment?: PaymentTransaction | null): string | null {
+    if (!payment) {
+      return null;
+    }
+    if (payment.status) {
+      return String(payment.status);
+    }
+    if (this.isWompiApproved(payment.wompi_response)) {
+      return "APPROVED";
+    }
+    return null;
+  }
+
+  private isPaymentApproved(payment: PaymentTransaction): boolean {
+    return (
+      payment.paid_at !== null && payment.paid_at !== undefined ||
+      payment.status === PaymentStatus.COMPLETED ||
+      payment.status === PaymentStatus.FINISHED ||
+      this.isWompiApproved(payment.wompi_response)
+    );
+  }
+
+  private async decorateContractReadModel(contract: Contract): Promise<any> {
+    const now = new Date();
+    const [payments, latestUnusedOTP] = await Promise.all([
+      this.paymentService.findByContract(contract.id),
+      this.otpRepository.findOne({
+        where: { contract: { id: contract.id }, isUsed: false },
+        order: { createdAt: "DESC" },
+      }),
+    ]);
+
+    const latestPayment = payments[0] ?? null;
+    const approvedPayment =
+      payments.find((payment) => this.isPaymentApproved(payment)) ?? null;
+    const otpExpiresAt =
+      latestUnusedOTP?.expiresAt && latestUnusedOTP.expiresAt > now
+        ? latestUnusedOTP.expiresAt
+        : null;
+
+    return {
+      ...contract,
+      otpExpiresAt,
+      paymentStatus:
+        this.getReadablePaymentStatus(approvedPayment) ||
+        this.getReadablePaymentStatus(latestPayment),
+      paidAt: approvedPayment?.paid_at || null,
+    };
+  }
+
+  private assertContractCanGenerateOTP(contract: Contract): void {
+    if (contract.status === ContractStatus.COMPLETED) {
+      throw new ConflictException({
+        errorCode: "CONTRACT_ALREADY_COMPLETED",
+        message: "El contrato ya está completado",
+      });
     }
 
-    // Si se proporciona userId, verificar que sea el cliente del contrato
-    if (userId && contract.client.id !== userId) {
-      throw new BadRequestException("Solo el cliente del contrato puede generar el OTP");
+    if (contract.status === ContractStatus.CANCELLED || contract.cancelledAt) {
+      throw new BadRequestException(
+        "No se puede generar OTP para contratos cancelados",
+      );
     }
 
-    // Verificar si ya existe un OTP válido para este contrato
-    const existingOTP = await this.otpRepository.findOne({
-      where: {
-        contract: { id: contractId },
-        isUsed: false,
-        expiresAt: Not(IsNull()),
-      },
-      order: { createdAt: "DESC" },
-    });
-
-    if (existingOTP && existingOTP.expiresAt > new Date()) {
-      throw new BadRequestException("Ya existe un OTP válido para este contrato");
+    if (contract.otpVerified) {
+      throw new ConflictException({
+        errorCode: "OTP_ALREADY_VERIFIED",
+        message: "El contrato ya tiene OTP verificado",
+      });
     }
 
-    // Generar nuevo OTP
-    const otpCode = this.generateOTP();
+    if (
+      contract.status !== ContractStatus.ACCEPTED &&
+      contract.status !== ContractStatus.IN_PROGRESS
+    ) {
+      throw new BadRequestException(
+        "Solo se puede generar OTP en contratos accepted o in_progress",
+      );
+    }
+  }
+
+  private assertClientRole(contract: Contract, userId?: number): void {
+    if (!userId || contract.client.id !== userId) {
+      throw new ForbiddenException({
+        errorCode: "OTP_ROLE_NOT_ALLOWED",
+        message: "Solo el cliente del contrato puede generar o reenviar OTP",
+      });
+    }
+  }
+
+  private assertProviderRole(contract: Contract, userId?: number): void {
+    if (!userId || contract.provider.id !== userId) {
+      throw new ForbiddenException({
+        errorCode: "OTP_ROLE_NOT_ALLOWED",
+        message: "Solo el proveedor del contrato puede verificar OTP",
+      });
+    }
+  }
+
+  private async createOTPForContract(
+    contract: Contract,
+    otpLength: number,
+  ): Promise<{
+    contractId: string;
+    otpCode: string;
+    expiresAt: string;
+    otpLength: number;
+  }> {
+    const normalizedLength = otpLength || this.DEFAULT_OTP_LENGTH;
+
+    // Se invalida cualquier OTP activo antes de crear uno nuevo.
+    await this.otpRepository.update(
+      { contract: { id: contract.id }, isUsed: false },
+      { isUsed: true },
+    );
+
+    const otpCode = this.generateNumericOTP(normalizedLength);
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // Expira en 24 horas
+    expiresAt.setHours(expiresAt.getHours() + this.OTP_EXPIRES_HOURS);
 
     const otp = this.otpRepository.create({
       contract,
-      code: otpCode,
+      code: null,
+      codeHash: this.hashOTP(contract.id, otpCode),
+      otpLength: normalizedLength,
+      attempts: 0,
+      maxAttempts: this.OTP_MAX_ATTEMPTS,
+      isUsed: false,
       expiresAt,
     });
 
-    const savedOTP = await this.otpRepository.save(otp);
-
-    // Enviar OTP por email al cliente
-    try {
-      await this.emailService.sendOTPNotification(
-        contract.client.email,
-        contract.client.name,
-        otpCode,
-        contract.publication.title,
-        contract.provider.name,
-      );
-    } catch (error) {
-      console.error("Error sending OTP email:", error);
-    }
-
-    return savedOTP;
-  }
-
-  /**
-   * Verifica un OTP para un contrato
-   */
-  async verifyContractOTP(contractId: string, otpCode: string, userId?: number): Promise<{ isValid: boolean; message: string }> {
-    
-    const contract = await this.contractRepository.findOne({
-      where: { id: contractId, deleted_at: null },
-      relations: ["client", "provider", "publication"],
-    });
-
-    if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
-    }
-
-
-    if (contract.status !== ContractStatus.COMPLETED) {
-      throw new BadRequestException("Solo se puede verificar OTP para contratos completados");
-    }
-
-    // Si se proporciona userId, verificar que sea el cliente del contrato
-    if (userId && contract.client.id !== userId) {
-      throw new BadRequestException("Solo el cliente del contrato puede verificar el OTP");
-    }
-
-    
-    const otp = await this.otpRepository.findOne({
-      where: {
-        contract: { id: contractId },
-        code: otpCode,
-        isUsed: false,
-      },
-      order: { createdAt: "DESC" },
-    });
-
-    if (!otp) {
-      return { isValid: false, message: "Código OTP inválido" };
-    }
-
-    if (otp.expiresAt < new Date()) {
-      return { isValid: false, message: "Código OTP expirado" };
-    }
-
-    // Marcar OTP como usado
-    otp.isUsed = true;
     await this.otpRepository.save(otp);
 
-    try {
-      // Marcar el contrato como OTP verificado
-      contract.otpVerified = true;
-      await this.contractRepository.save(contract);
-
-      // Procesar balance: Cliente recibe saldo negativo, Proveedor recibe saldo positivo
-      await this.balanceService.processOTPVerificationBalance(contract);
-
-      return { isValid: true, message: "OTP verificado correctamente" };
-    } catch (error) {
-      console.error("Error al procesar verificación OTP:", error);
-      // Revertir el estado del contrato si hay error en el balance
-      contract.otpVerified = false;
-      await this.contractRepository.save(contract);
-      throw new BadRequestException("Error al procesar la verificación OTP");
-    }
+    return {
+      contractId: contract.id,
+      otpCode,
+      expiresAt: expiresAt.toISOString(),
+      otpLength: normalizedLength,
+    };
   }
 
   /**
-   * Reenvía un OTP para un contrato
+   * Genera OTP para un contrato pagado (cliente).
    */
-  async resendContractOTP(contractId: string, userId?: number): Promise<ContractOTP> {
+  async generateContractOTP(
+    contractId: string,
+    userId?: number,
+    length?: number,
+  ): Promise<{
+    contractId: string;
+    otpCode: string;
+    expiresAt: string;
+    otpLength: number;
+  }> {
     const contract = await this.contractRepository.findOne({
       where: { id: contractId, deleted_at: null },
       relations: ["client", "provider", "publication"],
@@ -1156,23 +1218,228 @@ export class ContractService {
       throw new NotFoundException("Contrato no encontrado");
     }
 
-    if (contract.status !== ContractStatus.COMPLETED) {
-      throw new BadRequestException("Solo se puede reenviar OTP para contratos completados");
-    }
+    this.assertClientRole(contract, userId);
+    this.assertContractCanGenerateOTP(contract);
 
-    // Si se proporciona userId, verificar que sea el cliente del contrato
-    if (userId && contract.client.id !== userId) {
-      throw new BadRequestException("Solo el cliente del contrato puede reenviar el OTP");
-    }
-
-    // Invalidar OTPs anteriores
-    await this.otpRepository.update(
-      { contract: { id: contractId }, isUsed: false },
-      { isUsed: true }
+    const payments = await this.paymentService.findByContract(contract.id);
+    const hasApprovedPayment = payments.some((payment) =>
+      this.isPaymentApproved(payment),
     );
 
-    // Generar nuevo OTP
-    return await this.generateContractOTP(contractId, userId);
+    if (!hasApprovedPayment) {
+      throw new ConflictException({
+        errorCode: "OTP_NOT_ALLOWED_UNPAID",
+        message: "El contrato aún no tiene un pago aprobado",
+      });
+    }
+
+    const response = await this.createOTPForContract(
+      contract,
+      length || this.DEFAULT_OTP_LENGTH,
+    );
+
+    await this.sendContractPush(
+      contract,
+      contract.provider.id,
+      "Cliente generó código de verificación",
+      `El cliente generó un código OTP para "${contract.publication?.title || "el contrato"}".`,
+    );
+
+    return response;
+  }
+
+  /**
+   * Reenvía OTP para un contrato pagado (cliente).
+   */
+  async resendContractOTP(
+    contractId: string,
+    userId?: number,
+    length?: number,
+  ): Promise<{
+    contractId: string;
+    otpCode: string;
+    expiresAt: string;
+    otpLength: number;
+  }> {
+    const contract = await this.contractRepository.findOne({
+      where: { id: contractId, deleted_at: null },
+      relations: ["client", "provider", "publication"],
+    });
+
+    if (!contract) {
+      throw new NotFoundException("Contrato no encontrado");
+    }
+
+    this.assertClientRole(contract, userId);
+    this.assertContractCanGenerateOTP(contract);
+
+    const payments = await this.paymentService.findByContract(contract.id);
+    const hasApprovedPayment = payments.some((payment) =>
+      this.isPaymentApproved(payment),
+    );
+
+    if (!hasApprovedPayment) {
+      throw new ConflictException({
+        errorCode: "OTP_NOT_ALLOWED_UNPAID",
+        message: "El contrato aún no tiene un pago aprobado",
+      });
+    }
+
+    const response = await this.createOTPForContract(
+      contract,
+      length || this.DEFAULT_OTP_LENGTH,
+    );
+
+    await this.sendContractPush(
+      contract,
+      contract.provider.id,
+      "Cliente regeneró código de verificación",
+      `El cliente regeneró el código OTP para "${contract.publication?.title || "el contrato"}".`,
+    );
+
+    return response;
+  }
+
+  /**
+   * Verifica OTP (proveedor) y completa el contrato en una transacción.
+   */
+  async verifyContractOTP(
+    contractId: string,
+    otpCode: string,
+    userId?: number,
+  ): Promise<{ isValid: boolean; contract: any }> {
+    const updatedContract = await this.contractRepository.manager.transaction(
+      async (manager) => {
+        const contractRepository = manager.getRepository(Contract);
+        const otpRepository = manager.getRepository(ContractOTP);
+
+        const contract = await contractRepository.findOne({
+          where: { id: contractId, deleted_at: null },
+          relations: ["client", "provider", "publication"],
+        });
+
+        if (!contract) {
+          throw new NotFoundException("Contrato no encontrado");
+        }
+
+        this.assertProviderRole(contract, userId);
+
+        if (contract.otpVerified) {
+          throw new ConflictException({
+            errorCode: "OTP_ALREADY_VERIFIED",
+            message: "El contrato ya tiene OTP verificado",
+          });
+        }
+
+        if (contract.status === ContractStatus.COMPLETED) {
+          throw new ConflictException({
+            errorCode: "CONTRACT_ALREADY_COMPLETED",
+            message: "El contrato ya está completado",
+          });
+        }
+
+        if (contract.status === ContractStatus.CANCELLED || contract.cancelledAt) {
+          throw new BadRequestException(
+            "No se puede verificar OTP en un contrato cancelado",
+          );
+        }
+
+        const latestOTP = await otpRepository.findOne({
+          where: { contract: { id: contractId }, isUsed: false },
+          order: { createdAt: "DESC" },
+        });
+
+        if (!latestOTP) {
+          throw new UnprocessableEntityException({
+            isValid: false,
+            message: "Código inválido",
+            remainingAttempts: 0,
+          });
+        }
+
+        const now = new Date();
+        if (latestOTP.expiresAt && latestOTP.expiresAt < now) {
+          latestOTP.isUsed = true;
+          await otpRepository.save(latestOTP);
+          throw new GoneException({
+            errorCode: "OTP_EXPIRED",
+            message: "El código OTP expiró",
+          });
+        }
+
+        const maxAttempts = latestOTP.maxAttempts || this.OTP_MAX_ATTEMPTS;
+        if ((latestOTP.attempts || 0) >= maxAttempts) {
+          latestOTP.isUsed = true;
+          await otpRepository.save(latestOTP);
+          throw new UnprocessableEntityException({
+            isValid: false,
+            message: "Código inválido",
+            remainingAttempts: 0,
+          });
+        }
+
+        const inputHash = this.hashOTP(contract.id, otpCode);
+        const storedHash = latestOTP.codeHash;
+        const hashMatches =
+          !!storedHash &&
+          storedHash.length === inputHash.length &&
+          timingSafeEqual(Buffer.from(storedHash), Buffer.from(inputHash));
+
+        const legacyMatches = !storedHash && latestOTP.code === otpCode;
+        const isValid = hashMatches || legacyMatches;
+
+        if (!isValid) {
+          latestOTP.attempts = (latestOTP.attempts || 0) + 1;
+          const remainingAttempts = Math.max(
+            maxAttempts - latestOTP.attempts,
+            0,
+          );
+
+          if (remainingAttempts === 0) {
+            latestOTP.isUsed = true;
+          }
+          await otpRepository.save(latestOTP);
+
+          throw new UnprocessableEntityException({
+            isValid: false,
+            message: "Código inválido",
+            remainingAttempts,
+          });
+        }
+
+        latestOTP.isUsed = true;
+        await otpRepository.save(latestOTP);
+
+        contract.otpVerified = true;
+        contract.otpVerifiedAt = now;
+        contract.status = ContractStatus.COMPLETED;
+        if (!contract.completedAt) {
+          contract.completedAt = now;
+        }
+
+        return await contractRepository.save(contract);
+      },
+    );
+
+    await Promise.all([
+      this.sendContractPush(
+        updatedContract,
+        updatedContract.client.id,
+        "Contrato completado",
+        `El contrato "${updatedContract.publication?.title || updatedContract.id}" fue completado.`,
+      ),
+      this.sendContractPush(
+        updatedContract,
+        updatedContract.provider.id,
+        "Contrato completado",
+        `El contrato "${updatedContract.publication?.title || updatedContract.id}" fue completado.`,
+      ),
+    ]);
+
+    return {
+      isValid: true,
+      contract: await this.decorateContractReadModel(updatedContract),
+    };
   }
 
   private async sendContractPush(
