@@ -10,7 +10,7 @@ import {
   forwardRef,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull, Not } from "typeorm";
+import { Repository, IsNull, Not, EntityManager, QueryFailedError } from "typeorm";
 import {
   Contract,
   ContractBid,
@@ -30,6 +30,11 @@ import { PaymentMethod, PaymentStatus } from "../enums/paymentMethod.enum";
 import { BalanceService } from "../user/services/balance.service";
 import { PushService } from "../push/push.service";
 import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
+import {
+  BalanceTransaction,
+  BalanceTransactionStatus,
+  BalanceTransactionType,
+} from "../user/entities/balance-transaction.entity";
 import { createHash, timingSafeEqual } from "crypto";
 
 @Injectable()
@@ -794,58 +799,59 @@ export class ContractService {
   }
 
   async completeContract(contractId: string, userId: number): Promise<Contract> {
-    const contract = await this.contractRepository.findOne({
-      where: { id: contractId, deleted_at: null },
-      relations: ["client", "provider", "publication"],
-    });
+    const updatedContract = await this.contractRepository.manager.transaction(
+      async (manager) => {
+        const contractRepository = manager.getRepository(Contract);
+        const contract = await contractRepository.findOne({
+          where: { id: contractId, deleted_at: null },
+          relations: ["client", "provider", "publication"],
+        });
 
-    if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
-    }
+        if (!contract) {
+          throw new NotFoundException("Contrato no encontrado");
+        }
 
-    if (contract.provider.id !== userId) {
-      throw new BadRequestException(
-        "Solo el proveedor del servicio puede marcar el contrato como completado"
-      );
-    }
+        if (contract.provider.id !== userId) {
+          throw new BadRequestException(
+            "Solo el proveedor del servicio puede marcar el contrato como completado"
+          );
+        }
 
-    if (contract.status === ContractStatus.CANCELLED) {
-      throw new BadRequestException(
-        "No se pueden marcar como completados los contratos que están en estado 'CANCELLED'"
-      );
-    }
+        if (contract.status === ContractStatus.CANCELLED) {
+          throw new BadRequestException(
+            "No se pueden marcar como completados los contratos que están en estado 'CANCELLED'"
+          );
+        }
 
-    if (!contract.agreedDate || !contract.agreedTime) {
-      throw new BadRequestException(
-        "No se puede marcar como completado un contrato sin fecha y hora acordada"
-      );
-    }
+        if (!contract.agreedDate || !contract.agreedTime) {
+          throw new BadRequestException(
+            "No se puede marcar como completado un contrato sin fecha y hora acordada"
+          );
+        }
 
-    const agreedDate = contract.agreedDate instanceof Date ? contract.agreedDate : new Date(contract.agreedDate);
-    const [hours, minutes] = contract.agreedTime.split(':').map(Number);
-    
-    const serviceDateTime = new Date(agreedDate);
-    serviceDateTime.setHours(hours, minutes, 0, 0);
+        const agreedDate = contract.agreedDate instanceof Date ? contract.agreedDate : new Date(contract.agreedDate);
+        const [hours, minutes] = contract.agreedTime.split(":").map(Number);
 
-    const now = new Date();
-    if (now < serviceDateTime) {
-      throw new BadRequestException(
-        "No se puede marcar como completado un contrato antes de la fecha y hora acordada del servicio"
-      );
-    }
+        const serviceDateTime = new Date(agreedDate);
+        serviceDateTime.setHours(hours, minutes, 0, 0);
 
-    contract.status = ContractStatus.COMPLETED;
-    if (!contract.completedAt) {
-      contract.completedAt = new Date();
-    }
-    const updatedContract = await this.contractRepository.save(contract);
+        const now = new Date();
+        if (now < serviceDateTime) {
+          throw new BadRequestException(
+            "No se puede marcar como completado un contrato antes de la fecha y hora acordada del servicio"
+          );
+        }
+
+        return this.completeAndCreditContractInTransaction(manager, contract);
+      },
+    );
 
     // Enviar notificación por email al cliente sobre la completación
     try {
       await this.emailService.sendContractNotification(
-        contract.client.email,
+        updatedContract.client.email,
         "Servicio completado",
-        `El servicio "${contract.publication.title}" ha sido marcado como completado por el proveedor. Para confirmar que el servicio se realizó satisfactoriamente y proceder con el pago, ve a la sección de contratos y haz clic en "Verificar Servicio (OTP)".`,
+        `El servicio "${updatedContract.publication.title}" ha sido marcado como completado por el proveedor.`,
       );
     } catch (error) {
       // No lanzar error para no interrumpir la completación del contrato
@@ -853,9 +859,9 @@ export class ContractService {
 
     await this.sendContractPush(
       updatedContract,
-      contract.client.id,
+      updatedContract.client.id,
       "Servicio completado",
-      `El servicio "${contract.publication.title}" fue marcado como completado.`,
+      `El servicio "${updatedContract.publication.title}" fue marcado como completado.`,
     );
 
     return updatedContract;
@@ -1075,6 +1081,145 @@ export class ContractService {
       payment.status === PaymentStatus.FINISHED ||
       this.isWompiApproved(payment.wompi_response)
     );
+  }
+
+  private getContractPaymentAmount(contract: Contract): number {
+    const amount = Number(
+      contract.currentPrice || contract.totalPrice || contract.initialPrice,
+    );
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException(
+        `Monto del contrato inválido: ${amount}`,
+      );
+    }
+
+    return amount;
+  }
+
+  private async findLatestApprovedPaymentInTransaction(
+    manager: EntityManager,
+    contractId: string,
+  ): Promise<PaymentTransaction | null> {
+    const paymentRepository = manager.getRepository(PaymentTransaction);
+    const payments = await paymentRepository.find({
+      where: { contract: { id: contractId } },
+      relations: ["payer", "payee", "contract"],
+      order: { created_at: "DESC" },
+    });
+
+    return (
+      payments.find((payment) => this.isPaymentApproved(payment)) || null
+    );
+  }
+
+  private async creditProviderForCompletedContractInTransaction(
+    manager: EntityManager,
+    contract: Contract,
+    approvedPayment: PaymentTransaction,
+  ): Promise<void> {
+    const balanceTransactionRepository = manager.getRepository(BalanceTransaction);
+    const userRepository = manager.getRepository(User);
+
+    const existingProviderCredit = await balanceTransactionRepository.findOne({
+      where: {
+        contract: { id: contract.id },
+        user: { id: contract.provider.id },
+        type: BalanceTransactionType.PAYMENT_COMPLETED_CREDIT,
+      },
+    });
+
+    if (existingProviderCredit) {
+      return;
+    }
+
+    const provider = await userRepository.findOne({
+      where: { id: contract.provider.id },
+      select: ["id", "debit_balance", "credit_balance"],
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Proveedor no encontrado");
+    }
+
+    const amount = this.getContractPaymentAmount(contract);
+    const creditBalanceBefore = Number(provider.credit_balance) || 0;
+    const debitBalanceBefore = Number(provider.debit_balance) || 0;
+    const creditBalanceAfter = creditBalanceBefore + amount;
+
+    const providerMovement = balanceTransactionRepository.create({
+      user: provider,
+      amount,
+      debitBalanceBefore,
+      debitBalanceAfter: debitBalanceBefore,
+      creditBalanceBefore,
+      creditBalanceAfter,
+      type: BalanceTransactionType.PAYMENT_COMPLETED_CREDIT,
+      status: BalanceTransactionStatus.COMPLETED,
+      description: `Crédito por contrato completado - Contrato ${contract.id}`,
+      reference: `CONTRACT-${contract.id}`,
+      contract,
+      paymentTransaction: approvedPayment,
+    });
+
+    try {
+      await balanceTransactionRepository.save(providerMovement);
+    } catch (error) {
+      const pgCode =
+        (error as QueryFailedError & { driverError?: { code?: string } })
+          ?.driverError?.code || (error as any)?.code;
+
+      if (pgCode === "23505") {
+        return;
+      }
+      throw error;
+    }
+
+    await userRepository.update(provider.id, {
+      credit_balance: creditBalanceAfter,
+    });
+  }
+
+  private async completeAndCreditContractInTransaction(
+    manager: EntityManager,
+    contract: Contract,
+    options?: {
+      markOtpVerified?: boolean;
+      completedAt?: Date;
+    },
+  ): Promise<Contract> {
+    const approvedPayment = await this.findLatestApprovedPaymentInTransaction(
+      manager,
+      contract.id,
+    );
+
+    if (!approvedPayment) {
+      throw new ConflictException({
+        errorCode: "OTP_NOT_ALLOWED_UNPAID",
+        message: "El contrato aún no tiene un pago aprobado",
+      });
+    }
+
+    const completionDate = options?.completedAt || new Date();
+
+    contract.status = ContractStatus.COMPLETED;
+    if (!contract.completedAt) {
+      contract.completedAt = completionDate;
+    }
+
+    if (options?.markOtpVerified) {
+      contract.otpVerified = true;
+      contract.otpVerifiedAt = completionDate;
+    }
+
+    const savedContract = await manager.getRepository(Contract).save(contract);
+    await this.creditProviderForCompletedContractInTransaction(
+      manager,
+      savedContract,
+      approvedPayment,
+    );
+
+    return savedContract;
   }
 
   private async decorateContractReadModel(contract: Contract): Promise<any> {
@@ -1410,14 +1555,10 @@ export class ContractService {
         latestOTP.isUsed = true;
         await otpRepository.save(latestOTP);
 
-        contract.otpVerified = true;
-        contract.otpVerifiedAt = now;
-        contract.status = ContractStatus.COMPLETED;
-        if (!contract.completedAt) {
-          contract.completedAt = now;
-        }
-
-        return await contractRepository.save(contract);
+        return this.completeAndCreditContractInTransaction(manager, contract, {
+          markOtpVerified: true,
+          completedAt: now,
+        });
       },
     );
 
