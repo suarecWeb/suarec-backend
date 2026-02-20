@@ -34,7 +34,7 @@ import {
 
 @Injectable()
 export class PaymentService {
-  private readonly SUAREC_COMMISSION_RATE = 0.08;
+  private readonly SUAREC_COMMISSION_RATE = 0.12;
   private readonly MIN_SUAREC_COMMISSION = 7000;
   public wompiService: WompiService;
   constructor(

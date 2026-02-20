@@ -125,7 +125,7 @@ export class ContractService {
     contract.providerMessage = providerMessage;
     return await this.contractRepository.save(contract);
   }
-  private readonly SUAREC_COMMISSION_RATE = 0.08; // 8%
+  private readonly SUAREC_COMMISSION_RATE = 0.12; // 12%
   private readonly MIN_SUAREC_COMMISSION = 7000;
   private readonly MIN_SERVICE_PRICE = 20000;
   private readonly TAX_RATE = 0.19; // 19% IVA
