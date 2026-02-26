@@ -35,6 +35,9 @@ import { UserIdPhotos } from "./entities/user-id-photos.entity";
 import { BalanceTransaction } from "./entities/balance-transaction.entity";
 import { BalanceService } from "./services/balance.service";
 import { BalanceController } from "./controllers/balance.controller";
+import { SocialSecurityDocument } from "./entities/social-security-document.entity";
+import { SocialSecurityDocIdempotency } from "./entities/social-security-doc-idempotency.entity";
+import { SocialSecurityDocsService } from "./services/social-security-docs.service";
 
 @Module({
   imports: [
@@ -60,6 +63,8 @@ import { BalanceController } from "./controllers/balance.controller";
       UserIdPhotos,
       BankInfo,
       BalanceTransaction,
+      SocialSecurityDocument,
+      SocialSecurityDocIdempotency,
     ]),
     PermissionModule,
 
@@ -73,7 +78,26 @@ import { BalanceController } from "./controllers/balance.controller";
     }),
   ],
   controllers: [UserController, ExperienceController, BankInfoController, BanksController, BalanceController],
-  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService, BalanceService],
-  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService, BalanceService],
+  providers: [
+    UserService,
+    ExperienceService,
+    GalleryService,
+    BankInfoService,
+    WompiBanksService,
+    IdPhotosService,
+    BalanceService,
+    SocialSecurityDocsService,
+  ],
+  exports: [
+    UserService,
+    ExperienceService,
+    GalleryService,
+    BankInfoService,
+    WompiBanksService,
+    TypeOrmModule,
+    IdPhotosService,
+    BalanceService,
+    SocialSecurityDocsService,
+  ],
 })
 export class UserModule {}
