@@ -848,6 +848,8 @@ export class UserService {
         .createQueryBuilder("user")
         .leftJoinAndSelect("user.roles", "roles")
         .leftJoinAndSelect("user.company", "company")
+        .leftJoinAndSelect("user.education", "education")
+        .leftJoinAndSelect("user.idPhotos", "idPhotos")
         .where(
           "(LOWER(user.name) LIKE :query OR LOWER(user.email) LIKE :query)",
           { query: `%${searchQuery}%` },
