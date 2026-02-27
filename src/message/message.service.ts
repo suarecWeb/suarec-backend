@@ -13,6 +13,7 @@ import { UpdateMessageDto } from "./dto/update-message.dto";
 import { User } from "../user/entities/user.entity";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { PaginationResponse } from "../common/interfaces/paginated-response.interface";
+import { PushService } from "../push/push.service";
 
 @Injectable()
 export class MessageService {
@@ -23,6 +24,7 @@ export class MessageService {
     private readonly messageRepository: Repository<Message>, // eslint-disable-line no-unused-vars
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // eslint-disable-line no-unused-vars
+    private readonly pushService: PushService, // eslint-disable-line no-unused-vars
   ) {}
 
   private server: any = null;
@@ -104,6 +106,10 @@ export class MessageService {
       if (savedMessage) {
         (savedMessage as any).senderId = savedMessage.sender?.id;
         (savedMessage as any).recipientId = savedMessage.recipient?.id;
+      }
+
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
       }
 
       return savedMessage;
@@ -413,6 +419,15 @@ export class MessageService {
       console.log(`🎫 Ticket creado: ${ticket.id}`);
       console.log(`📨 Auto-response creado: ${autoResponse.id} con ticket_id: ${autoResponse.ticket_id}`);
 
+      const autoResponseWithRelations = await this.messageRepository.findOne({
+        where: { id: autoResponse.id },
+        relations: ["sender", "recipient"],
+      });
+
+      if (autoResponseWithRelations) {
+        await this.notifyRecipient(autoResponseWithRelations);
+      }
+
       return ticket;
     } catch (error) {
       this.handleDBErrors(error);
@@ -534,6 +549,10 @@ export class MessageService {
       console.log(`📨 Mensaje agregado al ticket ${ticketId}: ${savedMessage?.id} con ticket_id: ${savedMessage?.ticket_id}`);
       console.log(`📨 Mensaje completo:`, JSON.stringify(savedMessage, null, 2));
 
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
+      }
+
       return savedMessage;
     } catch (error) {
       console.error(`❌ Error en addMessageToTicket:`, error);
@@ -571,6 +590,10 @@ export class MessageService {
       });
 
       console.log(`📨 Respuesta de admin al ticket ${ticketId}: ${savedMessage?.id} con ticket_id: ${savedMessage?.ticket_id}`);
+
+      if (savedMessage) {
+        await this.notifyRecipient(savedMessage);
+      }
 
       return savedMessage;
     } catch (error) {
@@ -707,6 +730,35 @@ export class MessageService {
     throw new InternalServerErrorException(
       "Unexpected error, check server logs",
     );
+  }
+
+  private async notifyRecipient(message: Message): Promise<void> {
+    try {
+      const recipientId = message.recipient?.id ?? (message as any)?.recipientId;
+      const senderName = message.sender?.name || "Suarec";
+
+      if (!recipientId || recipientId === 0) {
+        return;
+      }
+
+      const truncatedContent =
+        message.content && message.content.length > 120
+          ? `${message.content.slice(0, 117)}...`
+          : message.content;
+
+      await this.pushService.sendToUser(recipientId, {
+        title: `Nuevo mensaje de ${senderName}`,
+        body: truncatedContent || "Tienes un nuevo mensaje",
+        data: {
+          type: "message",
+          messageId: message.id,
+          senderId: message.sender?.id ?? null,
+          recipientId,
+        },
+      });
+    } catch (error) {
+      this.logger.error("Error sending push notification for message", error);
+    }
   }
 
   // Método para emitir mensaje manualmente (para respuestas de admin)

@@ -10,6 +10,7 @@ import {
   Query,
   Patch,
   Request,
+  Headers,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -26,6 +27,7 @@ import {
   ApiResponse,
   ApiQuery,
   ApiParam,
+  ApiHeader,
 } from "@nestjs/swagger";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { GalleryService } from "./services/gallery.service";
@@ -38,6 +40,11 @@ import { IdPhotosService } from "./services/id-photos.service";
 import { CreateIdPhotoDto, ReviewIdPhotoDto, UpdateIdPhotoDto } from "./dto/id-photos.dto";
 import { RutService } from "./services/rut.service";
 import { CreateRutDto, ReviewRutDto } from "./dto/rut.dto";
+import {
+  CompleteSocialSecurityUploadDto,
+  RequestSocialSecurityUploadUrlDto,
+} from "./dto/social-security-docs.dto";
+import { SocialSecurityDocsService } from "./services/social-security-docs.service";
 
 @ApiTags("Users")
 @Controller("users")
@@ -48,6 +55,7 @@ export class UserController {
     private readonly galleryService: GalleryService, // eslint-disable-line no-unused-vars
     private readonly idPhotosService: IdPhotosService, // eslint-disable-line no-unused-vars
     private readonly rutService: RutService, // eslint-disable-line no-unused-vars
+    private readonly socialSecurityDocsService: SocialSecurityDocsService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Public()
@@ -394,6 +402,97 @@ export class UserController {
   async deleteMyIdPhoto(@Request() req, @Param("photoId") photoId: string) {
     await this.idPhotosService.deleteIdPhoto(req.user.id, +photoId);
     return { message: "Foto de cédula eliminada exitosamente" };
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("me/social-security-docs/upload-url")
+  @ApiOperation({
+    summary: "Create signed upload URL for social security document",
+    description:
+      "Creates a pending social security document and returns a temporary signed upload URL",
+  })
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiResponse({ status: 201, description: "Signed upload URL generated successfully" })
+  @ApiResponse({ status: 400, description: "Validation error or missing Idempotency-Key" })
+  @ApiResponse({ status: 409, description: "Idempotency key reused with different payload" })
+  async requestSocialSecurityUploadUrl(
+    @Request() req,
+    @Body() dto: RequestSocialSecurityUploadUrlDto,
+    @Headers("idempotency-key") idempotencyKey: string,
+  ) {
+    return this.socialSecurityDocsService.requestUploadUrl(
+      req.user.id,
+      dto,
+      idempotencyKey,
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("me/social-security-docs/:id/complete")
+  @ApiOperation({
+    summary: "Complete social security document upload",
+    description:
+      "Validates that file exists in storage and updates document status to pending",
+  })
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiParam({ name: "id", description: "Social security document ID (UUID)" })
+  @ApiResponse({ status: 200, description: "Document upload completed successfully" })
+  @ApiResponse({ status: 400, description: "Validation error or file does not exist in storage" })
+  @ApiResponse({ status: 404, description: "Document not found" })
+  @ApiResponse({ status: 409, description: "Idempotency key reused with different payload" })
+  async completeSocialSecurityUpload(
+    @Request() req,
+    @Param("id") id: string,
+    @Body() dto: CompleteSocialSecurityUploadDto,
+    @Headers("idempotency-key") idempotencyKey: string,
+  ) {
+    return this.socialSecurityDocsService.completeUpload(
+      req.user.id,
+      id,
+      dto,
+      idempotencyKey,
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("me/social-security-docs")
+  @ApiOperation({
+    summary: "List social security documents for current user",
+    description: "Returns metadata only (without public URLs)",
+  })
+  @ApiResponse({ status: 200, description: "Social security documents retrieved successfully" })
+  async listMySocialSecurityDocs(@Request() req) {
+    return this.socialSecurityDocsService.listMyDocuments(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("me/social-security-docs/:id/download-url")
+  @ApiOperation({
+    summary: "Generate temporary download URL",
+    description: "Returns a short-lived signed URL for downloading a private document",
+  })
+  @ApiParam({ name: "id", description: "Social security document ID (UUID)" })
+  @ApiResponse({ status: 200, description: "Signed download URL generated successfully" })
+  @ApiResponse({ status: 404, description: "Document not found" })
+  async getMySocialSecurityDocDownloadUrl(
+    @Request() req,
+    @Param("id") id: string,
+  ) {
+    return this.socialSecurityDocsService.getDownloadUrl(req.user.id, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete("me/social-security-docs/:id")
+  @ApiOperation({
+    summary: "Delete social security document",
+    description:
+      "Performs soft delete in database and schedules/attempts hard delete in private storage",
+  })
+  @ApiParam({ name: "id", description: "Social security document ID (UUID)" })
+  @ApiResponse({ status: 200, description: "Document deleted successfully" })
+  @ApiResponse({ status: 404, description: "Document not found" })
+  async deleteMySocialSecurityDoc(@Request() req, @Param("id") id: string) {
+    return this.socialSecurityDocsService.deleteMyDocument(req.user.id, id);
   }
 
   // Endpoints para administradores (revisar fotos de cédula)

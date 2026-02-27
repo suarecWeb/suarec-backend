@@ -8,12 +8,14 @@ import { User } from "../user/entities/user.entity";
 import { EmailService } from "../email/email.service";
 import { PaymentModule } from "../payment/payment.module";
 import { UserModule } from "../user/user.module";
+import { PushModule } from "../push/push.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Contract, ContractBid, ContractOTP, Publication, User]),
     forwardRef(() => PaymentModule),
     forwardRef(() => UserModule),
+    PushModule,
   ],
   controllers: [ContractController],
   providers: [ContractService, EmailService],

@@ -7,11 +7,17 @@ import {
   UseGuards,
   Request,
   Delete,
-  BadRequestException,
   Patch,
 } from "@nestjs/common";
 import { ContractService } from "./contract.service";
-import { CreateContractDto, CreateBidDto, AcceptBidDto, ProviderResponseDto, VerifyOTPDto, ResendOTPDto } from "./dto/create-contract.dto";
+import {
+  CreateContractDto,
+  CreateBidDto,
+  AcceptBidDto,
+  ProviderResponseDto,
+  VerifyOTPDto,
+  GenerateOTPDto,
+} from "./dto/create-contract.dto";
 import { UpdateContractDto } from "./dto/update-contract.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { RolesGuard } from "../auth/guard/roles.guard";
@@ -158,8 +164,16 @@ export class ContractController {
 
   @Post(":id/generate-otp")
   @Roles("ADMIN", "BUSINESS", "PERSON")
-  async generateOTP(@Param("id") id: string, @Request() req) {
-    return await this.contractService.generateContractOTP(id, req.user.id);
+  async generateOTP(
+    @Param("id") id: string,
+    @Body() generateOTPDto: GenerateOTPDto,
+    @Request() req,
+  ) {
+    return await this.contractService.generateContractOTP(
+      id,
+      req.user.id,
+      generateOTPDto?.length,
+    );
   }
 
   @Post(":id/verify-otp")
@@ -170,7 +184,15 @@ export class ContractController {
 
   @Post(":id/resend-otp")
   @Roles("ADMIN", "BUSINESS", "PERSON")
-  async resendOTP(@Param("id") id: string, @Request() req) {
-    return await this.contractService.resendContractOTP(id, req.user.id);
+  async resendOTP(
+    @Param("id") id: string,
+    @Body() resendOTPDto: GenerateOTPDto,
+    @Request() req,
+  ) {
+    return await this.contractService.resendContractOTP(
+      id,
+      req.user.id,
+      resendOTPDto?.length,
+    );
   }
 }

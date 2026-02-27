@@ -7,6 +7,9 @@ import {
   IsEnum,
   IsDateString,
   Min,
+  IsInt,
+  IsIn,
+  Matches,
 } from "class-validator";
 import { Transform } from "class-transformer";
 import { ContractStatus } from "../entities/contract.entity";
@@ -154,11 +157,13 @@ export class ProviderResponseDto {
 export class VerifyOTPDto {
   @IsString()
   @IsNotEmpty()
+  @Matches(/^\d{4}$/, { message: "otpCode debe tener 4 dígitos numéricos" })
   otpCode: string;
 }
 
-export class ResendOTPDto {
-  @IsUUID()
-  @IsNotEmpty()
-  contractId: string;
+export class GenerateOTPDto {
+  @IsOptional()
+  @IsInt()
+  @IsIn([4], { message: "Solo se permite OTP de 4 dígitos" })
+  length?: number;
 }
