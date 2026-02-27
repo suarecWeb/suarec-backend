@@ -153,7 +153,7 @@ export class UserApplicationController {
   constructor(private readonly applicationService: ApplicationService) {} // eslint-disable-line no-unused-vars
 
   @Get()
-  @Roles("PERSON", "ADMIN")
+  @Roles("PERSON", "BUSINESS", "ADMIN")
   @ApiOperation({ summary: "Get applications made by user" })
   @ApiParam({ name: "userId", description: "User ID" })
   @ApiQuery({ type: PaginationDto })
