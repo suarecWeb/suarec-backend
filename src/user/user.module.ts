@@ -32,6 +32,8 @@ import { WompiBanksService } from "./services/wompi-banks.service";
 import { BanksController } from "./controllers/banks.controller";
 import { IdPhotosService } from "./services/id-photos.service";
 import { UserIdPhotos } from "./entities/user-id-photos.entity";
+import { RutService } from "./services/rut.service";
+import { UserRut } from "./entities/user-rut.entity";
 import { BalanceTransaction } from "./entities/balance-transaction.entity";
 import { BalanceService } from "./services/balance.service";
 import { BalanceController } from "./controllers/balance.controller";
@@ -61,6 +63,7 @@ import { SocialSecurityDocsService } from "./services/social-security-docs.servi
       SocialLink,
       UserGallery,
       UserIdPhotos,
+      UserRut,
       BankInfo,
       BalanceTransaction,
       SocialSecurityDocument,
@@ -85,6 +88,7 @@ import { SocialSecurityDocsService } from "./services/social-security-docs.servi
     BankInfoService,
     WompiBanksService,
     IdPhotosService,
+    RutService,
     BalanceService,
     SocialSecurityDocsService,
   ],
@@ -96,6 +100,7 @@ import { SocialSecurityDocsService } from "./services/social-security-docs.servi
     WompiBanksService,
     TypeOrmModule,
     IdPhotosService,
+    RutService,
     BalanceService,
     SocialSecurityDocsService,
   ],

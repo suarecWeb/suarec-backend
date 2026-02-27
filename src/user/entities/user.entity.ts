@@ -27,6 +27,7 @@ import { SocialLink } from "./social-link.entity";
 import { Contract, ContractBid } from "../../contract/entities/contract.entity";
 import { UserGallery } from "./user-gallery.entity";
 import { UserIdPhotos } from "./user-id-photos.entity";
+import { UserRut } from "./user-rut.entity";
 import { CompanyHistory } from "../../company/entities/company-history.entity";
 import { BankInfo } from "./bank-info.entity";
 import { UserPlan } from "../enums/user-plan.enum";
@@ -239,6 +240,9 @@ export class User {
 
   @OneToMany(() => UserIdPhotos, (idPhoto) => idPhoto.user, { cascade: true })
   idPhotos: UserIdPhotos[];
+
+  @OneToMany(() => UserRut, (rut) => rut.user, { cascade: true })
+  rutDocuments: UserRut[];
 
   @OneToMany(() => CompanyHistory, (history) => history.user)
   companyHistory: CompanyHistory[];
