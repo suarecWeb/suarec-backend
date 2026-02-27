@@ -576,7 +576,7 @@ export class UserService {
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.usersRepository.findAndCount({
-        relations: ["roles", "company", "education", "idPhotos", "idPhotos.reviewedBy"],
+        relations: ["roles", "company", "education", "idPhotos", "idPhotos.reviewedBy", "rutDocuments", "rutDocuments.reviewedBy"],
         skip,
         take: limit,
       });
@@ -850,6 +850,7 @@ export class UserService {
         .leftJoinAndSelect("user.company", "company")
         .leftJoinAndSelect("user.education", "education")
         .leftJoinAndSelect("user.idPhotos", "idPhotos")
+        .leftJoinAndSelect("user.rutDocuments", "rutDocuments")
         .where(
           "(LOWER(user.name) LIKE :query OR LOWER(user.email) LIKE :query)",
           { query: `%${searchQuery}%` },

@@ -32,6 +32,8 @@ import { WompiBanksService } from "./services/wompi-banks.service";
 import { BanksController } from "./controllers/banks.controller";
 import { IdPhotosService } from "./services/id-photos.service";
 import { UserIdPhotos } from "./entities/user-id-photos.entity";
+import { RutService } from "./services/rut.service";
+import { UserRut } from "./entities/user-rut.entity";
 import { BalanceTransaction } from "./entities/balance-transaction.entity";
 import { BalanceService } from "./services/balance.service";
 import { BalanceController } from "./controllers/balance.controller";
@@ -58,6 +60,7 @@ import { BalanceController } from "./controllers/balance.controller";
       SocialLink,
       UserGallery,
       UserIdPhotos,
+      UserRut,
       BankInfo,
       BalanceTransaction,
     ]),
@@ -73,7 +76,7 @@ import { BalanceController } from "./controllers/balance.controller";
     }),
   ],
   controllers: [UserController, ExperienceController, BankInfoController, BanksController, BalanceController],
-  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService, BalanceService],
-  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService, BalanceService],
+  providers: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, IdPhotosService, RutService, BalanceService],
+  exports: [UserService, ExperienceService, GalleryService, BankInfoService, WompiBanksService, TypeOrmModule, IdPhotosService, RutService, BalanceService],
 })
 export class UserModule {}

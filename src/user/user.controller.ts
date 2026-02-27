@@ -36,6 +36,8 @@ import {
 } from "./dto/gallery.dto";
 import { IdPhotosService } from "./services/id-photos.service";
 import { CreateIdPhotoDto, ReviewIdPhotoDto, UpdateIdPhotoDto } from "./dto/id-photos.dto";
+import { RutService } from "./services/rut.service";
+import { CreateRutDto, ReviewRutDto } from "./dto/rut.dto";
 
 @ApiTags("Users")
 @Controller("users")
@@ -45,6 +47,7 @@ export class UserController {
     private readonly userService: UserService, // eslint-disable-line no-unused-vars
     private readonly galleryService: GalleryService, // eslint-disable-line no-unused-vars
     private readonly idPhotosService: IdPhotosService, // eslint-disable-line no-unused-vars
+    private readonly rutService: RutService, // eslint-disable-line no-unused-vars
   ) {}
 
   @Public()
@@ -454,5 +457,57 @@ export class UserController {
   @ApiResponse({ status: 404, description: "User not found" })
   async getUserIdPhotosById(@Param("id") id: string) {
     return this.idPhotosService.getUserIdPhotosByUserId(+id);
+  }
+
+  // ========== RUT Endpoints ==========
+
+  @UseGuards(AuthGuard)
+  @Get("me/rut")
+  @ApiOperation({ summary: "Get current user RUT documents" })
+  @ApiResponse({ status: 200, description: "RUT documents retrieved successfully" })
+  async getMyRut(@Request() req) {
+    return this.rutService.getUserRut(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("me/rut")
+  @ApiOperation({ summary: "Upload RUT document" })
+  @ApiResponse({ status: 201, description: "RUT document uploaded successfully" })
+  async addMyRut(@Request() req, @Body() createDto: CreateRutDto) {
+    return this.rutService.addRut(req.user.id, createDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete("me/rut/:rutId")
+  @ApiOperation({ summary: "Delete RUT document" })
+  @ApiParam({ name: "rutId", description: "RUT Document ID" })
+  @ApiResponse({ status: 200, description: "RUT document deleted successfully" })
+  async deleteMyRut(@Request() req, @Param("rutId") rutId: string) {
+    await this.rutService.deleteRut(req.user.id, +rutId);
+    return { message: "Documento RUT eliminado exitosamente" };
+  }
+
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Patch("rut/:rutId/review")
+  @ApiOperation({ summary: "Review RUT document (Admin only)" })
+  @ApiParam({ name: "rutId", description: "RUT Document ID" })
+  @ApiResponse({ status: 200, description: "RUT document reviewed successfully" })
+  async reviewRut(
+    @Request() req,
+    @Param("rutId") rutId: string,
+    @Body() reviewDto: ReviewRutDto,
+  ) {
+    return this.rutService.reviewRut(+rutId, reviewDto, req.user.id);
+  }
+
+  @Roles("ADMIN")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Get(":id/rut")
+  @ApiOperation({ summary: "Get user RUT documents by user ID (Admin only)" })
+  @ApiParam({ name: "id", description: "User ID" })
+  @ApiResponse({ status: 200, description: "User RUT documents retrieved successfully" })
+  async getUserRutById(@Param("id") id: string) {
+    return this.rutService.getUserRutByUserId(+id);
   }
 }
