@@ -77,7 +77,7 @@ import { SocialSecurityDocsService } from "./services/social-security-docs.servi
     // Importar JwtModule para el servicio JwtService
     JwtModule.register({
       secret: process.env.JWT_SECRET || "secretKey", // Clave secreta para firmar los tokens
-      signOptions: { expiresIn: "1h" }, // Opciones de firma (por ejemplo, expiración del token)
+      signOptions: { expiresIn: "48h" }, // Opciones de firma (por ejemplo, expiración del token)
     }),
   ],
   controllers: [UserController, ExperienceController, BankInfoController, BanksController, BalanceController],
